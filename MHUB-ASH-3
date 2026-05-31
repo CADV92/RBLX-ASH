@@ -390,10 +390,12 @@ function NanoHub.new(titleText)
     Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 4)
     CloseBtn.MouseButton1Click:Connect(function() self:Destroy() end)
 
-    self.TabContainer = Instance.new("Frame", self.MainFrame)
+    self.TabContainer = Instance.new("ScrollingFrame", self.MainFrame)
     self.TabContainer.Size = UDim2.new(0, 130, 1, -35)
     self.TabContainer.Position = UDim2.new(0, 0, 0, 35)
     self.TabContainer.BackgroundColor3 = Theme.Panel
+    self.TabContainer.ScrollBarThickness = 2
+    self.TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Instance.new("UICorner", self.TabContainer).CornerRadius = UDim.new(0, 8)
     local TabLayout = Instance.new("UIListLayout", self.TabContainer)
     TabLayout.Padding = UDim.new(0, 2)
