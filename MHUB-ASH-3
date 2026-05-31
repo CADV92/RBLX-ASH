@@ -3342,6 +3342,10 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     -- [CORRECCIÓN COOLDOWN] Detección de regreso al lobby
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
+            -- Calculamos cuánto tiempo pasó desde que creamos/entramos a la raid
+            local tiempoTranscurrido = now - RaidState.EntryTime
+            local cdRestante = 20 - tiempoTranscurrido
+
             -- Limpiamos todo el estado de la raid
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
@@ -3355,12 +3359,16 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.IsProcessing = false
             RaidState.EntryTime = 0
             
-            RaidState.CurrentBossMap = nil -- [AÑADIDO] Limpiamos la memoria del jefe
+            RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
             
-            -- INICIAMOS EL COOLDOWN DE 20s DESDE QUE PISAMOS EL LOBBY
-            LblRaidStatus.Text = "❄️ CD del Servidor (20s)"
-            HandleRaidCooldown(20)
+            -- INICIAMOS EL COOLDOWN SOLO SI AÚN QUEDAN SEGUNDOS PENDIENTES
+            if cdRestante > 0 then
+                LblRaidStatus.Text = "❄️ CD del Servidor (" .. math.ceil(cdRestante) .. "s)"
+                HandleRaidCooldown(cdRestante)
+            else
+                LblRaidStatus.Text = "✅ Listo para otra raid"
+            end
         end
     end
 
