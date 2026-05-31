@@ -3353,6 +3353,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LastBossPos = nil
             RaidState.IsProcessing = false
             RaidState.EntryTime = 0
+
+            _G.MapaOrigenAntesRuna = nil
             
             -- INICIAMOS EL COOLDOWN DE 20s DESDE QUE PISAMOS EL LOBBY
             LblRaidStatus.Text = "❄️ CD del Servidor (20s)"
@@ -3445,7 +3447,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
                     
                     -- [CORRECCIÓN]: Le decimos al script en qué mapa estamos realmente ahora
-                    _G.LastSelectedMap = targetRuneMap 
+                    -- _G.LastSelectedMap = targetRuneMap 
                 else
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
@@ -3566,8 +3568,11 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LblRaidStatus.Text = "🚀 Saliendo de la raid..."
             
             task.spawn(function()
-                local mapTarget = 50000 + (_G.LastSelectedMap or 1)
+                -- Priorizamos volver al mapa origen donde abrimos el portal
+                local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
+                local mapTarget = 50000 + safeMapIdx
                 _G.MapaOrigenAntesRuna = nil
+                
                 pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
                 task.wait(0.5)
                 pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget}) end)
