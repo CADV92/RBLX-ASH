@@ -3058,7 +3058,8 @@ local RaidState = {
     EntryTime = 0,
     ExitTriggered = false,
     ExitTime = 0,
-    ClaimPosition = nil
+    ClaimPosition = nil,
+    CurrentBossMap = nil
 }
 
 local LblRaidStatus = TabAutoRaid:CreateLabel("Estado: Esperando órdenes...")
@@ -3353,8 +3354,9 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LastBossPos = nil
             RaidState.IsProcessing = false
             RaidState.EntryTime = 0
-
-            _G.MapaOrigenAntesRuna = nil
+            
+            RaidState.CurrentBossMap = nil -- [AÑADIDO] Limpiamos la memoria del jefe
+            _G.MapaOrigenAntesRuna = nil 
             
             -- INICIAMOS EL COOLDOWN DE 20s DESDE QUE PISAMOS EL LOBBY
             LblRaidStatus.Text = "❄️ CD del Servidor (20s)"
@@ -3437,6 +3439,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
+                    RaidState.CurrentBossMap = targetRuneMap -- [NUEVO] Registramos el jefe de la runa
                     local runeCode = 10348 + targetRuneMap
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
                     pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
@@ -3445,10 +3448,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     
                     task.wait(0.6) 
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
-                    
-                    -- [CORRECCIÓN]: Le decimos al script en qué mapa estamos realmente ahora
-                    -- _G.LastSelectedMap = targetRuneMap 
                 else
+                    RaidState.CurrentBossMap = mapIdx -- [NUEVO] Si no hay runa, es el jefe del mapa actual
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
 
@@ -3500,7 +3501,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
             
-            local mapIdx = _G.LastSelectedMap or 1
+            local mapIdx = RaidState.CurrentBossMap or _G.LastSelectedMap or 1
             local expectedBoss = CurrentRaidIsASC and BossPorMapaASC[mapIdx] or BossPorMapa[mapIdx]
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
