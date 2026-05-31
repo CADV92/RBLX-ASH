@@ -3503,16 +3503,19 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    -- [CORRECCIÓN]: Si coincide con el nombre O si simplemente hay un mob válido en la sala
-                    if (expectedBoss and string.find(mob.Name:lower(), expectedBoss:lower())) or mob:FindFirstChild("HumanoidRootPart") then
+                    if expectedBoss and string.find(mob.Name:lower(), expectedBoss:lower()) then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then 
                             bossAlive = true 
                             local bossRoot = mob:FindFirstChild("HumanoidRootPart")
                             if bossRoot then LastBossPos = bossRoot.CFrame end
-                            
-                            -- Actualizamos el nombre visualmente para la interfaz
-                            expectedBoss = mob.Name 
+                        end
+                        break
+                    elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
+                        bossFound = true
+                        if not Utils.EstaMuerto(mob) then
+                            bossAlive = true
+                            LastBossPos = mob.HumanoidRootPart.CFrame
                         end
                         break
                     end
