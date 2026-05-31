@@ -18,6 +18,7 @@ local CoreGui = game:GetService("CoreGui")
 local TargetGui = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 
 local HubRunning = true 
+_G.MapaOrigenAntesRuna = nil
 
 -- ==============================================================================
 -- PALETA DE COLORES (THEME) & DATOS ESTÁTICOS
@@ -3433,6 +3434,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local tpSuccess = true 
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
+                    _G.MapaOrigenAntesRuna = mapIdx
                     local runeCode = 10348 + targetRuneMap
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
                     pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
@@ -3565,6 +3567,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             
             task.spawn(function()
                 local mapTarget = 50000 + (_G.LastSelectedMap or 1)
+                _G.MapaOrigenAntesRuna = nil
                 pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
                 task.wait(0.5)
                 pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget}) end)
