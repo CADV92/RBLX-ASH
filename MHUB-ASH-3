@@ -2473,14 +2473,16 @@ local metHbConn = RunService.Heartbeat:Connect(function()
         myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
         myRoot.AssemblyLinearVelocity = Vector3.zero
         
-        if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) then
-            local refRoot = MetState.TargetRefInst:FindFirstChild("HumanoidRootPart")
-            if refRoot then
-                if not MetCFrames[MetState.TargetRefInst] then MetCFrames[MetState.TargetRefInst] = refRoot.CFrame end
-                refRoot.CFrame = myRoot.CFrame * CFrame.new(0, 25, 20)
-                refRoot.AssemblyLinearVelocity = Vector3.zero
+        if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and MetState.TargetRefInst:FindFirstChild("HumanoidRootPart") then
+            local refRoot = MetState.TargetRefInst.HumanoidRootPart
+            if not MetCFrames[MetState.TargetRefInst] then 
+                MetCFrames[MetState.TargetRefInst] = refRoot.CFrame 
             end
+            
+            refRoot.CFrame = myRoot.CFrame * CFrame.new(0, 25, 20)
+            refRoot.AssemblyLinearVelocity = Vector3.zero
         end
+        
         
         local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
         if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
