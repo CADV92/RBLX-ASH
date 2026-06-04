@@ -3849,17 +3849,16 @@ local function TPCityMap(mapIdx)
     end)
 end
 
-local MapasDisponibles = {"Mapa 3", "Mapa 7", "Mapa 10", "Mapa 13", "Mapa 18"}
-local MapaSeleccionado = 3 
+-- Botones de acceso rápido restaurados
+TabCity:CreateDualButtons(
+    "MAPA 3", Theme.Secondary, function() TPCityMap(3) end,
+    "MAPA 7", Theme.Secondary, function() TPCityMap(7) end
+)
 
-TabCity:CreateDropdown("Seleccionar Mapa:", MapasDisponibles, function(opcion)
-    local num = opcion:match("%d+")
-    if num then MapaSeleccionado = tonumber(num) end
-end)
-
-TabCity:CreateButton("🚀 VIAJAR AL MAPA SELECCIONADO", Theme.Secondary, function()
-    TPCityMap(MapaSeleccionado)
-end)
+TabCity:CreateDualButtons(
+    "MAPA 13", Theme.Secondary, function() TPCityMap(13) end,
+    "MAPA 18", Theme.Secondary, function() TPCityMap(18) end
+)
 
 -- ==========================================
 -- 2. Ingreso y Limpieza
