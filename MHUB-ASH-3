@@ -3964,7 +3964,8 @@ local function SoloRegistrar()
         local servidoresActivos = {}
         
         for _, srv in ipairs(servidores) do
-            if srv.SavedAt + (srv.Minutes * 60) > tiempoActual then
+            -- Damos un margen de 10 minutos (-600 segundos) antes de borrarlos al guardar uno nuevo
+            if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
                 table.insert(servidoresActivos, srv)
             end
         end
@@ -4035,12 +4036,12 @@ TabCity:CreateDropdown("Servidores Disponibles",
         
         local servidoresConTiempo = {}
 
-        -- 1. Filtrar los servidores expirados y guardar su tiempo exacto
         for _, srv in ipairs(servidores) do
             local tiempoExpiracion = srv.SavedAt + (srv.Minutes * 60)
             local segundosRestantes = tiempoExpiracion - tiempoActual
             
-            if segundosRestantes > 0 then
+            -- Margen de -10 minutos (-600 segundos) para mostrar en la lista
+            if segundosRestantes >= -600 then
                 table.insert(servidoresConTiempo, {
                     DataOriginal = srv,
                     Segundos = segundosRestantes
@@ -4048,12 +4049,11 @@ TabCity:CreateDropdown("Servidores Disponibles",
             end
         end
 
-        -- 2. Ordenar la tabla de menor a mayor tiempo restante
+        -- Ordenar de menor a mayor (los negativos saldrán primero)
         table.sort(servidoresConTiempo, function(a, b)
             return a.Segundos < b.Segundos
         end)
 
-        -- 3. Construir las opciones visuales y la lista a guardar
         local validOptions = {}
         local servidoresActivos = {}
 
@@ -4066,12 +4066,10 @@ TabCity:CreateDropdown("Servidores Disponibles",
             table.insert(validOptions, {Name = formatoLista, Data = item.DataOriginal.JobId})
         end
 
-        -- 4. Guardar archivo limpio y ordenado
         if writefile then
             pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
         end
 
-        -- Si no hay ninguno, mostramos la opción vacía
         if #validOptions == 0 then
             table.insert(validOptions, {Name = "No hay servidores activos", Data = nil})
         end
@@ -4090,7 +4088,8 @@ TabCity:CreateDualButtons("🔄 FORZAR LIMPIEZA JSON", Theme.Secondary, function
     local servidoresActivos = {}
     
     for _, srv in ipairs(servidores) do
-        if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual > 0 then
+        -- Respeta el margen de -10 minutos también al limpiar
+        if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
             table.insert(servidoresActivos, srv)
             opciones = opciones + 1
         end
@@ -4100,7 +4099,7 @@ TabCity:CreateDualButtons("🔄 FORZAR LIMPIEZA JSON", Theme.Secondary, function
         pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end) 
     end
     
-    StarterGui:SetCore("SendNotification", { Title = "Limpieza Lista", Text = "Se encontraron " .. opciones .. " servidores activos.", Duration = 3 })
+    StarterGui:SetCore("SendNotification", { Title = "Limpieza Lista", Text = "Se encontraron " .. opciones .. " servidores en registro.", Duration = 3 })
     
 end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
     if ServidorSeleccionadoId then
