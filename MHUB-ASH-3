@@ -3849,14 +3849,15 @@ local function TPCityMap(mapIdx)
     end)
 end
 
--- Botones de acceso rápido restaurados
-TabCity:CreateDualButtons(
+-- Agrupados de la forma más compacta posible que soporta el Hub
+TabCity:CreateSideTripleButtons("M3, M7, M10", 
     "MAPA 3", Theme.Secondary, function() TPCityMap(3) end,
-    "MAPA 7", Theme.Secondary, function() TPCityMap(7) end
+    "MAPA 7", Theme.Secondary, function() TPCityMap(7) end,
+    "MAPA 10", Theme.Secondary, function() TPCityMap(10) end
 )
 
 TabCity:CreateDualButtons(
-    "MAPA 13", Theme.Secondary, function() TPCityMap(13) end,
+    "MAPA 13", Theme.Secondary, function() TPCityMap(13) end, 
     "MAPA 18", Theme.Secondary, function() TPCityMap(18) end
 )
 
@@ -3919,7 +3920,7 @@ TabCity:CreateLabel("3. Escaneo y Salto de Servidor")
 local MinutosIngresados = 0
 local TimersFileName = "MirrorHub_CityRaid_Timers.json"
 
-TabCity:CreateTextBox("Minutos Restantes (Para guardar)", "Ej: 15 (Dejar vacío si no aplica)", function(texto)
+TabCity:CreateTextBox("Minutos Restantes (Para guardar)", "", function(texto)
     MinutosIngresados = tonumber(texto) or 0
 end)
 
@@ -3927,7 +3928,9 @@ end)
 local function ObtenerServidoresGuardados()
     if readfile then
         local success, data = pcall(function() return HttpService:JSONDecode(readfile(TimersFileName)) end)
-        if success and type(data) == "table" then return data end
+        if success and type(data) == "table" then 
+            return data 
+        end
     end
     return {}
 end
@@ -4012,7 +4015,9 @@ local ListaDataServidores = {}
 
 local DropdownServidores = TabCity:CreateDropdown("Servidores Disponibles:", {"Presiona Actualizar Lista"}, function(opcion)
     for _, srv in ipairs(ListaDataServidores) do
-        if opcion:find(srv.JobId:sub(1,8)) then
+        -- Escapamos el guión en el patrón de búsqueda para evitar errores de Lua
+        local jobIdCorto = srv.JobId:sub(1,8)
+        if opcion:find(jobIdCorto, 1, true) then
             ServidorSeleccionadoId = srv.JobId
             break
         end
@@ -4042,7 +4047,7 @@ TabCity:CreateDualButtons("🔄 ACTUALIZAR LISTA", Theme.Secondary, function()
         end
     end
 
-    -- Guardamos el archivo actualizado (esto borra permanentemente los expirados)
+    -- Guardamos el archivo actualizado (borra permanentemente los expirados)
     if writefile then
         pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
     end
@@ -4052,9 +4057,25 @@ TabCity:CreateDualButtons("🔄 ACTUALIZAR LISTA", Theme.Secondary, function()
         ServidorSeleccionadoId = nil
     end
 
-    -- NOTA: Cambia ':Refresh' por la función que use tu librería para actualizar Dropdowns si es necesario (ej: :SetOptions)
-    pcall(function() DropdownServidores:Refresh(OpcionesMostrar) end)
-    StarterGui:SetCore("SendNotification", { Title = "Lista Actualizada", Text = "Limpieza de servidores caducados completada.", Duration = 2 })
+    -- INTENTO MÚLTIPLE DE ACTUALIZAR EL DROPDOWN (Soporte para múltiples librerías)
+    local refreshExitoso = false
+    
+    -- Intento 1: :Refresh 
+    local s1, _ = pcall(function() DropdownServidores:Refresh(OpcionesMostrar, true) end)
+    if s1 then refreshExitoso = true end
+    
+    -- Intento 2: :SetOptions 
+    if not refreshExitoso then
+        local s2, _ = pcall(function() DropdownServidores:SetOptions(OpcionesMostrar) end)
+        if s2 then refreshExitoso = true end
+    end
+
+    -- Intento 3: :Update 
+    if not refreshExitoso then
+        pcall(function() DropdownServidores:Update(OpcionesMostrar) end)
+    end
+
+    StarterGui:SetCore("SendNotification", { Title = "Lista Actualizada", Text = "Se encontraron " .. #servidoresActivos .. " servidores.", Duration = 3 })
     
 end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
     if ServidorSeleccionadoId then
@@ -4063,7 +4084,7 @@ end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
             TeleportService:TeleportToPlaceInstance(game.PlaceId, ServidorSeleccionadoId, LocalPlayer)
         end)
     else
-        StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Selecciona un servidor primero.", Duration = 3 })
+        StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Selecciona un servidor de la lista primero.", Duration = 3 })
     end
 end)
 
