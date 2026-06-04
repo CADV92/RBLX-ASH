@@ -3849,7 +3849,6 @@ local function TPCityMap(mapIdx)
     end)
 end
 
--- Agrupados de la forma más compacta posible que soporta el Hub
 TabCity:CreateSideTripleButtons("M3, M7, M10", 
     "MAPA 3", Theme.Secondary, function() TPCityMap(3) end,
     "MAPA 7", Theme.Secondary, function() TPCityMap(7) end,
@@ -3862,11 +3861,25 @@ TabCity:CreateDualButtons(
 )
 
 -- ==========================================
--- 2. Ingreso y Limpieza
+-- 2. Ingreso y Limpieza (Fila Doble Personalizada)
 -- ==========================================
 TabCity:CreateLabel("2. Ingreso y Limpieza")
 
-TabCity:CreateButton("TP E INGRESAR AL PORTAL (CITY)", Theme.Primary, function()
+local FrameSec2 = Instance.new("Frame", TabCity.Page)
+FrameSec2.LayoutOrder = TabCity:NextOrder()
+FrameSec2.Size = UDim2.new(1, -5, 0, 32)
+FrameSec2.BackgroundTransparency = 1
+
+local BtnTP = Instance.new("TextButton", FrameSec2)
+BtnTP.Size = UDim2.new(0.48, 0, 1, 0)
+BtnTP.BackgroundColor3 = Theme.Primary
+BtnTP.Text = "TP PORTAL"
+BtnTP.TextColor3 = Theme.TextHighlight
+BtnTP.Font = Enum.Font.GothamBold
+BtnTP.TextSize = 12
+Instance.new("UICorner", BtnTP).CornerRadius = UDim.new(0, 6)
+
+BtnTP.MouseButton1Click:Connect(function()
     local found = Utils.ManualTeleportAndEnter(true)
     if not found then
         pcall(function() StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Portal City no encontrado. Acércate más.", Duration = 2 }) end)
@@ -3876,8 +3889,20 @@ TabCity:CreateButton("TP E INGRESAR AL PORTAL (CITY)", Theme.Primary, function()
 end)
 
 local CityAuraActiva = false
-TabCity:CreateLargeToggle("▶ INICIAR KILL AURA CITY", "🛑 DETENER KILL AURA CITY", Theme.Secondary, Theme.Danger, false, function(state) 
-    CityAuraActiva = state 
+local BtnAura = Instance.new("TextButton", FrameSec2)
+BtnAura.Size = UDim2.new(0.48, 0, 1, 0)
+BtnAura.Position = UDim2.new(0.52, 0, 0, 0)
+BtnAura.BackgroundColor3 = Theme.Secondary
+BtnAura.Text = "▶ AURA: OFF"
+BtnAura.TextColor3 = Theme.TextHighlight
+BtnAura.Font = Enum.Font.GothamBold
+BtnAura.TextSize = 12
+Instance.new("UICorner", BtnAura).CornerRadius = UDim.new(0, 6)
+
+BtnAura.MouseButton1Click:Connect(function()
+    CityAuraActiva = not CityAuraActiva
+    BtnAura.Text = CityAuraActiva and "🛑 AURA: ON" or "▶ AURA: OFF"
+    BtnAura.BackgroundColor3 = CityAuraActiva and Theme.Danger or Theme.Secondary
 end)
 
 -- Motor de ataque masivo para City Raid
@@ -3924,48 +3949,39 @@ TabCity:CreateTextBox("Minutos Restantes (Para guardar)", "", function(texto)
     MinutosIngresados = tonumber(texto) or 0
 end)
 
--- Función auxiliar para leer JSON de forma segura
 local function ObtenerServidoresGuardados()
     if readfile then
         local success, data = pcall(function() return HttpService:JSONDecode(readfile(TimersFileName)) end)
-        if success and type(data) == "table" then 
-            return data 
-        end
+        if success and type(data) == "table" then return data end
     end
     return {}
 end
 
-local function LogAndHopCityRaid()
-    local tiempoActual = os.time()
-
-    -- GUARDADO EN JSON Y LIMPIEZA AUTOMÁTICA
+local function SoloRegistrar()
     if MinutosIngresados > 0 then
+        local tiempoActual = os.time()
         local servidores = ObtenerServidoresGuardados()
         local servidoresActivos = {}
         
-        -- Limpiamos los que ya expiraron
         for _, srv in ipairs(servidores) do
-            local expiracion = srv.SavedAt + (srv.Minutes * 60)
-            if expiracion > tiempoActual then
+            if srv.SavedAt + (srv.Minutes * 60) > tiempoActual then
                 table.insert(servidoresActivos, srv)
             end
         end
 
-        -- Registramos el nuevo
-        table.insert(servidoresActivos, {
-            JobId = game.JobId,
-            SavedAt = tiempoActual,
-            Minutes = MinutosIngresados
-        })
+        table.insert(servidoresActivos, { JobId = game.JobId, SavedAt = tiempoActual, Minutes = MinutosIngresados })
 
         if writefile then
             pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
             StarterGui:SetCore("SendNotification", { Title = "Registrado", Text = "Servidor guardado con " .. MinutosIngresados .. " min.", Duration = 3 })
         end
+    else
+        StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ingresa minutos (>0) para registrar el servidor.", Duration = 3 })
     end
+end
 
-    -- SERVER HOP LOGIC
-    task.wait(1)
+local function SoloHopServer()
+    task.wait(0.2)
     StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Buscando nuevo servidor...", Duration = 3 })
     
     local cursor = ""
@@ -4003,7 +4019,7 @@ local function LogAndHopCityRaid()
     end
 end
 
-TabCity:CreateButton("📝 REGISTRAR DATOS Y HOP SERVER", Theme.PrimaryDark, LogAndHopCityRaid)
+TabCity:CreateDualButtons("📝 REGISTRAR", Theme.PrimaryDark, SoloRegistrar, "🚀 HOP SERVER", Theme.Secondary, SoloHopServer)
 
 -- ==========================================
 -- 4. Volver a Servidores Guardados
@@ -4012,16 +4028,13 @@ TabCity:CreateLabel("4. Regresar a Servidores Activos")
 
 local ServidorSeleccionadoId = nil
 
--- En NanoHub, el dropdown se alimenta de una función que retorna {Name = "Texto", Data = "Valor"}
 TabCity:CreateDropdown("Servidores Disponibles", 
     function()
-        -- Esta función se ejecuta automáticamente al abrir el menú desplegable
         local servidores = ObtenerServidoresGuardados()
         local tiempoActual = os.time()
         local validOptions = {}
         local servidoresActivos = {}
 
-        -- Filtramos los servidores caducados
         for _, srv in ipairs(servidores) do
             local tiempoExpiracion = srv.SavedAt + (srv.Minutes * 60)
             local segundosRestantes = tiempoExpiracion - tiempoActual
@@ -4031,12 +4044,10 @@ TabCity:CreateDropdown("Servidores Disponibles",
                 local minutosRestantes = math.floor(segundosRestantes / 60)
                 local formatoLista = string.format("[%d min] ID: %s", minutosRestantes, srv.JobId:sub(1,8))
                 
-                -- Formato obligatorio para el Dropdown de tu Hub
                 table.insert(validOptions, {Name = formatoLista, Data = srv.JobId})
             end
         end
 
-        -- Guardamos la lista limpia
         if writefile then
             pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
         end
@@ -4048,14 +4059,11 @@ TabCity:CreateDropdown("Servidores Disponibles",
         return validOptions
     end, 
     function(selectedData)
-        -- Esto se ejecuta al hacer clic en una opción
         ServidorSeleccionadoId = selectedData
     end
 )
 
 TabCity:CreateDualButtons("🔄 FORZAR LIMPIEZA JSON", Theme.Secondary, function()
-    -- Como el menú se actualiza solo al hacerle clic, este botón ahora sirve 
-    -- solo para forzar una limpieza manual de expirados y decirte cuántos quedan.
     local opciones = 0
     local servidores = ObtenerServidoresGuardados()
     local tiempoActual = os.time()
