@@ -3827,8 +3827,19 @@ table.insert(Hub.Connections, quickKeyConn)
 -- =========================================================
 -- [9] PESTAÑA: CITY RAID (GRANJA Y HOPPING)
 -- =========================================================
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+
 local TabCity = Hub:CreateTab("City Raid")
 
+-- ==========================================
+-- 1. Viajes Rápidos a Mapas Clave
+-- ==========================================
 TabCity:CreateLabel("1. Viajes Rápidos a Mapas Clave")
 
 local function TPCityMap(mapIdx)
@@ -3838,15 +3849,21 @@ local function TPCityMap(mapIdx)
     end)
 end
 
-TabCity:CreateSideTripleButtons("M3, M7, M10", 
-    "MAPA 3", Theme.Secondary, function() TPCityMap(3) end,
-    "MAPA 7", Theme.Secondary, function() TPCityMap(7) end,
-    "MAPA 10", Theme.Secondary, function() TPCityMap(10) end
-)
+local MapasDisponibles = {"Mapa 3", "Mapa 7", "Mapa 10", "Mapa 13", "Mapa 18"}
+local MapaSeleccionado = 3 
 
-TabCity:CreateDualButtons("MAPA 13", Theme.Secondary, function() TPCityMap(13) end, 
-                          "MAPA 18", Theme.Secondary, function() TPCityMap(18) end)
+TabCity:CreateDropdown("Seleccionar Mapa:", MapasDisponibles, function(opcion)
+    local num = opcion:match("%d+")
+    if num then MapaSeleccionado = tonumber(num) end
+end)
 
+TabCity:CreateButton("🚀 VIAJAR AL MAPA SELECCIONADO", Theme.Secondary, function()
+    TPCityMap(MapaSeleccionado)
+end)
+
+-- ==========================================
+-- 2. Ingreso y Limpieza
+-- ==========================================
 TabCity:CreateLabel("2. Ingreso y Limpieza")
 
 TabCity:CreateButton("TP E INGRESAR AL PORTAL (CITY)", Theme.Primary, function()
@@ -3876,7 +3893,6 @@ task.spawn(function()
             local fld = Utils.GetEnemyFolder()
             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if fld and myRoot then
-                -- En City Raid atacamos a TODO lo que esté vivo sin importar radio
                 for _, enemy in pairs(fld:GetChildren()) do
                     if not Utils.EstaMuerto(enemy) and enemy:FindFirstChild("HumanoidRootPart") then
                         local eGuid = Utils.GetGUID(enemy)
@@ -3896,37 +3912,57 @@ task.spawn(function()
     end
 end)
 
+-- ==========================================
+-- 3. Escaneo, Tiempo y Salto de Servidor
+-- ==========================================
 TabCity:CreateLabel("3. Escaneo y Salto de Servidor")
 
+local MinutosIngresados = 0
+local TimersFileName = "MirrorHub_CityRaid_Timers.json"
+
+TabCity:CreateTextBox("Minutos Restantes (Para guardar)", "Ej: 15 (Dejar vacío si no aplica)", function(texto)
+    MinutosIngresados = tonumber(texto) or 0
+end)
+
+-- Función auxiliar para leer JSON de forma segura
+local function ObtenerServidoresGuardados()
+    if readfile then
+        local success, data = pcall(function() return HttpService:JSONDecode(readfile(TimersFileName)) end)
+        if success and type(data) == "table" then return data end
+    end
+    return {}
+end
+
 local function LogAndHopCityRaid()
-    local LogFileName = "MirrorHub_CityRaid_Log.txt"
-    local timeStr = os.date("%Y-%m-%d %H:%M:%S")
-    local serverId = game.JobId
-    
-    -- Intentamos buscar si hay contadores o portales activos de City Raid en el Workspace
-    local cityStatus = "Desconocido (Ve al mapa para registrar)"
-    local portalesVistos = 0
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("ProximityPrompt") and v.Parent and v.Parent.Parent and v.Parent.Parent.Name:find("CityRaidEnter") then
-            portalesVistos = portalesVistos + 1
+    local tiempoActual = os.time()
+
+    -- GUARDADO EN JSON Y LIMPIEZA AUTOMÁTICA
+    if MinutosIngresados > 0 then
+        local servidores = ObtenerServidoresGuardados()
+        local servidoresActivos = {}
+        
+        -- Limpiamos los que ya expiraron
+        for _, srv in ipairs(servidores) do
+            local expiracion = srv.SavedAt + (srv.Minutes * 60)
+            if expiracion > tiempoActual then
+                table.insert(servidoresActivos, srv)
+            end
+        end
+
+        -- Registramos el nuevo
+        table.insert(servidoresActivos, {
+            JobId = game.JobId,
+            SavedAt = tiempoActual,
+            Minutes = MinutosIngresados
+        })
+
+        if writefile then
+            pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
+            StarterGui:SetCore("SendNotification", { Title = "Registrado", Text = "Servidor guardado con " .. MinutosIngresados .. " min.", Duration = 3 })
         end
     end
-    if portalesVistos > 0 then cityStatus = "Portales detectados: " .. tostring(portalesVistos) end
 
-    -- Formato del log
-    local logMsg = string.format("[%s] Server: %s | Estado City Raid: %s\n", timeStr, serverId, cityStatus)
-
-    -- Guardado del archivo (Append)
-    if writefile and readfile then
-        local currentData = ""
-        pcall(function() currentData = readfile(LogFileName) end)
-        pcall(function() writefile(LogFileName, currentData .. logMsg) end)
-        StarterGui:SetCore("SendNotification", { Title = "Log Guardado", Text = "Datos registrados en " .. LogFileName, Duration = 3 })
-    else
-        StarterGui:SetCore("SendNotification", { Title = "Advertencia", Text = "Tu ejecutor no soporta escritura de archivos.", Duration = 3 })
-    end
-
-    -- Server Hop Logic (Reutilizando la lógica que ya tienes)
+    -- SERVER HOP LOGIC
     task.wait(1)
     StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Buscando nuevo servidor...", Duration = 3 })
     
@@ -3966,6 +4002,71 @@ local function LogAndHopCityRaid()
 end
 
 TabCity:CreateButton("📝 REGISTRAR DATOS Y HOP SERVER", Theme.PrimaryDark, LogAndHopCityRaid)
+
+-- ==========================================
+-- 4. Volver a Servidores Guardados
+-- ==========================================
+TabCity:CreateLabel("4. Regresar a Servidores Activos")
+
+local ServidorSeleccionadoId = nil
+local ListaDataServidores = {}
+
+local DropdownServidores = TabCity:CreateDropdown("Servidores Disponibles:", {"Presiona Actualizar Lista"}, function(opcion)
+    for _, srv in ipairs(ListaDataServidores) do
+        if opcion:find(srv.JobId:sub(1,8)) then
+            ServidorSeleccionadoId = srv.JobId
+            break
+        end
+    end
+end)
+
+TabCity:CreateDualButtons("🔄 ACTUALIZAR LISTA", Theme.Secondary, function()
+    local servidores = ObtenerServidoresGuardados()
+    local tiempoActual = os.time()
+    local OpcionesMostrar = {}
+    local servidoresActivos = {}
+    ListaDataServidores = {}
+
+    -- Filtramos y limpiamos servidores caducados
+    for _, srv in ipairs(servidores) do
+        local tiempoExpiracion = srv.SavedAt + (srv.Minutes * 60)
+        local segundosRestantes = tiempoExpiracion - tiempoActual
+        
+        -- Si aún le queda tiempo, lo agregamos a las listas
+        if segundosRestantes > 0 then
+            table.insert(servidoresActivos, srv)
+            table.insert(ListaDataServidores, srv)
+            
+            local minutosRestantes = math.floor(segundosRestantes / 60)
+            local formatoLista = string.format("[%d min] ID: %s", minutosRestantes, srv.JobId:sub(1,8))
+            table.insert(OpcionesMostrar, formatoLista)
+        end
+    end
+
+    -- Guardamos el archivo actualizado (esto borra permanentemente los expirados)
+    if writefile then
+        pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
+    end
+
+    if #OpcionesMostrar == 0 then
+        table.insert(OpcionesMostrar, "No hay servidores activos")
+        ServidorSeleccionadoId = nil
+    end
+
+    -- NOTA: Cambia ':Refresh' por la función que use tu librería para actualizar Dropdowns si es necesario (ej: :SetOptions)
+    pcall(function() DropdownServidores:Refresh(OpcionesMostrar) end)
+    StarterGui:SetCore("SendNotification", { Title = "Lista Actualizada", Text = "Limpieza de servidores caducados completada.", Duration = 2 })
+    
+end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
+    if ServidorSeleccionadoId then
+        StarterGui:SetCore("SendNotification", { Title = "Teleport", Text = "Viajando al servidor...", Duration = 3 })
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, ServidorSeleccionadoId, LocalPlayer)
+        end)
+    else
+        StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Selecciona un servidor primero.", Duration = 3 })
+    end
+end)
 
 -- =========================================================
 -- [NUEVO] ATAJOS DE TECLADO PERSONALIZADOS (ACTUALIZADO)
