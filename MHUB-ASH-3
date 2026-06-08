@@ -1349,14 +1349,14 @@ local function CambiarModoAutoEquip(nombre)
             EquipCustomSlot(EquipTreeID, "_1", Config.GemSettings.Principal.S1, "RED")
             EquipCustomSlot(EquipTreeID, "_2", Config.GemSettings.Principal.S2, nombre == "ORO" and "GREEN" or "RAINBOW")
             EquipCustomSlot(EquipTreeID, "_3", Config.GemSettings.Principal.S3, "BLUE")
-            EquipCustomSlot(EquipTreeID, "_4", Config.GemSettings.Principal.S4, nombre == "ORO" and "GREEN" or "RED")
+            EquipCustomSlot(EquipTreeID, "_4", nombre == "ORO" and "GREEN" or Config.GemSettings.Principal.S4, "RED")
             task.wait(0.01)
         end
         if BuffTreeID then
             EquipCustomSlot(BuffTreeID, "_1", Config.GemSettings.Buff.S1, "RED")
             EquipCustomSlot(BuffTreeID, "_2", Config.GemSettings.Buff.S2, nombre == "ORO" and "GREEN" or "RAINBOW")
             EquipCustomSlot(BuffTreeID, "_3", Config.GemSettings.Buff.S3, "BLUE")
-            EquipCustomSlot(BuffTreeID, "_4", Config.GemSettings.Buff.S4, nombre == "ORO" and "GREEN" or "RED")
+            EquipCustomSlot(BuffTreeID, "_4", nombre == "ORO" and "GREEN" or Config.GemSettings.Buff.S4, "RED")
         end
     end
     pcall(function() StarterGui:SetCore("SendNotification", { Title = "AutoEquip", Text = "¡" .. nombre .. " equipado!", Duration = 3 }) end)
