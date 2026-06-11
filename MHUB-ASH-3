@@ -3474,6 +3474,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     RaidState.ExitTime = 0
                     RaidState.NoBossTimer = nil
                     LastBossPos = nil
+                    RaidState.SawBossAlive = false
                     
                     task.delay(1.5, function()
                         if HubRunning and RaidState.IsInInstance then
@@ -3525,48 +3526,63 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             bossAlive = true 
                             local bossRoot = mob:FindFirstChild("HumanoidRootPart")
                             if bossRoot then LastBossPos = bossRoot.CFrame end
+                            break -- [MODIFICADO] Solo se detiene si lo encuentra VIVO. Si está muerto, sigue buscando.
                         end
-                        break
                     elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then
                             bossAlive = true
                             LastBossPos = mob.HumanoidRootPart.CFrame
+                            break -- [MODIFICADO]
                         end
-                        break
                     end
                 end
             end
 
-            if bossFound and not bossAlive then
-                RaidState.NoBossTimer = nil 
-                if not RaidState.BossDeathTime then 
-                    RaidState.BossDeathTime = tick() 
-                    LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
-                    
-                    task.spawn(function()
-                        task.wait(1.5) -- [MODIFICADO] Espera 1.5s antes de buscar la recompensa
-                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if myRoot and LastBossPos then
-                            myRoot.CFrame = LastBossPos
-                            myRoot.AssemblyLinearVelocity = Vector3.zero
-                            RaidState.ClaimPosition = myRoot.Position 
-                        end
-                        
-                        -- Intenta reclamar
-                        pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
-                        
-                        -- [MODIFICADO] Si no procesa la recompensa, espera 1.5s más y fuerza la salida
-                        task.wait(1.5)
-                        if RaidState.IsInInstance and not RaidState.ExitTriggered then
-                            LblRaidStatus.Text = "Recompensa no hallada. Forzando salida..."
-                            RaidState.ForceExit = true
-                        end
-                    end)
-                end
-            elseif bossFound and bossAlive then
+            -- [MODIFICADO] Lógica estricta de validación
+            if bossAlive then
+                RaidState.SawBossAlive = true -- Registramos que el nuevo jefe ya apareció
                 RaidState.NoBossTimer = nil 
                 LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
+            elseif bossFound and not bossAlive then
+                -- Hay un cuerpo, pero debemos verificar si es el jefe nuevo o el de la raid anterior
+                if RaidState.SawBossAlive then
+                    -- Si lo vimos vivo en esta misma raid, entonces sí es el jefe que acabamos de derrotar
+                    RaidState.NoBossTimer = nil 
+                    if not RaidState.BossDeathTime then 
+                        RaidState.BossDeathTime = tick() 
+                        LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
+                        
+                        task.spawn(function()
+                            task.wait(1.5)
+                            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if myRoot and LastBossPos then
+                                myRoot.CFrame = LastBossPos
+                                myRoot.AssemblyLinearVelocity = Vector3.zero
+                                RaidState.ClaimPosition = myRoot.Position 
+                            end
+                            
+                            pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
+                            
+                            task.wait(1.5)
+                            if RaidState.IsInInstance and not RaidState.ExitTriggered then
+                                LblRaidStatus.Text = "Recompensa no hallada. Forzando salida..."
+                                RaidState.ForceExit = true
+                            end
+                        end)
+                    end
+                else
+                    -- Nunca lo vimos vivo. Es un cuerpo viejo o levantado como sombra, lo ignoramos.
+                    if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
+                    local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
+                    LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior. Esperando spawn (" .. segundosPasados .. "s)..."
+                    
+                    if segundosPasados >= 20 then
+                        LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
+                        RaidState.ForceExit = true
+                        RaidState.NoBossTimer = nil
+                    end
+                end
             elseif not bossFound and not RaidState.BossDeathTime then
                 if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
                 local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
