@@ -2392,7 +2392,7 @@ task.spawn(function()
                         task.spawn(function()
                             task.wait(1)
                             local rt = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                            if rt then rt.CFrame = rt.CFrame * CFrame.new(0, 0, -10) end
+                            -- if rt then rt.CFrame = rt.CFrame * CFrame.new(0, 0, -10) end
                             task.wait(0.2); MetCaza.BossEspera = false
                         end)
                         continue
@@ -3393,7 +3393,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
     -- 2. MOTOR DE ENTRADA (Lobby a Instancia)
     if Config.RaidSettings.AutoRaid and not RaidState.IsInInstance and not RaidState.CooldownActive and not RaidState.IsProcessing then
-        if (now - LastEnterAttempt) < 5 then return end
+        if (now - LastEnterAttempt) < 3 then return end
         
         local bestRaid, totalActive = GetBestGlobalRaid()
         if totalActive == 0 then
@@ -3496,7 +3496,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     end)
                 else
                     LblRaidStatus.Text = "⚠️ Falla al entrar."
-                    HandleRaidCooldown(5)
+                    HandleRaidCooldown(3)
                 end
                 
                 RaidState.IsProcessing = false
@@ -3542,18 +3542,26 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 RaidState.NoBossTimer = nil 
                 if not RaidState.BossDeathTime then 
                     RaidState.BossDeathTime = tick() 
-                    LblRaidStatus.Text = "💀 Jefe Derrotado. Reclamando..."
+                    LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
                     
                     task.spawn(function()
-                        task.wait(0.5) 
+                        task.wait(1.5) -- [MODIFICADO] Espera 1.5s antes de buscar la recompensa
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if myRoot and LastBossPos then
                             myRoot.CFrame = LastBossPos
                             myRoot.AssemblyLinearVelocity = Vector3.zero
-                            -- [NUEVO] Guardamos la posición exacta donde reclamamos el cofre
                             RaidState.ClaimPosition = myRoot.Position 
                         end
+                        
+                        -- Intenta reclamar
                         pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
+                        
+                        -- [MODIFICADO] Si no procesa la recompensa, espera 1.5s más y fuerza la salida
+                        task.wait(1.5)
+                        if RaidState.IsInInstance and not RaidState.ExitTriggered then
+                            LblRaidStatus.Text = "Recompensa no hallada. Forzando salida..."
+                            RaidState.ForceExit = true
+                        end
                     end)
                 end
             elseif bossFound and bossAlive then
