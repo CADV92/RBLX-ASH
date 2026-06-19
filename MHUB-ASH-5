@@ -161,37 +161,6 @@ end
 -- ==============================================================================
 local Utils = {}
 
--- ==============================================================================
--- [NUEVO] TELEPORT SEGURO (Manejador del Handshake de Servidor/Cliente)
--- ==============================================================================
-function Utils.SafeMapTeleport(mapId)
-    if not mapId then return false end
-    local mId = tonumber(mapId)
-    local argsFire = {{ mapId = mId }}
-    local argsInvoke = {{ slotIndex = mId, mapId = mId }}
-    
-    task.spawn(function()
-        pcall(function()
-            local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-            
-            -- 1. Notificar la intención de teletransporte
-            Remotes:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(argsFire))
-            task.wait(0.2)
-            
-            -- 2. Confirmar el inicio del teletransporte
-            Remotes:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(argsFire))
-            task.wait(0.5)
-            
-            -- 3. [CRÍTICO] Confirmar que la carga local de UI/Mapas fue exitosa para que spawneen los Mobs
-            Remotes:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(argsInvoke))
-            
-            -- 4. Re-equipar los datos del héroe para restablecer estadísticas/habilidades
-            Remotes:WaitForChild("EquipHeroWithData"):FireServer()
-        end)
-    end)
-    return true
-end
-
 function Utils.GetEnemyFolder()
     return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs")
 end
@@ -1893,7 +1862,7 @@ TabAuto:CreateSideTripleButtons("Ir a Zona:",
     "INFINITY", Theme.Primary, function()
         task.spawn(function()
             local s, e = pcall(function() 
-                Utils.SafeMapTeleport(50303)
+                ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StartLocalPlayerTeleport"):FireServer({mapId = 50303}) 
             end)
             if s then
                 pcall(function() StarterGui:SetCore("SendNotification", { Title = "Viaje Rápido", Text = "Teletransportando a Infinity...", Duration = 3 }) end)
@@ -1964,9 +1933,27 @@ for i = 1, 20 do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     btn.MouseButton1Click:Connect(function()
+        -- [NUEVO] Antibloqueo: Evitar TP si ya estamos en el mapa
+        if _G.LastSelectedMap == i then
+            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ya estás en el Mapa M" .. string.format("%02d", i), Duration = 2 }) end)
+            return
+        end
+        
         btn.BackgroundColor3 = Theme.Primary
         task.spawn(function()
-            Utils.SafeMapTeleport(50000 + i)
+            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+            if remotes then
+                _G.LastSelectedMap = i -- Registramos el cambio
+                pcall(function() remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + i}) end)
+                
+                -- [NUEVO] Seguro de desanclaje forzado tras pantalla de carga
+                task.delay(1.5, function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.Anchored = false
+                    end
+                end)
+            end
             task.wait(1.5)
             btn.BackgroundColor3 = Theme.Secondary
         end)
@@ -2119,7 +2106,7 @@ local function RefreshRaidUI()
             TPBtn.MouseButton1Click:Connect(function()
                 TPBtn.Text = "..."
                 TPBtn.BackgroundColor3 = Theme.Primary
-                Utils.SafeMapTeleport(mapId)
+                pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapId}) end)
                 task.wait(1.5)
                 TPBtn.Text = "TP"
                 TPBtn.BackgroundColor3 = Theme.Secondary
@@ -2613,7 +2600,7 @@ TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
     task.spawn(function()
         LblTorreStatus.Text = "Viajando a Mapa Base..."
         local map2Id = 50002 
-        Utils.SafeMapTeleport(map2Id)
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = map2Id}) end)
         task.wait(3.5) 
         LblTorreStatus.Text = "Entrando a MI TORRE..."
         local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
@@ -3410,9 +3397,17 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             if bestRaid.mapIdx ~= (_G.LastSelectedMap or 1) then
                 RaidState.IsProcessing = true
                 LblRaidStatus.Text = string.format("🌎 Viajando a M%d [%s]", bestRaid.mapIdx, bestRaid.rank)
-                Utils.SafeMapTeleport(bestRaid.info.mapId)
+                pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = bestRaid.info.mapId}) end)
                 _G.LastSelectedMap = bestRaid.mapIdx
-                task.delay(3, function() RaidState.IsProcessing = false end)
+                
+                -- [NUEVO] Tiempo extendido para cargar mapa y desanclaje físico
+                task.delay(4.5, function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.Anchored = false
+                    end
+                    RaidState.IsProcessing = false 
+                end)
             end
         else
             LblRaidStatus.Text = string.format("📡 Buscando raids... (%d activas)", totalActive or 0)
@@ -3462,33 +3457,44 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     raidID = 930000 + ((mapIdx - 1) * 10) + 1 
                 end
                 
+                local startPos = root.Position
                 CurrentRaidIsASC = isAsc
                 pcall(function() remotes.CreateRaidTeam:InvokeServer(raidID) end)
                 task.wait(0.5)
 
-                if isAsc and mapIdx == 16 then
-                    if rankStr == "A" then pcall(function() remotes.UseRaidItem:FireServer(10271) end)
-                    elseif rankStr == "C" then pcall(function() remotes.UseRaidItem:FireServer(10270) end) end
-                    task.wait(0.4)
-                end
-
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
-                local tpSuccess = true 
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
-                    RaidState.CurrentBossMap = targetRuneMap -- [NUEVO] Registramos el jefe de la runa
+                    RaidState.CurrentBossMap = targetRuneMap
                     local runeCode = 10348 + targetRuneMap
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
                     pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.3)
+                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = 50100 + targetRuneMap } }) end)
                     
-                    -- Esta línea también ha sido actualizada por si acaso
-                    Utils.SafeMapTeleport(50100 + targetRuneMap)
+                    task.wait(0.6) 
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
                 else
-                    RaidState.CurrentBossMap = mapIdx -- [NUEVO] Si no hay runa, es el jefe del mapa actual
+                    RaidState.CurrentBossMap = mapIdx 
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
+                end
+
+                -- [NUEVO] Validación dinámica por magnitud (Distancia)
+                LblRaidStatus.Text = "🎲 VALIDANDO ACCESO..." 
+                local waitTime, tpSuccess = 0, false
+                while waitTime < 8 do 
+                    task.wait(0.2)
+                    if not HubRunning then return end
+                    waitTime = waitTime + 0.2
+                    local currentChar = LocalPlayer.Character
+                    if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+                        if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 50 then 
+                            tpSuccess = true
+                            break 
+                        end
+                    end
                 end
 
                 if tpSuccess then
@@ -3518,13 +3524,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                                         end
                                     end
                                 end
-                                if count > 0 then StarterGui:SetCore("SendNotification", { Title = "Muros Traspasables", Text = "Vía libre.", Duration = 2 }) end
+                                if count > 0 then StarterGui:SetCore("SendNotification", { Title = "Muros", Text = "Vía libre.", Duration = 2 }) end
                             end)
                         end
                     end)
                 else
                     LblRaidStatus.Text = "⚠️ Falla al entrar."
-                    HandleRaidCooldown(3)
+                    HandleRaidCooldown(5) -- Aumentado a 5s para prevenir spam al servidor
                 end
                 
                 RaidState.IsProcessing = false
@@ -3631,14 +3637,42 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LblRaidStatus.Text = "🚀 Saliendo de la raid..."
             
             task.spawn(function()
-                -- Priorizamos volver al mapa origen donde abrimos el portal
                 local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
                 local mapTarget = 50000 + safeMapIdx
                 _G.MapaOrigenAntesRuna = nil
                 
-                pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
-                task.wait(0.5)
-                Utils.SafeMapTeleport(mapTarget)
+                -- [NUEVO] Bucle de reintentos: Evitamos doble TP, usamos solo QuitRaidsMap
+                local intentos = 0
+                while RaidState.IsProcessing and HubRunning and intentos < 4 do
+                    intentos = intentos + 1
+                    pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
+                    task.wait(2)
+                end
+                
+                -- [NUEVO] Pantalla de Carga y Limpieza Física
+                for i = 5, 1, -1 do
+                    if not HubRunning then break end
+                    LblRaidStatus.Text = "⏳ VIAJE (" .. i .. ")"
+                    task.wait(1) 
+                end
+                
+                -- Seguro Anti-Atoro Post-Raid
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.Anchored = false
+                    local hum = char:FindFirstChild("Humanoid")
+                    if hum then
+                        hum.PlatformStand = false
+                    end
+                end
+                
+                -- Reinicio de motor
+                RaidState.IsInInstance = false
+                RaidState.BossDeathTime = nil
+                RaidState.ForceExit = false
+                RaidState.IsProcessing = false
+                
+                task.wait(1)
             end)
             
         elseif RaidState.BossDeathTime and (tick() - RaidState.BossDeathTime) >= 3.0 and not RaidState.ExitTriggered then
@@ -3647,77 +3681,598 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             
             -- [NUEVO] Verificamos si hemos cambiado de coordenadas en estos 3 segundos
             local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local isStuck = true
+            local haSidoTeletransportado = false
             
             if currentRoot and RaidState.ClaimPosition then
-                -- Si nos hemos movido más de 100 studs, significa que el servidor ya nos sacó automáticamente
-                local dist = (currentRoot.Position - RaidState.ClaimPosition).Magnitude
-                if dist > 100 then 
-                    isStuck = false 
+                local distancia = (currentRoot.Position - RaidState.ClaimPosition).Magnitude
+                -- Si la distancia es mayor a 50 studs, significa que el juego ya nos teletransportó al lobby o a la pantalla de carga.
+                if distancia > 50 then 
+                    haSidoTeletransportado = true
                 end
             end
-            
-            if isStuck then
-                LblRaidStatus.Text = "🚀 Forzando salida de la raid (Handshake)..."
-                RaidState.IsProcessing = true
-                
-                task.spawn(function()
-                    -- Priorizamos volver al mapa origen donde abrimos el portal
-                    local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
-                    local mapTarget = 50000 + safeMapIdx
-                    _G.MapaOrigenAntesRuna = nil
-                    
-                    -- Enviamos la orden de salida nativa
-                    pcall(function() 
-                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
-                    end)
-                    
-                    task.wait(0.5)
-                    
-                    -- Utilizamos la nueva función segura con el protocolo Handshake para el regreso
-                    Utils.SafeMapTeleport(mapTarget)
-                end)
+
+            if not haSidoTeletransportado then
+                -- No nos movimos. El juego no nos sacó automáticamente.
+                LblRaidStatus.Text = "⚠️ TP nativo falló. Forzando salida manual..."
+                RaidState.ForceExit = true
+                RaidState.ExitTriggered = false -- Lo devolvemos a false para que el bloque de arriba lo capture al instante
             else
-                LblRaidStatus.Text = "✅ Salida exitosa gestionada por el servidor."
+                -- El juego sí nos sacó correctamente, solo esperamos a que cargue el lobby
+                RaidState.IsProcessing = true
+                LblRaidStatus.Text = "⌛ TP nativo detectado. Cargando lobby..."
             end
         end
     end
 end)
-table.insert(Hub.Connections, raidEngineConn)
 
--- ==============================================================================
--- INICIALIZACIÓN FINAL DEL HUB
--- ==============================================================================
+-- =========================================================
+-- [8] PESTAÑA: SERVIDOR
+-- =========================================================
+local TabServer = Hub:CreateTab("Servidor")
 
--- Selecciona por defecto la primera pestaña visualmente (Opcional, pero recomendado)
-task.spawn(function()
+TabServer:CreateSideToggle("ANTI-AFK", Config.AntiAFK, function(state) Config.AntiAFK = state end)
+
+local antiAfkConnection = LocalPlayer.Idled:Connect(function()
+    if Config.AntiAFK then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
+table.insert(Hub.Connections, antiAfkConnection)
+
+TabServer:CreateLabel("Administración de Servidor")
+
+if not _G.VisitedServers then
+    _G.VisitedServers = {}
+end
+table.insert(_G.VisitedServers, game.JobId)
+
+TabServer:CreateDualButtons("REJOIN", Theme.Secondary, function()
     pcall(function()
-        if Hub.Tabs and Hub.Tabs[1] then
-            -- Disparamos el evento de la primera pestaña para que no salga vacío
-            local success, err = pcall(function()
-                for _, conn in pairs(getconnections(Hub.Tabs[1].MouseButton1Click)) do
-                    conn:Fire()
-                end
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end)
+end, "SERVER HOP", Theme.Secondary, function()
+    local function Hop()
+        local cursor = ""
+        local foundServer = false
+        
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Buscando servidor disponible...", Duration = 2 }) end)
+
+        for i = 1, 3 do
+            local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
+            if cursor ~= "" then
+                url = url .. "&cursor=" .. cursor
+            end
+            
+            local success, result = pcall(function() 
+                return HttpService:JSONDecode(game:HttpGet(url)) 
             end)
-            if not success then
-                -- Fallback por si getconnections no está soportado en el ejecutor
-                Hub.Tabs[1].BackgroundColor3 = Theme.Primary
-                Hub.Tabs[1].TextColor3 = Theme.TextHighlight
-                if Hub.Pages and Hub.Pages[1] then
-                    Hub.Pages[1].Visible = true
+            
+            if success and result and result.data then
+                local validServers = {}
+                
+                for _, v in ipairs(result.data) do
+                    if type(v) == "table" and v.playing and v.maxPlayers then
+                        if v.playing < (v.maxPlayers - 1) and not table.find(_G.VisitedServers, v.id) then
+                            table.insert(validServers, v.id)
+                        end
+                    end
+                end
+                
+                if #validServers > 0 then
+                    local randomServer = validServers[math.random(1, #validServers)]
+                    table.insert(_G.VisitedServers, randomServer)
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, LocalPlayer)
+                    foundServer = true
+                    break
+                end
+                
+                cursor = result.nextPageCursor
+                if not cursor then break end 
+            else
+                break
+            end
+        end
+        
+        if not foundServer then
+            _G.VisitedServers = {game.JobId}
+            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Sin servidores nuevos. Historial reiniciado. Presiona de nuevo.", Duration = 4 }) end)
+        end
+    end
+    
+    Hop()
+end)
+
+TabServer:CreateLabel("Preferencias")
+TabServer:CreateButton("GUARDAR CONFIGURACIÓN", Theme.PrimaryDark, SaveConfig)
+
+-- =========================================================
+-- PANEL DE ACCESO RÁPIDO (TECLA U)
+-- =========================================================
+local QuickPanel = Instance.new("Frame", Hub.ScreenGui)
+QuickPanel.Name = "QuickAccessPanel"
+QuickPanel.Size = UDim2.new(0, 220, 0, 210)
+QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -50)
+QuickPanel.BackgroundColor3 = Theme.Background
+QuickPanel.Visible = false
+QuickPanel.Active = true
+QuickPanel.Draggable = true
+Instance.new("UICorner", QuickPanel).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", QuickPanel).Color = Theme.Primary
+
+local QTitle = Instance.new("TextLabel", QuickPanel)
+QTitle.Size = UDim2.new(1, -30, 0, 20)
+QTitle.Position = UDim2.new(0, 10, 0, 5)
+QTitle.Text = "ACCESO RÁPIDO (U)"
+QTitle.Font = Enum.Font.GothamBlack
+QTitle.TextSize = 12
+QTitle.TextColor3 = Theme.TextHighlight
+QTitle.BackgroundTransparency = 1
+QTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local QClose = Instance.new("TextButton", QuickPanel)
+QClose.Size = UDim2.new(0, 20, 0, 20)
+QClose.Position = UDim2.new(1, -25, 0, 5)
+QClose.Text = "X"
+QClose.Font = Enum.Font.GothamBold
+QClose.TextColor3 = Theme.Danger
+QClose.BackgroundTransparency = 1
+QClose.MouseButton1Click:Connect(function() QuickPanel.Visible = false end)
+
+local QPotionLbl = Instance.new("TextLabel", QuickPanel)
+QPotionLbl.Size = UDim2.new(1, -20, 0, 15)
+QPotionLbl.Position = UDim2.new(0, 10, 0, 30)
+QPotionLbl.Text = "Consumo Rápido de Pociones:"
+QPotionLbl.Font = Enum.Font.GothamBold
+QPotionLbl.TextSize = 11
+QPotionLbl.TextColor3 = Theme.Text
+QPotionLbl.BackgroundTransparency = 1
+QPotionLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local QPotionTypeBtn = Instance.new("TextButton", QuickPanel)
+QPotionTypeBtn.Size = UDim2.new(0.3, 0, 0, 25)
+QPotionTypeBtn.Position = UDim2.new(0, 10, 0, 50)
+QPotionTypeBtn.BackgroundColor3 = Theme.PrimaryDark
+QPotionTypeBtn.Text = "ATAQUE"
+QPotionTypeBtn.TextColor3 = Theme.TextHighlight
+QPotionTypeBtn.Font = Enum.Font.GothamBold
+QPotionTypeBtn.TextSize = 10
+Instance.new("UICorner", QPotionTypeBtn).CornerRadius = UDim.new(0, 4)
+
+local qTypes = {"ATAQUE", "ORO", "SUERTE"}
+local qIdx = 1
+QPotionTypeBtn.MouseButton1Click:Connect(function()
+    qIdx = (qIdx % 3) + 1
+    QPotionTypeBtn.Text = qTypes[qIdx]
+end)
+
+local function QuickBtnPosHelper(btnObj, posX, text)
+    btnObj.Size = UDim2.new(0.18, 0, 0, 25)
+    btnObj.Position = UDim2.new(posX, 0, 0, 50)
+    btnObj.BackgroundColor3 = Theme.Secondary
+    btnObj.Text = text
+    btnObj.TextColor3 = Theme.TextHighlight
+    btnObj.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", btnObj).CornerRadius = UDim.new(0, 4)
+end
+
+local btnS = Instance.new("TextButton", QuickPanel)
+QuickBtnPosHelper(btnS, 0.35, "S")
+btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
+
+local btnM = Instance.new("TextButton", QuickPanel)
+QuickBtnPosHelper(btnM, 0.56, "M")
+btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
+
+local btnL = Instance.new("TextButton", QuickPanel)
+QuickBtnPosHelper(btnL, 0.77, "L")
+btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
+
+local QModeLbl = Instance.new("TextLabel", QuickPanel)
+QModeLbl.Size = UDim2.new(1, -20, 0, 15)
+QModeLbl.Position = UDim2.new(0, 10, 0, 85)
+QModeLbl.Text = "Cambiar Modo de Combate:"
+QModeLbl.Font = Enum.Font.GothamBold
+QModeLbl.TextSize = 11
+QModeLbl.TextColor3 = Theme.Text
+QModeLbl.BackgroundTransparency = 1
+QModeLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local quickModes = {
+    {name="ATAQUE", col=Theme.Danger}, {name="ORO", col=Color3.fromRGB(200, 160, 0)},
+    {name="DROP", col=Color3.fromRGB(40, 140, 200)}, {name="SUERTE", col=Color3.fromRGB(40, 200, 80)},
+    {name="PODER", col=Theme.Primary}
+}
+
+for i, md in ipairs(quickModes) do
+    local mb = Instance.new("TextButton", QuickPanel)
+    mb.Size = UDim2.new(0.45, 0, 0, 25)
+    local col = ((i-1)%2) * 0.48
+    local row = math.floor((i-1)/2) * 30
+    mb.Position = UDim2.new(0.035 + col, 0, 0, 105 + row)
+    
+    if i == 5 then 
+        mb.Size = UDim2.new(0.93, 0, 0, 25)
+        mb.Position = UDim2.new(0.035, 0, 0, 105 + row) 
+    end
+    
+    mb.BackgroundColor3 = md.col
+    mb.Text = md.name
+    mb.TextColor3 = Theme.TextHighlight
+    mb.Font = Enum.Font.GothamBold
+    mb.TextSize = 11
+    Instance.new("UICorner", mb).CornerRadius = UDim.new(0, 6)
+    mb.MouseButton1Click:Connect(function() CambiarModoAutoEquip(md.name) end)
+end
+
+local quickKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.U then
+        QuickPanel.Visible = not QuickPanel.Visible
+    end
+end)
+table.insert(Hub.Connections, quickKeyConn)
+
+-- =========================================================
+-- [9] PESTAÑA: CITY RAID (GRANJA Y HOPPING)
+-- =========================================================
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+
+local TabCity = Hub:CreateTab("City Raid")
+
+-- ==========================================
+-- 1. Viajes Rápidos a Mapas Clave
+-- ==========================================
+TabCity:CreateLabel("1. Viajes Rápidos a Mapas Clave")
+
+local function TPCityMap(mapIdx)
+    pcall(function()
+        ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + mapIdx})
+        StarterGui:SetCore("SendNotification", { Title = "City Raid", Text = "Viajando al Mapa " .. mapIdx, Duration = 2 })
+    end)
+end
+
+TabCity:CreateSideTripleButtons("M3, M7, M10", 
+    "MAPA 3", Theme.Secondary, function() TPCityMap(3) end,
+    "MAPA 7", Theme.Secondary, function() TPCityMap(7) end,
+    "MAPA 10", Theme.Secondary, function() TPCityMap(10) end
+)
+
+TabCity:CreateDualButtons(
+    "MAPA 13", Theme.Secondary, function() TPCityMap(13) end, 
+    "MAPA 18", Theme.Secondary, function() TPCityMap(18) end
+)
+
+-- ==========================================
+-- 2. Ingreso y Limpieza (Fila Doble Personalizada)
+-- ==========================================
+TabCity:CreateLabel("2. Ingreso y Limpieza")
+
+local FrameSec2 = Instance.new("Frame", TabCity.Page)
+FrameSec2.LayoutOrder = TabCity:NextOrder()
+FrameSec2.Size = UDim2.new(1, -5, 0, 32)
+FrameSec2.BackgroundTransparency = 1
+
+local BtnTP = Instance.new("TextButton", FrameSec2)
+BtnTP.Size = UDim2.new(0.48, 0, 1, 0)
+BtnTP.BackgroundColor3 = Theme.Primary
+BtnTP.Text = "TP PORTAL"
+BtnTP.TextColor3 = Theme.TextHighlight
+BtnTP.Font = Enum.Font.GothamBold
+BtnTP.TextSize = 12
+Instance.new("UICorner", BtnTP).CornerRadius = UDim.new(0, 6)
+
+BtnTP.MouseButton1Click:Connect(function()
+    local found = Utils.ManualTeleportAndEnter(true)
+    if not found then
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Portal City no encontrado. Acércate más.", Duration = 2 }) end)
+    else
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Éxito", Text = "Entrando a City Raid...", Duration = 2 }) end)
+    end
+end)
+
+local CityAuraActiva = false
+local BtnAura = Instance.new("TextButton", FrameSec2)
+BtnAura.Size = UDim2.new(0.48, 0, 1, 0)
+BtnAura.Position = UDim2.new(0.52, 0, 0, 0)
+BtnAura.BackgroundColor3 = Theme.Secondary
+BtnAura.Text = "▶ AURA: OFF"
+BtnAura.TextColor3 = Theme.TextHighlight
+BtnAura.Font = Enum.Font.GothamBold
+BtnAura.TextSize = 12
+Instance.new("UICorner", BtnAura).CornerRadius = UDim.new(0, 6)
+
+BtnAura.MouseButton1Click:Connect(function()
+    CityAuraActiva = not CityAuraActiva
+    BtnAura.Text = CityAuraActiva and "🛑 AURA: ON" or "▶ AURA: OFF"
+    BtnAura.BackgroundColor3 = CityAuraActiva and Theme.Danger or Theme.Secondary
+end)
+
+-- Motor de ataque masivo para City Raid
+task.spawn(function()
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local CEnemyRem = Remotes:FindFirstChild("ClickEnemy")
+    local PAttackRem = Remotes:FindFirstChild("PlayerClickAttackSkill")
+    local PAttackBase = Remotes:FindFirstChild("PlayerClickAttack")
+
+    while task.wait(0.1) do
+        if not HubRunning then break end
+        if CityAuraActiva then
+            local fld = Utils.GetEnemyFolder()
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if fld and myRoot then
+                for _, enemy in pairs(fld:GetChildren()) do
+                    if not Utils.EstaMuerto(enemy) and enemy:FindFirstChild("HumanoidRootPart") then
+                        local eGuid = Utils.GetGUID(enemy)
+                        if eGuid then
+                            task.spawn(function()
+                                pcall(function()
+                                    if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = enemy }) end
+                                    if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                                    if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                                end)
+                            end)
+                        end
+                    end
                 end
             end
         end
-    end)
+    end
 end)
 
--- Notificación de éxito
-pcall(function()
-    StarterGui:SetCore("SendNotification", { 
-        Title = "Mirror Hub v8.7 (Parcheado)", 
-        Text = "Script cargado correctamente. TP Seguro activado.", 
-        Duration = 5 
-    })
+-- ==========================================
+-- 3. Escaneo, Tiempo y Salto de Servidor
+-- ==========================================
+TabCity:CreateLabel("3. Escaneo y Salto de Servidor")
+
+local MinutosIngresados = 0
+local TimersFileName = "MirrorHub_CityRaid_Timers.json"
+
+TabCity:CreateTextBox("Minutos Restantes (Para guardar)", "", function(texto)
+    MinutosIngresados = tonumber(texto) or 0
 end)
 
-print("Mirror Hub: Handshake parcheado y cargado con éxito.")
+local function ObtenerServidoresGuardados()
+    if readfile then
+        local success, data = pcall(function() return HttpService:JSONDecode(readfile(TimersFileName)) end)
+        if success and type(data) == "table" then return data end
+    end
+    return {}
+end
+
+local function SoloRegistrar()
+    if MinutosIngresados > 0 then
+        local tiempoActual = os.time()
+        local servidores = ObtenerServidoresGuardados()
+        local servidoresActivos = {}
+        
+        for _, srv in ipairs(servidores) do
+            -- Damos un margen de 10 minutos (-600 segundos) antes de borrarlos al guardar uno nuevo
+            if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
+                table.insert(servidoresActivos, srv)
+            end
+        end
+
+        table.insert(servidoresActivos, { JobId = game.JobId, SavedAt = tiempoActual, Minutes = MinutosIngresados })
+
+        if writefile then
+            pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
+            StarterGui:SetCore("SendNotification", { Title = "Registrado", Text = "Servidor guardado con " .. MinutosIngresados .. " min.", Duration = 3 })
+        end
+    else
+        StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ingresa minutos (>0) para registrar el servidor.", Duration = 3 })
+    end
+end
+
+local function SoloHopServer()
+    task.wait(0.2)
+    StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Buscando nuevo servidor...", Duration = 3 })
+    
+    local cursor = ""
+    local foundServer = false
+    for i = 1, 3 do
+        local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
+        if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+        local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
+        
+        if success and result and result.data then
+            local validServers = {}
+            for _, v in ipairs(result.data) do
+                if type(v) == "table" and v.playing and v.maxPlayers then
+                    if v.playing < (v.maxPlayers - 1) and not table.find(_G.VisitedServers, v.id) then
+                        table.insert(validServers, v.id)
+                    end
+                end
+            end
+            if #validServers > 0 then
+                local randomServer = validServers[math.random(1, #validServers)]
+                table.insert(_G.VisitedServers, randomServer)
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, LocalPlayer)
+                foundServer = true
+                break
+            end
+            cursor = result.nextPageCursor
+            if not cursor then break end 
+        else
+            break
+        end
+    end
+    if not foundServer then
+        _G.VisitedServers = {game.JobId}
+        StarterGui:SetCore("SendNotification", { Title = "Server Hop", Text = "Sin servidores nuevos. Historial reiniciado.", Duration = 4 })
+    end
+end
+
+TabCity:CreateDualButtons("📝 REGISTRAR", Theme.PrimaryDark, SoloRegistrar, "🚀 HOP SERVER", Theme.Secondary, SoloHopServer)
+
+-- ==========================================
+-- 4. Volver a Servidores Guardados
+-- ==========================================
+TabCity:CreateLabel("4. Regresar a Servidores Activos")
+
+local ServidorSeleccionadoId = nil
+
+TabCity:CreateDropdown("Servidores Disponibles", 
+    function()
+        local servidores = ObtenerServidoresGuardados()
+        local tiempoActual = os.time()
+        
+        local servidoresConTiempo = {}
+
+        for _, srv in ipairs(servidores) do
+            local tiempoExpiracion = srv.SavedAt + (srv.Minutes * 60)
+            local segundosRestantes = tiempoExpiracion - tiempoActual
+            
+            -- Margen de -10 minutos (-600 segundos) para mostrar en la lista
+            if segundosRestantes >= -600 then
+                table.insert(servidoresConTiempo, {
+                    DataOriginal = srv,
+                    Segundos = segundosRestantes
+                })
+            end
+        end
+
+        -- Ordenar de menor a mayor (los negativos saldrán primero)
+        table.sort(servidoresConTiempo, function(a, b)
+            return a.Segundos < b.Segundos
+        end)
+
+        local validOptions = {}
+        local servidoresActivos = {}
+
+        for _, item in ipairs(servidoresConTiempo) do
+            table.insert(servidoresActivos, item.DataOriginal)
+            
+            local minutosRestantes = math.floor(item.Segundos / 60)
+            local formatoLista = string.format("[%d min] ID: %s", minutosRestantes, item.DataOriginal.JobId:sub(1,8))
+            
+            table.insert(validOptions, {Name = formatoLista, Data = item.DataOriginal.JobId})
+        end
+
+        if writefile then
+            pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end)
+        end
+
+        if #validOptions == 0 then
+            table.insert(validOptions, {Name = "No hay servidores activos", Data = nil})
+        end
+
+        return validOptions
+    end, 
+    function(selectedData)
+        ServidorSeleccionadoId = selectedData
+    end
+)
+
+TabCity:CreateDualButtons("🔄 FORZAR LIMPIEZA JSON", Theme.Secondary, function()
+    local opciones = 0
+    local servidores = ObtenerServidoresGuardados()
+    local tiempoActual = os.time()
+    local servidoresActivos = {}
+    
+    for _, srv in ipairs(servidores) do
+        -- Respeta el margen de -10 minutos también al limpiar
+        if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
+            table.insert(servidoresActivos, srv)
+            opciones = opciones + 1
+        end
+    end
+    
+    if writefile then 
+        pcall(function() writefile(TimersFileName, HttpService:JSONEncode(servidoresActivos)) end) 
+    end
+    
+    StarterGui:SetCore("SendNotification", { Title = "Limpieza Lista", Text = "Se encontraron " .. opciones .. " servidores en registro.", Duration = 3 })
+    
+end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
+    if ServidorSeleccionadoId then
+        StarterGui:SetCore("SendNotification", { Title = "Teleport", Text = "Viajando al servidor...", Duration = 3 })
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, ServidorSeleccionadoId, LocalPlayer)
+        end)
+    else
+        StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Selecciona un servidor de la lista primero.", Duration = 3 })
+    end
+end)
+
+-- =========================================================
+-- [NUEVO] ATAJOS DE TECLADO PERSONALIZADOS (ACTUALIZADO)
+-- =========================================================
+local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gpe)
+    -- Ignorar si el jugador está escribiendo en el chat o en un TextBox
+    if gpe then return end
+
+    -- [ T ] Abrir Hub y forzar pestaña "Torre"
+    if input.KeyCode == Enum.KeyCode.T then
+        Hub.MainFrame.Visible = true
+        for i, tabBtn in ipairs(Hub.Tabs) do
+            if tabBtn.Text:find("Torre") then
+                -- Ocultar todas las páginas y resetear botones
+                for _, page in pairs(Hub.Pages) do page.Visible = false end
+                for _, btn in pairs(Hub.Tabs) do 
+                    btn.BackgroundColor3 = Theme.Panel
+                    btn.TextColor3 = Theme.Text
+                end
+                -- Mostrar la página de la Torre y resaltar botón
+                Hub.Pages[i].Visible = true
+                tabBtn.BackgroundColor3 = Theme.Primary
+                tabBtn.TextColor3 = Theme.TextHighlight
+                break
+            end
+        end
+    end
+
+    -- [ 7, 8, 9 ] Cambio rápido de Modos de Metralleta
+    if input.KeyCode == Enum.KeyCode.Seven then
+        Config.MetralletaModo = "SOLO"
+        MetCaza.SoloName = ""
+        MetCaza.SecName = ""
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo cambiado a: SOLO", Duration = 2 }) end)
+    elseif input.KeyCode == Enum.KeyCode.Eight then
+        Config.MetralletaModo = "SEC"
+        MetCaza.SoloName = ""
+        MetCaza.SecName = ""
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo cambiado a: SECUENCIA", Duration = 2 }) end)
+    elseif input.KeyCode == Enum.KeyCode.Nine then
+        Config.MetralletaModo = "BOSS"
+        MetCaza.SoloName = ""
+        MetCaza.SecName = ""
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo cambiado a: BOSS", Duration = 2 }) end)
+    end
+
+    -- [ 1 ] Teleport Rápido al Portal RAID (Pestaña Auto)
+    if input.KeyCode == Enum.KeyCode.One then
+        local found = Utils.ManualTeleportAndEnter(false)
+        if not found then
+            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Error TP", Text = "Portal RAID no encontrado. Acércate más al lobby.", Duration = 2 }) end)
+        end
+    end
+
+    -- [ J ] Activar/Desactivar Kill Aura (Pestaña Auto)
+    if input.KeyCode == Enum.KeyCode.J then
+        Config.KillAura = not Config.KillAura -- Cambia 'Config.KillAura' si tu variable tiene otro nombre
+        
+        -- Si tienes un botón visual para esto, puedes actualizar su estado aquí. Ejemplo:
+        -- BtnKillAura.SetState(Config.KillAura, Config.KillAura and "Kill Aura [ON]" or "Kill Aura [OFF]")
+        
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Kill Aura", Text = Config.KillAura and "Activado" or "Desactivado", Duration = 2 }) end)
+    end
+
+    -- [ 2, 3, 4 ] Modos de Equipo
+    if input.KeyCode == Enum.KeyCode.Two then
+        CambiarModoAutoEquip("ATAQUE")
+    elseif input.KeyCode == Enum.KeyCode.Three then
+        CambiarModoAutoEquip("ORO")
+    elseif input.KeyCode == Enum.KeyCode.Four then
+        CambiarModoAutoEquip("SUERTE")
+    elseif input.KeyCode == Enum.KeyCode.Five then
+        CambiarModoAutoEquip("DROP")
+    end
+end)
+
+table.insert(Hub.Connections, customHotkeysConn)
