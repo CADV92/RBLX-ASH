@@ -3634,73 +3634,54 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
             RaidState.IsProcessing = true
-            LblRaidStatus.Text = "🚀 Saliendo de la raid..."
+            
+            -- Definimos el mapa de retorno exacto antes de que el script pierda el contexto
+            local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
+            local mapTarget = 50000 + safeMapIdx
+            _G.MapaOrigenAntesRuna = nil -- Limpiamos para no repetir
+            
+            LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
-                local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
-                local mapTarget = 50000 + safeMapIdx
-                _G.MapaOrigenAntesRuna = nil
-                
-                -- [NUEVO] Bucle de reintentos: Evitamos doble TP, usamos solo QuitRaidsMap
+                -- 1. Intentos de salida con reintento ante lag
                 local intentos = 0
-                while RaidState.IsProcessing and HubRunning and intentos < 4 do
+                while RaidState.IsProcessing and HubRunning and intentos < 5 do
                     intentos = intentos + 1
-                    pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
-                    task.wait(2)
+                    local success, err = pcall(function() 
+                        -- Solo usamos QuitRaidsMap, garantizando el mapTarget correcto
+                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
+                    end)
+                    if success then break end
+                    task.wait(1.5)
                 end
                 
-                -- [NUEVO] Pantalla de Carga y Limpieza Física
-                for i = 5, 1, -1 do
-                    if not HubRunning then break end
-                    LblRaidStatus.Text = "⏳ VIAJE (" .. i .. ")"
-                    task.wait(1) 
-                end
+                -- 2. Espera de seguridad (Damos tiempo a que el servidor procese el cambio)
+                task.wait(3.0)
                 
-                -- Seguro Anti-Atoro Post-Raid
+                -- 3. Limpieza física: ¡CRÍTICO para evitar quedar trabado en el piso!
                 local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    char.HumanoidRootPart.Anchored = false
+                if char then
+                    local root = char:FindFirstChild("HumanoidRootPart")
                     local hum = char:FindFirstChild("Humanoid")
+                    if root then
+                        root.Anchored = false
+                        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    end
                     if hum then
-                        hum.PlatformStand = false
+                        hum.PlatformStand = false -- Esto evita que el personaje quede "tumbado"
                     end
                 end
                 
-                -- Reinicio de motor
+                -- 4. Reset del motor de estado
                 RaidState.IsInInstance = false
                 RaidState.BossDeathTime = nil
                 RaidState.ForceExit = false
                 RaidState.IsProcessing = false
+                RaidState.ExitTriggered = false
                 
+                LblRaidStatus.Text = "🏠 Extraído exitosamente."
                 task.wait(1)
             end)
-            
-        elseif RaidState.BossDeathTime and (tick() - RaidState.BossDeathTime) >= 3.0 and not RaidState.ExitTriggered then
-            RaidState.ExitTriggered = true
-            RaidState.ExitTime = tick() 
-            
-            -- [NUEVO] Verificamos si hemos cambiado de coordenadas en estos 3 segundos
-            local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local haSidoTeletransportado = false
-            
-            if currentRoot and RaidState.ClaimPosition then
-                local distancia = (currentRoot.Position - RaidState.ClaimPosition).Magnitude
-                -- Si la distancia es mayor a 50 studs, significa que el juego ya nos teletransportó al lobby o a la pantalla de carga.
-                if distancia > 50 then 
-                    haSidoTeletransportado = true
-                end
-            end
-
-            if not haSidoTeletransportado then
-                -- No nos movimos. El juego no nos sacó automáticamente.
-                LblRaidStatus.Text = "⚠️ TP nativo falló. Forzando salida manual..."
-                RaidState.ForceExit = true
-                RaidState.ExitTriggered = false -- Lo devolvemos a false para que el bloque de arriba lo capture al instante
-            else
-                -- El juego sí nos sacó correctamente, solo esperamos a que cargue el lobby
-                RaidState.IsProcessing = true
-                LblRaidStatus.Text = "⌛ TP nativo detectado. Cargando lobby..."
-            end
         end
     end
 end)
