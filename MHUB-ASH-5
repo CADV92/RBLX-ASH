@@ -3489,7 +3489,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local startPos = root.Position
                 CurrentRaidIsASC = isAsc
                 pcall(function() remotes.CreateRaidTeam:InvokeServer(raidID) end)
-                task.wait(0.3)
+                task.wait(0.5) -- Pausa aumentada
 
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
@@ -3502,21 +3502,24 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     instMapId = 50100 + targetRuneMap
                     
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
-                    pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.2)
-                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.2)
-                    -- CORRECCIÓN: Llaves simples
+                    pcall(function() remotes.UseRaidItem:FireServer(runeCode) end)
+                    task.wait(0.5)
+                    
+                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
+                    task.wait(0.5)
+                    
                     pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ hostId = LocalPlayer.UserId, mapId = instMapId }) end)
-                    task.wait(0.5) 
+                    task.wait(1.5) -- Esperamos que el servidor registre el TP
+                    
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = instMapId }) end)
                 else
                     RaidState.CurrentBossMap = mapIdx 
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
-                    task.wait(0.2)
+                    task.wait(0.5)
                     
                     pcall(function() remotes.LeaveRaidTeam:FireServer(LocalPlayer.UserId) end)
-                    task.wait(0.2)
+                    task.wait(0.5)
                     
-                    -- CORRECCIÓN: Llaves simples
                     pcall(function() 
                         remotes.StartLocalPlayerTeleport:FireServer({
                             slotIndex = 1, 
@@ -3525,10 +3528,10 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             raidId = raidID 
                         }) 
                     end)
-                    task.wait(0.5)
+                    task.wait(1.5) -- Espera simulando pantalla de carga
                     
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = instMapId }) end)
-                    task.wait(0.2)
+                    task.wait(0.5)
                     
                     pcall(function() remotes.EquipHeroWithData:FireServer() end)
                 end
@@ -3696,33 +3699,26 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             
             task.spawn(function()
                 LblRaidStatus.Text = "🚀 Extrayendo nativamente a M" .. safeMapIdx
+                local remotes = ReplicatedStorage.Remotes
                 
-                pcall(function()
-                    local remotes = ReplicatedStorage.Remotes
-                    
-                    -- 1. QuitRaidsMap usando currentSlotIndex
-                    remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget })
-                    task.wait(0.2)
-                    
-                    -- 2. StartLocalPlayerTeleport hacia el lobby (CORRECCIÓN: Llaves simples)
-                    remotes.StartLocalPlayerTeleport:FireServer({ mapId = mapTarget })
-                    task.wait(0.5)
-                    
-                    -- 3. Success (slotIndex es el mapId del lobby)
-                    remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = mapTarget, mapId = mapTarget })
-                    task.wait(0.2)
-                    
-                    -- 4. GetRaidTeamInfos para limpiar UI
-                    remotes.GetRaidTeamInfos:InvokeServer()
-                    task.wait(0.2)
-                    
-                    -- 5. EquipHeroWithData (Cierra ciclo de carga)
-                    remotes.EquipHeroWithData:FireServer()
-                end)
+                -- Se aísla cada remote para evitar el efecto dominó por lag
+                pcall(function() remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
+                task.wait(1) -- Tiempo crucial para que el servidor procese la salida
+                
+                pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ mapId = mapTarget }) end)
+                task.wait(1.5) -- Simulamos el tiempo de carga del mapa base
+                
+                pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = mapTarget, mapId = mapTarget }) end)
+                task.wait(0.5)
+                
+                pcall(function() remotes.GetRaidTeamInfos:InvokeServer() end)
+                task.wait(0.5)
+                
+                pcall(function() remotes.EquipHeroWithData:FireServer() end)
                 
                 task.wait(2.5)
                 
-                -- Limpieza física (Mecanismo anti-tumbado)
+                -- Limpieza física (Mecanismo anti-tumbado y descongelamiento)
                 local char = LocalPlayer.Character
                 if char then
                     local root = char:FindFirstChild("HumanoidRootPart")
