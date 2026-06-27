@@ -2586,20 +2586,26 @@ local function IniciarViaje(targetId, nombreDestino)
     
     task.spawn(function()
         LblTorreStatus.Text = "Viajando a Mapa Base..."
-        -- 1. Salto de limpieza al Mapa 2
+        -- 1. Salto de limpieza al Mapa 2 (Recomendado para evitar data residual)
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
         task.wait(3.5)
         
         LblTorreStatus.Text = "Viajando a: " .. nombreDestino
         local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} 
         
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
-        pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
-        pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
+        -- 2. Secuencia de Remotes (ORDEN ESTRICTO SEGÚN SPY)
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end)
+        task.wait(0.2)
         
-        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end)
+        task.wait(0.5)
+        
+        -- AQUI ESTABA EL ERROR: Success va ANTES de EquipHero
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        task.wait(0.5)
+        
+        pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end)
         
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
         task.wait(2)
