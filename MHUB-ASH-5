@@ -1284,9 +1284,9 @@ table.insert(Hub.Connections, monitorKeyConn)
 -- ==========================================
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local EquipModeSelected = nil
-local SlotMath = { [1] = {1, 4, 7, 10, 14, 18, 22, 26, 30}, [2] = {31, 34, 37, 40, 44, 48, 52, 56, 60}, [3] = {61, 64, 67, 70, 74, 78, 82, 86, 90}, [4] = {91, 94, 97, 100, 104, 108, 112, 116, 120}, [5] = {121, 124, 127, 130, 134, 138, 142, 146, 150}, [6] = {151, 154, 157, 160, 164, 168, 172, 176, 180}, [7] = {181, 184, 187, 190, 194, 198, 202, 206, 210}, [8] = {211, 214, 217, 220, 224, 228, 232, 236, 240}, [9] = {241, 244, 247, 250, 254, 258, 262, 266, 270} }
-local TreeIDs = { ["base"]=1, ["sword"]=2, ["ice"]=3, ["blood"]=4, ["moon"]=5, ["easter"]=6, ["water"]=7, ["winter"]=8, ["jack"]=9, ["KEEP"]=false }
-local TreeCycleOpts = { "KEEP", "base", "sword", "ice", "blood", "moon", "easter", "water", "winter", "jack" }
+local SlotMath = { [1] = {1, 4, 7, 10, 14, 18, 22, 26, 30}, [2] = {31, 34, 37, 40, 44, 48, 52, 56, 60}, [3] = {61, 64, 67, 70, 74, 78, 82, 86, 90}, [4] = {91, 94, 97, 100, 104, 108, 112, 116, 120}, [5] = {121, 124, 127, 130, 134, 138, 142, 146, 150}, [6] = {151, 154, 157, 160, 164, 168, 172, 176, 180}, [7] = {181, 184, 187, 190, 194, 198, 202, 206, 210}, [8] = {211, 214, 217, 220, 224, 228, 232, 236, 240}, [9] = {241, 244, 247, 250, 254, 258, 262, 266, 270}, [9] = {271, 274, 277, 280, 284, 288, 292, 296, 300}  }
+local TreeIDs = { ["base"]=1, ["sword"]=2, ["ice"]=3, ["blood"]=4, ["moon"]=5, ["easter"]=6, ["water"]=7, ["winter"]=8, ["jack"]=9, ["anni"]=10, ["KEEP"]=false }
+local TreeCycleOpts = { "KEEP", "base", "sword", "ice", "blood", "moon", "easter", "water", "winter", "jack", "anni" }
 
 local UseGem, OnekyUseGem = Remotes:WaitForChild("UseGem"), Remotes:WaitForChild("OnekyUseGem")
 local EquipWeapon, BufferWeapon, UnbufferAll = Remotes:WaitForChild("EquipWeapon"), Remotes:WaitForChild("BufferWeapon"), Remotes:WaitForChild("UnbufferAllWeapon")
