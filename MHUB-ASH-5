@@ -2583,13 +2583,24 @@ TabTorre:CreateDropdown("Jugador a Visitar",
 
 local function IniciarViaje(targetId, nombreDestino)
     if not RemotesDataTorre then LblTorreStatus.Text = "Remotes no encontrados"; return end
-    LblTorreStatus.Text = "Viajando a: " .. nombreDestino
-    local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
+    
     task.spawn(function()
+        LblTorreStatus.Text = "Viajando a Mapa Base..."
+        -- 1. Salto de limpieza al Mapa 2
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
+        task.wait(3.5)
+        
+        LblTorreStatus.Text = "Viajando a: " .. nombreDestino
+        local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer() end)
+        
+        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
         task.wait(2)
         LblTorreStatus.Text = "Listo para viajar"
@@ -2602,12 +2613,18 @@ TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
         local map2Id = 50002 
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = map2Id}) end)
         task.wait(3.5) 
+        
         LblTorreStatus.Text = "Entrando a MI TORRE..."
         local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer() end)
+        
+        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        
         LblTorreStatus.Text = "Llegaste a MI TORRE"
         task.wait(2)
         LblTorreStatus.Text = "Listo para viajar"
@@ -3475,7 +3492,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = 50100 + targetRuneMap } }) end)
                     
                     task.wait(0.6) 
-                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
+                    local targetMapId = 50100 + targetRuneMap
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = targetMapId }) end)
                 else
                     RaidState.CurrentBossMap = mapIdx 
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
