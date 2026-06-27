@@ -3504,7 +3504,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
                     pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.2)
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.2)
-                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = instMapId } }) end)
+                    -- CORRECCIÓN: Llaves simples
+                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ hostId = LocalPlayer.UserId, mapId = instMapId }) end)
                     task.wait(0.5) 
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = instMapId }) end)
                 else
@@ -3515,9 +3516,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     pcall(function() remotes.LeaveRaidTeam:FireServer(LocalPlayer.UserId) end)
                     task.wait(0.2)
                     
+                    -- CORRECCIÓN: Llaves simples
                     pcall(function() 
                         remotes.StartLocalPlayerTeleport:FireServer({
-                            { slotIndex = 1, hostId = LocalPlayer.UserId, mapId = instMapId, raidId = raidID }
+                            slotIndex = 1, 
+                            hostId = LocalPlayer.UserId, 
+                            mapId = instMapId, 
+                            raidId = raidID 
                         }) 
                     end)
                     task.wait(0.5)
@@ -3699,8 +3704,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget })
                     task.wait(0.2)
                     
-                    -- 2. StartLocalPlayerTeleport hacia el lobby
-                    remotes.StartLocalPlayerTeleport:FireServer({ { mapId = mapTarget } })
+                    -- 2. StartLocalPlayerTeleport hacia el lobby (CORRECCIÓN: Llaves simples)
+                    remotes.StartLocalPlayerTeleport:FireServer({ mapId = mapTarget })
                     task.wait(0.5)
                     
                     -- 3. Success (slotIndex es el mapId del lobby)
