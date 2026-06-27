@@ -3489,26 +3489,43 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local startPos = root.Position
                 CurrentRaidIsASC = isAsc
                 pcall(function() remotes.CreateRaidTeam:InvokeServer(raidID) end)
-                task.wait(0.5)
+                task.wait(0.3)
 
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
+                local instMapId = 50100 + mapIdx
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
                     RaidState.CurrentBossMap = targetRuneMap
                     local runeCode = 10348 + targetRuneMap
-                    LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
-                    pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
-                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.3)
-                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = 50100 + targetRuneMap } }) end)
+                    instMapId = 50100 + targetRuneMap
                     
-                    task.wait(0.6) 
-                    local targetMapId = 50100 + targetRuneMap
-                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = targetMapId }) end)
+                    LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
+                    pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.2)
+                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.2)
+                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = instMapId } }) end)
+                    task.wait(0.5) 
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = instMapId }) end)
                 else
                     RaidState.CurrentBossMap = mapIdx 
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
+                    task.wait(0.2)
+                    
+                    pcall(function() remotes.LeaveRaidTeam:FireServer(LocalPlayer.UserId) end)
+                    task.wait(0.2)
+                    
+                    pcall(function() 
+                        remotes.StartLocalPlayerTeleport:FireServer({
+                            { slotIndex = 1, hostId = LocalPlayer.UserId, mapId = instMapId, raidId = raidID }
+                        }) 
+                    end)
+                    task.wait(0.5)
+                    
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = instMapId }) end)
+                    task.wait(0.2)
+                    
+                    pcall(function() remotes.EquipHeroWithData:FireServer() end)
                 end
 
                 -- [NUEVO] Validación dinámica por magnitud (Distancia)
@@ -3673,35 +3690,34 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
-                -- 1. Intentos de salida con fuerza bruta
-                local intentos = 0
-                while RaidState.IsProcessing and HubRunning and intentos < 5 do
-                    intentos = intentos + 1
-                    pcall(function() 
-                        local remotes = ReplicatedStorage.Remotes
-                        -- Intento A: Remote oficial de la UI de Raid
-                        remotes.QuitRaidsMap:InvokeServer({ slotIndex = 1, toMapId = mapTarget }) 
-                        
-                        -- Intento B (Fuerza Bruta): Si el servidor ignora el Quit, enviamos TP estándar al mapa base
-                        remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget})
-                        task.wait(0.2)
-                        remotes.StartLocalPlayerTeleport:FireServer({["mapId"] = mapTarget})
-                    end)
-                    
-                    task.wait(2)
-                    
-                    -- Verificamos si realmente logramos salir al lobby
-                    local char = LocalPlayer.Character
-                    local root = char and char:FindFirstChild("HumanoidRootPart")
-                    if root and Utils.EstaEnLobby(root) then 
-                        break 
-                    end
-                end
+                LblRaidStatus.Text = "🚀 Extrayendo nativamente a M" .. safeMapIdx
                 
-                -- 2. Espera de seguridad (Damos tiempo a que el servidor procese el cambio)
-                task.wait(3.0)
+                pcall(function()
+                    local remotes = ReplicatedStorage.Remotes
+                    
+                    -- 1. QuitRaidsMap usando currentSlotIndex
+                    remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget })
+                    task.wait(0.2)
+                    
+                    -- 2. StartLocalPlayerTeleport hacia el lobby
+                    remotes.StartLocalPlayerTeleport:FireServer({ { mapId = mapTarget } })
+                    task.wait(0.5)
+                    
+                    -- 3. Success (slotIndex es el mapId del lobby)
+                    remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = mapTarget, mapId = mapTarget })
+                    task.wait(0.2)
+                    
+                    -- 4. GetRaidTeamInfos para limpiar UI
+                    remotes.GetRaidTeamInfos:InvokeServer()
+                    task.wait(0.2)
+                    
+                    -- 5. EquipHeroWithData (Cierra ciclo de carga)
+                    remotes.EquipHeroWithData:FireServer()
+                end)
                 
-                -- 3. Limpieza física: ¡CRÍTICO para evitar quedar trabado en el piso!
+                task.wait(2.5)
+                
+                -- Limpieza física (Mecanismo anti-tumbado)
                 local char = LocalPlayer.Character
                 if char then
                     local root = char:FindFirstChild("HumanoidRootPart")
@@ -3710,12 +3726,10 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         root.Anchored = false
                         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
                     end
-                    if hum then
-                        hum.PlatformStand = false -- Esto evita que el personaje quede "tumbado"
-                    end
+                    if hum then hum.PlatformStand = false end
                 end
                 
-                -- 4. Reset del motor de estado
+                -- Reset del motor
                 RaidState.IsInInstance = false
                 RaidState.BossDeathTime = nil
                 RaidState.ForceExit = false
