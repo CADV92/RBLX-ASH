@@ -40,7 +40,7 @@ local TreeColors = {
     ["KEEP"] = Color3.fromRGB(50, 50, 60), ["base"] = Color3.fromRGB(220, 220, 220), ["sword"] = Color3.fromRGB(180, 180, 180),
     ["ice"] = Color3.fromRGB(100, 200, 255), ["blood"] = Color3.fromRGB(255, 60, 60), ["moon"] = Color3.fromRGB(255, 215, 0),
     ["easter"] = Color3.fromRGB(255, 150, 200), ["water"] = Color3.fromRGB(50, 120, 255), ["winter"] = Color3.fromRGB(0, 255, 255),
-    ["jack"] = Color3.fromRGB(255, 140, 0)
+    ["jack"] = Color3.fromRGB(255, 140, 0), ["anni"] = Color3.fromRGB(50, 120, 255)
 }
 
 local GemColorData = { 
@@ -1284,9 +1284,9 @@ table.insert(Hub.Connections, monitorKeyConn)
 -- ==========================================
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local EquipModeSelected = nil
-local SlotMath = { [1] = {1, 4, 7, 10, 14, 18, 22, 26, 30}, [2] = {31, 34, 37, 40, 44, 48, 52, 56, 60}, [3] = {61, 64, 67, 70, 74, 78, 82, 86, 90}, [4] = {91, 94, 97, 100, 104, 108, 112, 116, 120}, [5] = {121, 124, 127, 130, 134, 138, 142, 146, 150}, [6] = {151, 154, 157, 160, 164, 168, 172, 176, 180}, [7] = {181, 184, 187, 190, 194, 198, 202, 206, 210}, [8] = {211, 214, 217, 220, 224, 228, 232, 236, 240}, [9] = {241, 244, 247, 250, 254, 258, 262, 266, 270} }
-local TreeIDs = { ["base"]=1, ["sword"]=2, ["ice"]=3, ["blood"]=4, ["moon"]=5, ["easter"]=6, ["water"]=7, ["winter"]=8, ["jack"]=9, ["KEEP"]=false }
-local TreeCycleOpts = { "KEEP", "base", "sword", "ice", "blood", "moon", "easter", "water", "winter", "jack" }
+local SlotMath = { [1] = {1, 4, 7, 10, 14, 18, 22, 26, 30}, [2] = {31, 34, 37, 40, 44, 48, 52, 56, 60}, [3] = {61, 64, 67, 70, 74, 78, 82, 86, 90}, [4] = {91, 94, 97, 100, 104, 108, 112, 116, 120}, [5] = {121, 124, 127, 130, 134, 138, 142, 146, 150}, [6] = {151, 154, 157, 160, 164, 168, 172, 176, 180}, [7] = {181, 184, 187, 190, 194, 198, 202, 206, 210}, [8] = {211, 214, 217, 220, 224, 228, 232, 236, 240}, [9] = {241, 244, 247, 250, 254, 258, 262, 266, 270}, [10] = {271, 274, 277, 280, 284, 288, 292, 296, 300}  }
+local TreeIDs = { ["base"]=1, ["sword"]=2, ["ice"]=3, ["blood"]=4, ["moon"]=5, ["easter"]=6, ["water"]=7, ["winter"]=8, ["jack"]=9, ["anni"]=10, ["KEEP"]=false }
+local TreeCycleOpts = { "KEEP", "base", "sword", "ice", "blood", "moon", "easter", "water", "winter", "jack", "anni" }
 
 local UseGem, OnekyUseGem = Remotes:WaitForChild("UseGem"), Remotes:WaitForChild("OnekyUseGem")
 local EquipWeapon, BufferWeapon, UnbufferAll = Remotes:WaitForChild("EquipWeapon"), Remotes:WaitForChild("BufferWeapon"), Remotes:WaitForChild("UnbufferAllWeapon")
@@ -1933,11 +1933,26 @@ for i = 1, 20 do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     btn.MouseButton1Click:Connect(function()
+        -- [NUEVO] Antibloqueo: Evitar TP si ya estamos en el mapa
+        if _G.LastSelectedMap == i then
+            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ya estás en el Mapa M" .. string.format("%02d", i), Duration = 2 }) end)
+            return
+        end
+        
         btn.BackgroundColor3 = Theme.Primary
         task.spawn(function()
             local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
             if remotes then
+                _G.LastSelectedMap = i -- Registramos el cambio
                 pcall(function() remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + i}) end)
+                
+                -- [NUEVO] Seguro de desanclaje forzado tras pantalla de carga
+                task.delay(1.5, function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.Anchored = false
+                    end
+                end)
             end
             task.wait(1.5)
             btn.BackgroundColor3 = Theme.Secondary
@@ -2568,13 +2583,24 @@ TabTorre:CreateDropdown("Jugador a Visitar",
 
 local function IniciarViaje(targetId, nombreDestino)
     if not RemotesDataTorre then LblTorreStatus.Text = "Remotes no encontrados"; return end
-    LblTorreStatus.Text = "Viajando a: " .. nombreDestino
-    local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
+    
     task.spawn(function()
+        LblTorreStatus.Text = "Viajando a Mapa Base..."
+        -- 1. Salto de limpieza al Mapa 2
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
+        task.wait(3.5)
+        
+        LblTorreStatus.Text = "Viajando a: " .. nombreDestino
+        local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer() end)
+        
+        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
         task.wait(2)
         LblTorreStatus.Text = "Listo para viajar"
@@ -2587,12 +2613,18 @@ TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
         local map2Id = 50002 
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = map2Id}) end)
         task.wait(3.5) 
+        
         LblTorreStatus.Text = "Entrando a MI TORRE..."
         local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer() end)
+        
+        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        
         LblTorreStatus.Text = "Llegaste a MI TORRE"
         task.wait(2)
         LblTorreStatus.Text = "Listo para viajar"
@@ -3384,7 +3416,15 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 LblRaidStatus.Text = string.format("🌎 Viajando a M%d [%s]", bestRaid.mapIdx, bestRaid.rank)
                 pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = bestRaid.info.mapId}) end)
                 _G.LastSelectedMap = bestRaid.mapIdx
-                task.delay(3, function() RaidState.IsProcessing = false end)
+                
+                -- [NUEVO] Tiempo extendido para cargar mapa y desanclaje físico
+                task.delay(4.5, function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.Anchored = false
+                    end
+                    RaidState.IsProcessing = false 
+                end)
             end
         else
             LblRaidStatus.Text = string.format("📡 Buscando raids... (%d activas)", totalActive or 0)
@@ -3434,23 +3474,17 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     raidID = 930000 + ((mapIdx - 1) * 10) + 1 
                 end
                 
+                local startPos = root.Position
                 CurrentRaidIsASC = isAsc
                 pcall(function() remotes.CreateRaidTeam:InvokeServer(raidID) end)
                 task.wait(0.5)
 
-                if isAsc and mapIdx == 16 then
-                    if rankStr == "A" then pcall(function() remotes.UseRaidItem:FireServer(10271) end)
-                    elseif rankStr == "C" then pcall(function() remotes.UseRaidItem:FireServer(10270) end) end
-                    task.wait(0.4)
-                end
-
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
-                local tpSuccess = true 
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
-                    RaidState.CurrentBossMap = targetRuneMap -- [NUEVO] Registramos el jefe de la runa
+                    RaidState.CurrentBossMap = targetRuneMap
                     local runeCode = 10348 + targetRuneMap
                     LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
                     pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
@@ -3460,8 +3494,24 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     task.wait(0.6) 
                     pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
                 else
-                    RaidState.CurrentBossMap = mapIdx -- [NUEVO] Si no hay runa, es el jefe del mapa actual
+                    RaidState.CurrentBossMap = mapIdx 
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
+                end
+
+                -- [NUEVO] Validación dinámica por magnitud (Distancia)
+                LblRaidStatus.Text = "🎲 VALIDANDO ACCESO..." 
+                local waitTime, tpSuccess = 0, false
+                while waitTime < 8 do 
+                    task.wait(0.2)
+                    if not HubRunning then return end
+                    waitTime = waitTime + 0.2
+                    local currentChar = LocalPlayer.Character
+                    if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+                        if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 50 then 
+                            tpSuccess = true
+                            break 
+                        end
+                    end
                 end
 
                 if tpSuccess then
@@ -3491,13 +3541,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                                         end
                                     end
                                 end
-                                if count > 0 then StarterGui:SetCore("SendNotification", { Title = "Muros Traspasables", Text = "Vía libre.", Duration = 2 }) end
+                                if count > 0 then StarterGui:SetCore("SendNotification", { Title = "Muros", Text = "Vía libre.", Duration = 2 }) end
                             end)
                         end
                     end)
                 else
                     LblRaidStatus.Text = "⚠️ Falla al entrar."
-                    HandleRaidCooldown(3)
+                    HandleRaidCooldown(5) -- Aumentado a 5s para prevenir spam al servidor
                 end
                 
                 RaidState.IsProcessing = false
@@ -3601,45 +3651,54 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
             RaidState.IsProcessing = true
-            LblRaidStatus.Text = "🚀 Saliendo de la raid..."
+            
+            -- Definimos el mapa de retorno exacto antes de que el script pierda el contexto
+            local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
+            local mapTarget = 50000 + safeMapIdx
+            _G.MapaOrigenAntesRuna = nil -- Limpiamos para no repetir
+            
+            LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
-                -- Priorizamos volver al mapa origen donde abrimos el portal
-                local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
-                local mapTarget = 50000 + safeMapIdx
-                _G.MapaOrigenAntesRuna = nil
-                
-                pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
-                task.wait(0.5)
-                pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget}) end)
-            end)
-            
-        elseif RaidState.BossDeathTime and (tick() - RaidState.BossDeathTime) >= 3.0 and not RaidState.ExitTriggered then
-            RaidState.ExitTriggered = true
-            RaidState.ExitTime = tick() 
-            
-            -- [NUEVO] Verificamos si hemos cambiado de coordenadas en estos 3 segundos
-            local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local haSidoTeletransportado = false
-            
-            if currentRoot and RaidState.ClaimPosition then
-                local distancia = (currentRoot.Position - RaidState.ClaimPosition).Magnitude
-                -- Si la distancia es mayor a 50 studs, significa que el juego ya nos teletransportó al lobby o a la pantalla de carga.
-                if distancia > 50 then 
-                    haSidoTeletransportado = true
+                -- 1. Intentos de salida con reintento ante lag
+                local intentos = 0
+                while RaidState.IsProcessing and HubRunning and intentos < 5 do
+                    intentos = intentos + 1
+                    local success, err = pcall(function() 
+                        -- Solo usamos QuitRaidsMap, garantizando el mapTarget correcto
+                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
+                    end)
+                    if success then break end
+                    task.wait(1.5)
                 end
-            end
-
-            if not haSidoTeletransportado then
-                -- No nos movimos. El juego no nos sacó automáticamente.
-                LblRaidStatus.Text = "⚠️ TP nativo falló. Forzando salida manual..."
-                RaidState.ForceExit = true
-                RaidState.ExitTriggered = false -- Lo devolvemos a false para que el bloque de arriba lo capture al instante
-            else
-                -- El juego sí nos sacó correctamente, solo esperamos a que cargue el lobby
-                RaidState.IsProcessing = true
-                LblRaidStatus.Text = "⌛ TP nativo detectado. Cargando lobby..."
-            end
+                
+                -- 2. Espera de seguridad (Damos tiempo a que el servidor procese el cambio)
+                task.wait(3.0)
+                
+                -- 3. Limpieza física: ¡CRÍTICO para evitar quedar trabado en el piso!
+                local char = LocalPlayer.Character
+                if char then
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    local hum = char:FindFirstChild("Humanoid")
+                    if root then
+                        root.Anchored = false
+                        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    end
+                    if hum then
+                        hum.PlatformStand = false -- Esto evita que el personaje quede "tumbado"
+                    end
+                end
+                
+                -- 4. Reset del motor de estado
+                RaidState.IsInInstance = false
+                RaidState.BossDeathTime = nil
+                RaidState.ForceExit = false
+                RaidState.IsProcessing = false
+                RaidState.ExitTriggered = false
+                
+                LblRaidStatus.Text = "🏠 Extraído exitosamente."
+                task.wait(1)
+            end)
         end
     end
 end)
