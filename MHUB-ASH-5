@@ -2212,7 +2212,8 @@ local MetCaza = {
         "Antares", "Arch Lich", "Ashborn", "Frostborne", "Frostborne1", 
         "Giant Arachnid Buryura", "Giant Monarch", "Igris", "Kargalgan", 
         "Legia", "Goblin King", "Monarch of Plague", "Silas", "Beru", "Broly",
-        "The Leader Of The Polar Bears", "Yogumunt", "baran", "Dominion", "Absolute"
+        "The Leader Of The Polar Bears", "Yogumunt", "baran", "Dominion",
+        "Absolute", "Broly", "Goku[Super4]" 
     }
 }
 local MetCFrames = {}
@@ -3315,13 +3316,13 @@ local BossPorMapa = {
     [1] = "Goblin King", [2] = "Giant Arachnid Buryura", [3] = "Igris", [4] = "The Leader Of The Polar Bears",
     [5] = "Arch Lich", [6] = "Kargalgan", [7] = "baran", [8] = "Beru", [9] = "Giant Monarch", 
     [10] = "Monarch of Plague", [11] = "Frostborne", [12] = "Legia", [13] = "Silas", [14] = "Yogumunt", 
-    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly" 
+    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]" 
 }
 local BossPorMapaASC = { 
     [1] = "baran", [2] = "baran", [3] = "Giant Monarch", [4] = "Giant Monarch", 
     [5] = "Monarch of Plague", [6] = "Monarch of Plague", [7] = "Frostborne", [8] = "Frostborne", 
     [9] = "Legia", [10] = "Legia", [11] = "Silas", [12] = "Silas", [13] = "Yogumunt", 
-    [14] = "Yogumunt", [15] = "Antares", [16] = "Antares", [17] = "Ashborn", [18] = "Ashborn" 
+    [14] = "Yogumunt", [15] = "Antares", [16] = "Antares", [17] = "Ashborn", [18] = "Ashborn", [19] = "Dominion", [20] = "Dominion" 
 }
 local CurrentRaidIsASC = false
 
