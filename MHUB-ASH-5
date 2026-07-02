@@ -3316,7 +3316,7 @@ local BossPorMapa = {
     [1] = "Goblin King", [2] = "Giant Arachnid Buryura", [3] = "Igris", [4] = "The Leader Of The Polar Bears",
     [5] = "Arch Lich", [6] = "Kargalgan", [7] = "baran", [8] = "Beru", [9] = "Giant Monarch", 
     [10] = "Monarch of Plague", [11] = "Frostborne", [12] = "Legia", [13] = "Silas", [14] = "Yogumunt", 
-    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Super4" 
+    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]" 
 }
 local BossPorMapaASC = { 
     [1] = "baran", [2] = "baran", [3] = "Giant Monarch", [4] = "Giant Monarch", 
@@ -3586,11 +3586,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob and mob.Name then
-                        local nombreMob = string.lower(tostring(mob.Name))
-                        local nombreJefe = string.lower(tostring(expectedBoss))
-                        
-                        if string.find(nombreMob, nombreJefe, 1, true) then
+                    if expectedBoss and mob and mob.Name and string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true) then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then 
                             bossAlive = true 
