@@ -2812,18 +2812,28 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     end
 
     local Categories = {
-        ["R"] = { drawId = 980001, grades = { { Text = "G", Id = 990008 }, { Text = "N", Id = 990009 }, { Text = "M", Id = 990010 }, { Text = "M+", Id = 990031 } } },
-        ["Y"] = { drawId = 980002, grades = { { Text = "G", Id = 990018 }, { Text = "N", Id = 990019 }, { Text = "M", Id = 990020 }, { Text = "M+", Id = 990041 } } },
-        ["B"] = { drawId = 980003, grades = { { Text = "G", Id = 990028 }, { Text = "N", Id = 990029 }, { Text = "M", Id = 990030 }, { Text = "M+", Id = 990051 } } }
+        ["R"] = { drawId = 980001, grades = { 
+            { Text = "N", Id = 990009 }, { Text = "M", Id = 990010 }, { Text = "M+", Id = 990031 }, 
+            { Text = "GM", Id = 990032 }, { Text = "MM", Id = 990033 }, { Text = "M++", Id = 990034 } 
+        } },
+        ["Y"] = { drawId = 980002, grades = { 
+            { Text = "N", Id = 990019 }, { Text = "M", Id = 990020 }, { Text = "M+", Id = 990041 }, 
+            { Text = "GM", Id = 990042 }, { Text = "MM", Id = 990043 }, { Text = "M++", Id = 990044 } 
+        } },
+        ["B"] = { drawId = 980003, grades = { 
+            { Text = "N", Id = 990029 }, { Text = "M", Id = 990030 }, { Text = "M+", Id = 990051 }, 
+            { Text = "GM", Id = 990052 }, { Text = "MM", Id = 990053 }, { Text = "M++", Id = 990054 } 
+        } }
     }
     local GradeNames = {}
     for _, cat in pairs(Categories) do for _, g in ipairs(cat.grades) do GradeNames[g.Id] = g.Text end end
 
-    local SelectedCategory = "R"; local ActiveStopTexts = { ["M"] = true, ["M+"] = true }; local targetGuid = ""; local uuidPattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
+    local SelectedCategory = "R"; local ActiveStopTexts = { ["GM"] = true, ["MM"] = true, ["M++"] = true }; local targetGuid = ""; local uuidPattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
     _G.AutoRollActivo = false; local tiradasCount = 0
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollUI"; ScreenGui.ResetOnSpawn = false
-    local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 240, 0, 275); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    -- Ajuste de altura del MainFrame a 300 para acomodar las dos filas de botones
+    local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 240, 0, 300); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
     MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180)
 
     local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Theme.Secondary; MainStroke.Thickness = 1.5
@@ -2842,20 +2852,25 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     for name, b in pairs(catBtns) do b.BackgroundColor3 = (name == "R") and Theme.PrimaryDark or Theme.Secondary; b.TextColor3 = (name == "R") and Theme.TextHighlight or Theme.Text end
 
     local SubTitle = Instance.new("TextLabel", MainFrame); SubTitle.Size = UDim2.new(0.9, 0, 0, 15); SubTitle.Position = UDim2.new(0.05, 0, 0, 65); SubTitle.Text = "1. Grados a buscar:"; SubTitle.Font = Enum.Font.GothamMedium; SubTitle.TextSize = 10; SubTitle.TextColor3 = Theme.Text; SubTitle.BackgroundTransparency = 1; SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-    local SelectorFrame = Instance.new("Frame", MainFrame); SelectorFrame.Size = UDim2.new(0.9, 0, 0, 25); SelectorFrame.Position = UDim2.new(0.05, 0, 0, 85); SelectorFrame.BackgroundTransparency = 1; local layout = Instance.new("UIGridLayout", SelectorFrame); layout.CellSize = UDim2.new(0.22, 0, 1, 0); layout.CellPadding = UDim2.new(0.04, 0, 0, 0)
-    for _, gradeText in ipairs({"G", "N", "M", "M+"}) do
+    
+    -- Ajuste del SelectorFrame para 6 botones en 2 filas
+    local SelectorFrame = Instance.new("Frame", MainFrame); SelectorFrame.Size = UDim2.new(0.9, 0, 0, 50); SelectorFrame.Position = UDim2.new(0.05, 0, 0, 85); SelectorFrame.BackgroundTransparency = 1; 
+    local layout = Instance.new("UIGridLayout", SelectorFrame); layout.CellSize = UDim2.new(0.31, 0, 0.45, 0); layout.CellPadding = UDim2.new(0.03, 0, 0.1, 0)
+    for _, gradeText in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
         local btn = Instance.new("TextButton", SelectorFrame); btn.Text = gradeText; btn.Font = Enum.Font.GothamMedium; btn.TextSize = 11; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         local function UpdateBtnVisual() btn.BackgroundColor3 = ActiveStopTexts[gradeText] and Theme.Primary or Theme.Secondary; btn.TextColor3 = ActiveStopTexts[gradeText] and Theme.TextHighlight or Theme.Text end
         UpdateBtnVisual()
         btn.MouseButton1Click:Connect(function() ActiveStopTexts[gradeText] = not ActiveStopTexts[gradeText]; UpdateBtnVisual() end)
     end
 
-    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 120); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
-    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 140); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
+    -- Ajuste de posiciones Y del resto de la interfaz (desplazadas hacia abajo)
+    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 145); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 165); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
-    local StatusLabel = Instance.new("TextLabel", MainFrame); StatusLabel.Size = UDim2.new(0.9, 0, 0, 20); StatusLabel.Position = UDim2.new(0.05, 0, 0, 175); StatusLabel.Text = "Estado: Esperando configuración"; StatusLabel.Font = Enum.Font.GothamMedium; StatusLabel.TextSize = 11; StatusLabel.TextColor3 = Theme.Text; StatusLabel.BackgroundTransparency = 1; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    local ResultLabel = Instance.new("TextLabel", MainFrame); ResultLabel.Size = UDim2.new(0.9, 0, 0, 20); ResultLabel.Position = UDim2.new(0.05, 0, 0, 200); ResultLabel.Text = "Tiradas: 0 | Obtenido: N/A"; ResultLabel.Font = Enum.Font.Gotham; ResultLabel.TextSize = 11; ResultLabel.TextColor3 = Theme.TextHighlight; ResultLabel.BackgroundTransparency = 1; ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
-    local ToggleBtn = Instance.new("TextButton", MainFrame); ToggleBtn.Size = UDim2.new(0.9, 0, 0, 30); ToggleBtn.Position = UDim2.new(0.05, 0, 0, 230); ToggleBtn.Text = "INICIAR"; ToggleBtn.Font = Enum.Font.GothamBlack; ToggleBtn.TextSize = 12; ToggleBtn.BackgroundColor3 = Theme.Primary; ToggleBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+    
+    local StatusLabel = Instance.new("TextLabel", MainFrame); StatusLabel.Size = UDim2.new(0.9, 0, 0, 20); StatusLabel.Position = UDim2.new(0.05, 0, 0, 200); StatusLabel.Text = "Estado: Esperando configuración"; StatusLabel.Font = Enum.Font.GothamMedium; StatusLabel.TextSize = 11; StatusLabel.TextColor3 = Theme.Text; StatusLabel.BackgroundTransparency = 1; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local ResultLabel = Instance.new("TextLabel", MainFrame); ResultLabel.Size = UDim2.new(0.9, 0, 0, 20); ResultLabel.Position = UDim2.new(0.05, 0, 0, 225); ResultLabel.Text = "Tiradas: 0 | Obtenido: N/A"; ResultLabel.Font = Enum.Font.Gotham; ResultLabel.TextSize = 11; ResultLabel.TextColor3 = Theme.TextHighlight; ResultLabel.BackgroundTransparency = 1; ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local ToggleBtn = Instance.new("TextButton", MainFrame); ToggleBtn.Size = UDim2.new(0.9, 0, 0, 30); ToggleBtn.Position = UDim2.new(0.05, 0, 0, 255); ToggleBtn.Text = "INICIAR"; ToggleBtn.Font = Enum.Font.GothamBlack; ToggleBtn.TextSize = 12; ToggleBtn.BackgroundColor3 = Theme.Primary; ToggleBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
     local dragging, dragInput, dragStart, startPos
     local dragUISConn
