@@ -2530,38 +2530,37 @@ task.spawn(function()
             local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
             
             if kGuid then
-                -- 1. EL NÚCLEO DEL GLITCH (IA Desincronizada)
-                -- Alternamos el objetivo de movimiento entre la Referencia y el Kill Target.
-                -- Se mantiene fuera del bucle multiplicador para no causar "Throttling" (límites de red).
-                task.spawn(function() pcall(function()
-                    if rGuid and frames % 2 == 0 then
-                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
-                    else
-                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
-                    end
-                end) end)
-
-                -- 2. LA METRALLETA DE DAÑO Y FURIA
-                -- Ejecutamos los multiplicadores (Reqs) directamente a los remotos de ataque
-                for i = 1, (MetState.Reqs or 1) do
+                -- SECUENCIA 1: Engaño a la Referencia (Se ejecuta 1 de cada 2 frames)
+                if rGuid and frames % 2 == 0 then
                     task.spawn(function() pcall(function()
-                        -- Inyectamos daño fantasma hacia la referencia
-                        if rGuid then
+                        -- Primero fijamos el objetivo en el servidor (Vital para que el daño cuente)
+                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
+                        
+                        -- Luego disparamos la ráfaga multiplicada
+                        for i = 1, (MetState.Reqs or 1) do
                             if PAttackRem then 
                                 PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
-                                PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Extra Furia
+                                PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Inyección para Angry Bar
                             end
                             if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) end
                         end
-                        
-                        -- Inyectamos daño real al objetivo a matar
-                        if PAttackRem then 
-                            PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
-                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Extra Furia
-                        end
-                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
                     end) end)
                 end
+                
+                -- SECUENCIA 2: Daño real al Objetivo (Se ejecuta todos los frames)
+                task.spawn(function() pcall(function()
+                    -- Primero fijamos el objetivo a matar en el servidor
+                    if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
+                    
+                    -- Luego disparamos la ráfaga multiplicada
+                    for i = 1, (MetState.Reqs or 1) do
+                        if PAttackRem then 
+                            PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
+                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Inyección para Angry Bar
+                        end
+                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
+                    end
+                end) end)
             end
         end
     end
