@@ -2338,8 +2338,8 @@ local metKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, metKeyConn)
 
-local metSpeedMap = {0.1, 0.05, 0.03, 0.01, 0, 0} -- El 0 fuerza el mínimo yield posible
-local metReqsMap = {1, 1, 2, 2, 4, 10} -- Multiplicador de peticiones simultáneas por tick
+local metSpeedMap = {0.1, 0.05, 0.03, 0.01, 0.01, 0.01} -- El 0 fuerza el mínimo yield posible
+local metReqsMap = {1, 1, 2, 2, 4, 6} -- Multiplicador de peticiones simultáneas por tick
 MetState.Vel = metSpeedMap[Config.MetralletaVel] or 0.05
 MetState.Reqs = metReqsMap[Config.MetralletaVel] or 1
 
