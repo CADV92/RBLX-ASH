@@ -2528,21 +2528,37 @@ task.spawn(function()
             frames = frames + 1
             local rGuid = (MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst)) and Utils.GetGUID(MetState.TargetRefInst) or nil
             local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
+            
             if kGuid then
-                -- Bucle multiplicador para saturar y llevar las peticiones al límite
-                for i = 1, (MetState.Reqs or 1) do
-                    if rGuid and frames % 2 == 0 then
-                        task.spawn(function() pcall(function()
-                            if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
-                            if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid }) end
-                            if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) end
-                        end) end)
+                -- 1. Mantenemos el Focus del Target (Solo 1 Invocación por frame para evitar Throttling del servidor)
+                task.spawn(function() pcall(function()
+                    if rGuid and frames % 2 == 0 and CEnemyRem then 
+                        CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) 
                     end
-                    task.spawn(function() pcall(function()
-                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
-                        if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid }) end
-                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
-                    end) end)
+                    if CEnemyRem then 
+                        CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) 
+                    end
+                end) end)
+
+                -- 2. Bucle de Glitch Puro (Solo FireServer). Intercala Reference y Kill para reventar el Angry Bar
+                for i = 1, (MetState.Reqs or 1) do
+                    if rGuid then
+                        if PAttackRem then 
+                            PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
+                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Inyección para sobrecargar la furia
+                        end
+                        if PAttackBase then 
+                            PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) 
+                        end
+                    end
+                    
+                    if PAttackRem then 
+                        PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
+                        PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Inyección para sobrecargar la furia
+                    end
+                    if PAttackBase then 
+                        PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) 
+                    end
                 end
             end
         end
