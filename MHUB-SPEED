@@ -2530,22 +2530,21 @@ task.spawn(function()
             local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
             
             if kGuid then
-                -- 1. Mantenemos el Focus del Target (Solo 1 Invocación por frame para evitar Throttling del servidor)
+                -- 1. Fijar el Target de las sombras (MASCOTAS) SOLO en el objetivo a matar.
+                -- Si les enviamos rGuid, su IA se rompe y se quedan caminando.
                 task.spawn(function() pcall(function()
-                    if rGuid and frames % 2 == 0 and CEnemyRem then 
-                        CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) 
-                    end
-                    if CEnemyRem then 
+                    if CEnemyRem and frames % 2 == 0 then 
                         CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) 
                     end
                 end) end)
 
-                -- 2. Bucle de Glitch Puro (Solo FireServer). Intercala Reference y Kill para reventar el Angry Bar
+                -- 2. Bucle de Glitch Puro (Solo FireServer). 
+                -- Engañamos al Angry Bar atacando a ambos sin decirle a las sombras que cambien de objetivo.
                 for i = 1, (MetState.Reqs or 1) do
                     if rGuid then
                         if PAttackRem then 
                             PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
-                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Inyección para sobrecargar la furia
+                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid })
                         end
                         if PAttackBase then 
                             PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) 
@@ -2554,7 +2553,7 @@ task.spawn(function()
                     
                     if PAttackRem then 
                         PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
-                        PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Inyección para sobrecargar la furia
+                        PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid })
                     end
                     if PAttackBase then 
                         PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) 
