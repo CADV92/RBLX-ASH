@@ -2530,34 +2530,37 @@ task.spawn(function()
             local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
             
             if kGuid then
-                -- 1. Fijar el Target de las sombras (MASCOTAS) SOLO en el objetivo a matar.
-                -- Si les enviamos rGuid, su IA se rompe y se quedan caminando.
+                -- 1. EL NÚCLEO DEL GLITCH (IA Desincronizada)
+                -- Alternamos el objetivo de movimiento entre la Referencia y el Kill Target.
+                -- Se mantiene fuera del bucle multiplicador para no causar "Throttling" (límites de red).
                 task.spawn(function() pcall(function()
-                    if CEnemyRem and frames % 2 == 0 then 
-                        CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) 
+                    if rGuid and frames % 2 == 0 then
+                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
+                    else
+                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
                     end
                 end) end)
 
-                -- 2. Bucle de Glitch Puro (Solo FireServer). 
-                -- Engañamos al Angry Bar atacando a ambos sin decirle a las sombras que cambien de objetivo.
+                -- 2. LA METRALLETA DE DAÑO Y FURIA
+                -- Ejecutamos los multiplicadores (Reqs) directamente a los remotos de ataque
                 for i = 1, (MetState.Reqs or 1) do
-                    if rGuid then
+                    task.spawn(function() pcall(function()
+                        -- Inyectamos daño fantasma hacia la referencia
+                        if rGuid then
+                            if PAttackRem then 
+                                PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
+                                PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Extra Furia
+                            end
+                            if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) end
+                        end
+                        
+                        -- Inyectamos daño real al objetivo a matar
                         if PAttackRem then 
-                            PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
-                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid })
+                            PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
+                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Extra Furia
                         end
-                        if PAttackBase then 
-                            PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) 
-                        end
-                    end
-                    
-                    if PAttackRem then 
-                        PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
-                        PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid })
-                    end
-                    if PAttackBase then 
-                        PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) 
-                    end
+                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
+                    end) end)
                 end
             end
         end
