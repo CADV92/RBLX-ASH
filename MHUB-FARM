@@ -1448,6 +1448,11 @@ local monitorConn = RunService.Heartbeat:Connect(function()
     end
 
     if CurrentTarget then
+        AutoUseAttackPotions() -- [NUEVO] Inyecta las pociones de ataque durante el combate
+        local hp = Utils.GetCurrentRealHealth(CurrentTarget)
+        TargetLabel.Text = "🎯 " .. CurrentTarget.Name
+        HpLabel.Text = "❤️ " .. Utils.FormatHealth(hp)
+        
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
