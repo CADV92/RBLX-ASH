@@ -1251,40 +1251,6 @@ ToggleAutoAtkPots.MouseButton1Click:Connect(function()
     ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
 end)
 
--- Botón Pociones de Ataque [NUEVO]
-local ToggleAutoAtkPots = Instance.new("TextButton", MonitorFrame)
-ToggleAutoAtkPots.Size = UDim2.new(0.12, 0, 0, 25)
-ToggleAutoAtkPots.Position = UDim2.new(0.85, 0, 0, 90)
-ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-ToggleAutoAtkPots.Text = "⚔️"
-ToggleAutoAtkPots.TextColor3 = Theme.TextHighlight
-ToggleAutoAtkPots.Font = Enum.Font.GothamBold
-ToggleAutoAtkPots.TextSize = 12
-ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
-Instance.new("UICorner", ToggleAutoAtkPots).CornerRadius = UDim.new(0, 4)
-ToggleAutoAtkPots.MouseButton1Click:Connect(function() 
-    Config.AutoAttackPotions = not Config.AutoAttackPotions
-    ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-    ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
-end)
-
--- Botón Pociones de Ataque [NUEVO]
-local ToggleAutoAtkPots = Instance.new("TextButton", MonitorFrame)
-ToggleAutoAtkPots.Size = UDim2.new(0.12, 0, 0, 25)
-ToggleAutoAtkPots.Position = UDim2.new(0.85, 0, 0, 90)
-ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-ToggleAutoAtkPots.Text = "⚔️"
-ToggleAutoAtkPots.TextColor3 = Theme.TextHighlight
-ToggleAutoAtkPots.Font = Enum.Font.GothamBold
-ToggleAutoAtkPots.TextSize = 12
-ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
-Instance.new("UICorner", ToggleAutoAtkPots).CornerRadius = UDim.new(0, 4)
-ToggleAutoAtkPots.MouseButton1Click:Connect(function() 
-    Config.AutoAttackPotions = not Config.AutoAttackPotions
-    ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-    ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
-end)
-
 local TotalDamageDealt = 0
 local CurrentTarget = nil
 local PreviousTarget = nil 
@@ -1452,7 +1418,7 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         local hp = Utils.GetCurrentRealHealth(CurrentTarget)
         TargetLabel.Text = "🎯 " .. CurrentTarget.Name
         HpLabel.Text = "❤️ " .. Utils.FormatHealth(hp)
-        
+
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
