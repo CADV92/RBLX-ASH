@@ -321,7 +321,11 @@ task.spawn(function()
     if not getrawmetatable or not newcclosure or not getnamecallmethod then return end
     local mt = getrawmetatable(game) 
     if not mt then return end 
+    
     local oldNamecall = mt.__namecall
+    -- [PARCHE]: Si el ejecutor oculta el namecall original, abortamos para evitar el Crash
+    if type(oldNamecall) ~= "function" then return end 
+    
     if setreadonly then setreadonly(mt, false) end
     
     mt.__namecall = newcclosure(function(self, ...)
@@ -333,7 +337,7 @@ task.spawn(function()
                     local targetID = args[1].mapId or args[1].toMapId
                     if targetID then 
                         local numID = tonumber(targetID) 
-                        -- Solo registramos mapas base de lobby (50001 - 50020). Ignoramos instancias.
+                        -- Solo registramos mapas base de lobby (50001 - 50020).
                         if numID and numID > 50000 and numID <= 50020 then 
                             _G.LastSelectedMap = numID - 50000 
                         end 
