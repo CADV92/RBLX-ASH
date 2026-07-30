@@ -243,6 +243,8 @@ end
 function Utils.FormatHealth(val)
     if not val then return "0" end
     
+    if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end
+    if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end
     if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end
     if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end
     if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end
@@ -333,8 +335,8 @@ task.spawn(function()
                     local targetID = args[1].mapId or args[1].toMapId
                     if targetID then 
                         local numID = tonumber(targetID) 
-                        -- Solo registramos mapas base de lobby (50001 - 50020). Ignoramos instancias.
-                        if numID and numID > 50000 and numID <= 50020 then 
+                        -- Solo registramos mapas base de lobby (50001 - 50021). Ignoramos instancias.
+                        if numID and numID > 50000 and numID <= 50021 then 
                             _G.LastSelectedMap = numID - 50000 
                         end 
                     end
@@ -1883,7 +1885,7 @@ end)
 -- =========================================================
 local MapPanel = Instance.new("Frame", Hub.ScreenGui)
 MapPanel.Name = "MapTeleportPanel"
-MapPanel.Size = UDim2.new(0, 160, 0, 335)
+MapPanel.Size = UDim2.new(0, 160, 0, 365)
 MapPanel.Position = UDim2.new(0.5, 270, 0.5, -167)
 MapPanel.BackgroundColor3 = Theme.Background
 MapPanel.Active = true
@@ -1913,18 +1915,17 @@ Instance.new("UICorner", MapCloseBtn).CornerRadius = UDim.new(0, 4)
 MapCloseBtn.MouseButton1Click:Connect(function() MapPanel.Visible = false end)
 
 local MapScroll = Instance.new("ScrollingFrame", MapPanel)
-MapScroll.Size = UDim2.new(1, -12, 1, -35)
-MapScroll.Position = UDim2.new(0, 6, 0, 30)
-MapScroll.BackgroundTransparency = 1
-MapScroll.ScrollBarThickness = 2
-MapScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local MapContainer = Instance.new("Frame", MapPanel)
+MapContainer.Size = UDim2.new(1, -12, 1, -35)
+MapContainer.Position = UDim2.new(0, 6, 0, 30)
+MapContainer.BackgroundTransparency = 1
 
-local MapGrid = Instance.new("UIGridLayout", MapScroll)
+local MapGrid = Instance.new("UIGridLayout", MapContainer)
 MapGrid.CellSize = UDim2.new(0.47, 0, 0, 26)
 MapGrid.CellPadding = UDim2.new(0.04, 0, 0, 4)
 
-for i = 1, 20 do
-    local btn = Instance.new("TextButton", MapScroll)
+for i = 1, 21 do
+    local btn = Instance.new("TextButton", MapContainer)
     btn.BackgroundColor3 = Theme.Secondary
     btn.Text = string.format("M %02d", i) 
     btn.TextColor3 = Theme.TextHighlight
