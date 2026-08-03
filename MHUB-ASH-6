@@ -3157,7 +3157,7 @@ TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", v
 end)
 
 -- Generador de Tablas para Grid
-local mapOpts = {} for i=1, 20 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
+local mapOpts = {} for i=1, 21 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
 local normOpts = {} for _, v in ipairs({"D", "B", "S", "SS", "G", "N", "M+", "M++", "XM", "ULT"}) do table.insert(normOpts, {Label = v}) end
 local ascOpts = {} for _, v in ipairs({"E", "D", "C", "B", "A", "S", "SS", "G", "N", "M"}) do table.insert(ascOpts, {Label = v}) end
 
@@ -3170,6 +3170,7 @@ local HardRaidsList = {
     "N-14-M+", "N-14-M++", "N-15-M+", "N-15-M++", "N-16-M+", "N-16-M++", "N-17-M+", "N-17-M++", 
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
     "N-20-B", "N-20-S", "N-20-G", "N-20-N", "N-20-M+", "N-20-M++",
+    "N-21-B", "N-21-S", "N-21-G", "N-21-N", "N-21-M+", "N-21-M++",
     "A-11-C", "A-11-S", "A-11-G", "A-11-N", "A-11-M", "A-12-C", "A-12-S", "A-12-G", "A-12-N", "A-12-M",
     "A-13-C", "A-13-S", "A-13-G", "A-13-N", "A-13-M", "A-14-C", "A-14-S", "A-14-G", "A-14-N", "A-14-M",
     "A-15-C", "A-15-S", "A-15-G", "A-15-N", "A-15-M", "A-16-C", "A-16-S", "A-16-G", "A-16-N", "A-16-M",
@@ -3183,7 +3184,7 @@ TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSett
 
 -- Runas UI (Compacto)
 TabAutoRaid:CreateLabel("Uso de Runas")
-local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 
 local function CreateRuneCycler(prefix, rankKey)
     local Frame = Instance.new("Frame", TabAutoRaid.Page)
@@ -3269,7 +3270,7 @@ local function GetBestGlobalRaid()
 
         -- Sistema de Scoring
         local score = 0
-        if isAsc and mapIdx == 16 and (rankStr == "A" or rankStr == "C") then
+        if isAsc and mapIdx == 18 and (rankStr == "M+" or rankStr == "M++") then
             score = 200000000 -- Prioridad Absoluta (A-16)
         elseif isVip then 
             score = 100000000 - (vipRank * 10000)
@@ -3666,7 +3667,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
                 LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
                 
-                if segundosPasados >= 20 then
+                if segundosPasados >= 5 then
                     LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
                     RaidState.ForceExit = true
                     RaidState.NoBossTimer = nil
