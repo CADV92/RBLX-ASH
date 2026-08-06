@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- CADV ULTIMATE v13.5 (PERFECTED BOSS RAID) + METRALLETA V8.6 (FINAL OPTIMIZED)
--- [OPT] Versión Anti-Memory Leak - Reutilización de Tablas, Sin Closures Anónimos
+-- [ACTUALIZADO CON SOPORTE M21 Y TP A COFRE]
 -- ==============================================================================
 
 -- [0] GESTIÓN DE CONEXIONES (PREVIENE DUPLICADOS AL RE-INYECTAR)
@@ -65,7 +65,7 @@ local Config = {
     Blacklist = {}
 }
 
-for i = 1, 20 do Config.AllowedMaps[i] = true end
+for i = 1, 21 do Config.AllowedMaps[i] = true end
 local ConfigFile = "config_mirrorhub.json"
 
 local function SaveConfig()
@@ -101,12 +101,12 @@ end
 LoadConfig()
 if type(Config.Runes) ~= "table" then Config.Runes = { ["D"] = 0, ["B"] = 0, ["S"] = 0, ["G"] = 0, ["N"] = 0, ["M+"] = 0, ["M++"] = 0 } end
 
--- DICCIONARIO DE BOSSES POR MAPA
+-- DICCIONARIO DE BOSSES POR MAPA (EXTENDIDO)
 local BossPorMapa = {
     [1] = "Goblin King", [2] = "Giant Arachnid Buryura", [3] = "Igris", [4] = "The Leader Of The Polar Bears",
     [5] = "Arch Lich", [6] = "Kargalgan", [7] = "baran", [8] = "Beru", [9] = "Giant Monarch",
     [10] = "Monarch of Plague", [11] = "Frostborne", [12] = "Legia", [13] = "Silas", [14] = "Yogumunt",
-    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly"
+    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]", [21] = "Goku[Super4]"
 }
 
 local BossPorMapaASC = {
@@ -114,7 +114,7 @@ local BossPorMapaASC = {
     [5] = "Monarch of Plague", [6] = "Monarch of Plague", [7] = "Frostborne", [8] = "Frostborne",
     [9] = "Legia", [10] = "Legia", [11] = "Silas", [12] = "Silas",
     [13] = "Yogumunt", [14] = "Yogumunt", [15] = "Antares", [16] = "Antares",
-    [17] = "Ashborn", [18] = "Ashborn"
+    [17] = "Ashborn", [18] = "Ashborn", [19] = "Dominion", [20] = "Dominion", [21] = "Dominion"
 }
 
 local CurrentRaidIsASC = false
@@ -123,7 +123,7 @@ local TargetList = {
     "Antares", "Arch Lich", "Ashborn", "Frostborne", "Frostborne1", 
     "Giant Arachnid Buryura", "Giant Monarch", "Igris", "Kargalgan", 
     "Legia", "Goblin King", "Monarch of Plague", "Silas", "Beru", "Broly",
-    "The Leader Of The Polar Bears", "Yogumunt", "baran", "Dominion", "Absolute"
+    "The Leader Of The Polar Bears", "Yogumunt", "baran", "Dominion", "Absolute", "Goku[Super4]"
 }
 
 -- [OPT] Set para lookup O(1)
@@ -305,6 +305,7 @@ local function ParseRaidID(mapId, raidId)
     else 
         isAsc = false; lvlRaw = raidId - 930000 - ((mapIndex - 1) * 10) 
     end
+    if lvlRaw < 1 then lvlRaw = 1 end
     local rankStr = isAsc and (RanksMapASC[lvlRaw] or "?") or (RanksMapNormal[lvlRaw] or "?")
     return mapIndex, rankStr, isAsc, lvlRaw
 end
@@ -335,7 +336,7 @@ local function GetBestGlobalRaid()
             if Config.Priority == "MAP" then score = score + (Config.Order == "HIGHEST" and ((mapIdx * 100) + gradeVal) or (((20 - mapIdx) * 100) + gradeVal))
             else score = score + (Config.Order == "HIGHEST" and ((gradeVal * 1000) + mapIdx) or (((20 - gradeVal) * 1000) + mapIdx)) end
         else
-            if isAsc then score = score + 10000000 end -- [+10M Prioridad Absoluta ASC]
+            if isAsc then score = score + 10000000 end 
             if Config.Priority == "MAP" then score = score + (Config.Order == "HIGHEST" and ((mapIdx * 100) + gradeVal) or (((20 - mapIdx) * 100) + gradeVal))
             else score = score + (Config.Order == "HIGHEST" and ((gradeVal * 1000) + mapIdx) or (((20 - gradeVal) * 1000) + mapIdx)) end
         end
@@ -597,17 +598,15 @@ FSection = Instance.new("Frame", MainFrame)
 FSection.Size = UDim2.new(0, 75, 1, -25); FSection.Position = UDim2.new(0, 5, 0, 22); FSection.BackgroundColor3 = Colors.Sidebar; Instance.new("UICorner", FSection); FSection.BackgroundTransparency = 0.5
 FLayout = Instance.new("UIGridLayout", FSection); FLayout.CellSize = UDim2.new(0, 32, 0, 22); FLayout.CellPadding = UDim2.new(0, 2, 0, 2); FLayout.HorizontalAlignment = "Center"
 
-for i = 1, 20 do
+for i = 1, 21 do
     local mBtn = Instance.new("TextButton", FSection)
     mBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40); mBtn.Text = "M"..i; mBtn.TextColor3 = Colors.TextWhite; mBtn.Font = "GothamBold"; mBtn.TextSize = 11; Instance.new("UICorner", mBtn, UDim.new(0,3))
     local capturedI = i 
     mBtn.MouseButton1Click:Connect(function() 
-        -- SOLUCIÓN 1: Evitar TP al mismo mapa
         if _G.LastSelectedMap ~= capturedI then
             _G.LastSelectedMap = capturedI
             pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + capturedI}) end)
             
-            -- Seguro de desanclaje forzado después de 1 segundo
             task.delay(1.5, function()
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then
@@ -674,7 +673,7 @@ FLayout = Instance.new("UIListLayout", FilterScroll); FLayout.Padding = UDim.new
 FHeader = Instance.new("TextLabel", FilterScroll); FHeader.Size=UDim2.new(1,0,0,15); FHeader.BackgroundTransparency=1; FHeader.Text="MAPAS"; FHeader.TextColor3=Colors.TextWhite; FHeader.Font="GothamBlack"; FHeader.TextSize=10; FHeader.LayoutOrder=1
 FSection = Instance.new("Frame", FilterScroll); FSection.Size=UDim2.new(1,0,0,75); FSection.BackgroundTransparency=1; FSection.LayoutOrder=2
 FLayout = Instance.new("UIGridLayout", FSection); FLayout.CellSize = UDim2.new(0, 29, 0, 20); FLayout.CellPadding = UDim2.new(0, 3, 0, 3)
-for i=1,20 do
+for i=1,21 do
     local capturedI = i 
     local b=Instance.new("TextButton",FSection); b.Text=tostring(i); b.BackgroundColor3=Config.AllowedMaps[i] and Colors.HpGreen or Colors.ButtonFarm; b.TextColor3=Colors.TextWhite; Instance.new("UICorner",b)
     b.MouseButton1Click:Connect(function() Config.AllowedMaps[capturedI]=not Config.AllowedMaps[capturedI]; b.BackgroundColor3=Config.AllowedMaps[capturedI] and Colors.HpGreen or Colors.ButtonFarm; SaveConfig() end)
@@ -720,6 +719,8 @@ local HardRaidsList = {
     "N-14-M+", "N-14-M++", "N-15-M+", "N-15-M++",
     "N-16-M+", "N-16-M++", "N-17-M+", "N-17-M++", "N-18-S", "N-18-G",
     "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
+    "N-20-B", "N-20-S", "N-20-G", "N-20-N", "N-20-M+", "N-20-M++",
+    "N-21-D", "N-21-B", "N-21-S", "N-21-G", "N-21-N", "N-21-M+", "N-21-M++",
     "A-11-C", "A-11-S", "A-11-G", "A-11-N", "A-11-M",
     "A-12-C", "A-12-S", "A-12-G", "A-12-N", "A-12-M",
     "A-13-C", "A-13-S", "A-13-G", "A-13-N", "A-13-M",
@@ -728,7 +729,9 @@ local HardRaidsList = {
     "A-16-C", "A-16-S", "A-16-G", "A-16-N", "A-16-M",
     "A-17-E", "A-17-D", "A-17-C", "A-17-S", "A-17-G", "A-17-N", "A-17-M",
     "A-18-E", "A-18-D", "A-18-C", "A-18-S", "A-18-G", "A-18-N", "A-18-M",
-    "A-19-E", "A-19-D", "A-19-C", "A-19-S", "A-19-G", "A-19-N", "A-19-M"
+    "A-19-E", "A-19-D", "A-19-C", "A-19-S", "A-19-G", "A-19-N", "A-19-M",
+    "A-20-E", "A-20-D", "A-20-C", "A-20-S", "A-20-G", "A-20-N", "A-20-M",
+    "A-21-E", "A-21-D", "A-21-C", "A-21-S", "A-21-G", "A-21-N", "A-21-M"
 }
 
 for _, combo in ipairs(HardRaidsList) do
@@ -753,7 +756,7 @@ VipInput.FocusLost:Connect(function() local txt = VipInput.Text local newList = 
 FHeader = Instance.new("TextLabel", FilterScroll); FHeader.Size=UDim2.new(1,0,0,15); FHeader.BackgroundTransparency=1; FHeader.Text="USO DE RUNAS (NORMAL)"; FHeader.TextColor3=Colors.HpGreen; FHeader.Font="GothamBlack"; FHeader.TextSize=10; FHeader.LayoutOrder=11
 FSection = Instance.new("Frame", FilterScroll); FSection.Size=UDim2.new(1,0,0,180); FSection.BackgroundTransparency=1; FSection.LayoutOrder=12
 local RuneListUI = {"D", "B", "S", "G", "N", "M+", "M++"}
-local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19}
+local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 for i, rank in ipairs(RuneListUI) do
     local capturedRank = rank
     Row = Instance.new("Frame", FSection); Row.Size = UDim2.new(1, 0, 0, 20); Row.Position = UDim2.new(0, 0, 0, (i-1)*25); Row.BackgroundTransparency = 1
@@ -1155,7 +1158,7 @@ end
 
 task.spawn(function() while ScriptRunning do if AuraActivada then EjecutarAura(); task.wait(ModoSecuencial and 0.05 or 0.3) else task.wait(0.1) end end end)
 
--- [11] MOTOR AUTO RAID (BOSS STRICT LOGIC)
+-- [11] MOTOR AUTO RAID (BOSS STRICT LOGIC + COFRE Y EXTRACCION)
 local function HandleRaidReward()
     local pGui = LocalPlayer:WaitForChild("PlayerGui", 5) 
     if not pGui then return false end
@@ -1320,7 +1323,7 @@ end)
 
 task.spawn(function()
     while ScriptRunning do
-        local tpEjecutado = false -- Bandera de sincronización
+        local tpEjecutado = false 
         
         -- [ Lógica de AutoTP ]
         if AutoTP and not IsInRaidInstance and not IsProcessingRaid and not RaidCooldownActive then
@@ -1336,7 +1339,6 @@ task.spawn(function()
                         _G.LastSelectedMap = bestRaid.mapIdx
                         tpEjecutado = true
                         
-                        -- [NUEVO] Secuencia asíncrona para no congelar el loop principal
                         task.delay(4.5, function()
                             local char = LocalPlayer.Character
                             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -1384,38 +1386,67 @@ task.spawn(function()
                 end
                 if ForceExit or (BossDeathTimestamp and (tick() - BossDeathTimestamp) > 3) then
                     NoBossTimer = nil 
-                    pcall(function() game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("GainRaidsRewards"):InvokeServer({1}) end)
-                    HandleRaidReward() 
                     IsProcessingRaid = true 
-                    LblStatus.Text = "🚀 FORZANDO SALIDA..."
+                    LblStatus.Text = "🎁 BUSCANDO COFRE Y COBRANDO..."
                     
-                    -- [NUEVO] Todo el proceso de salida y desbugueo encapsulado en un único hilo
                     task.spawn(function()
+                        -- [ACTUALIZACIÓN] Lógica de TP y Reclamación de Cofre Integrada de la versión NW
+                        local char = LocalPlayer.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            local cofreEncontrado = false
+                            for _, v in pairs(Workspace:GetDescendants()) do
+                                if v:IsA("Model") or v:IsA("BasePart") then
+                                    local name = v.Name:lower()
+                                    if name:match("chest") or name:match("reward") or name:match("loot") then
+                                        if v:IsA("BasePart") then
+                                            root.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                                            cofreEncontrado = true
+                                            break
+                                        elseif v:IsA("Model") and v.PrimaryPart then
+                                            root.CFrame = v.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
+                                            cofreEncontrado = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                            if cofreEncontrado then task.wait(0.5) end
+                        end
+                        
+                        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                        if pGui and pGui:FindFirstChild("RaidsFightPanel") then 
+                            pGui.RaidsFightPanel.Enabled = false 
+                        end
+                        pcall(function() game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("GainRaidsRewards"):InvokeServer({1}) end)
+                        task.wait(1.5)
+                        
+                        LblStatus.Text = "🚀 FORZANDO SALIDA..."
+
                         local mapTarget = 50000 + (_G.LastSelectedMap or 1)
                         local intentos = 0
                         while IsProcessingRaid and ScriptRunning and intentos < 5 do
                             intentos = intentos + 1
                             local success = pcall(function() 
                                 if QuitRaidRemote then QuitRaidRemote:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end
+                                if TravelRemote then TravelRemote:FireServer({["mapId"] = mapTarget}) end
                             end)
                             if success then break end
                             task.wait(1.5)
                         end
                         
-                        -- Espera de seguridad asíncrona (reemplaza al loop for bloqueante)
                         task.wait(3.0)
                         
-                        -- Limpieza física estricta (Evita el bug del personaje atrapado o flotando)
-                        local char = LocalPlayer.Character
-                        if char then
-                            local root = char:FindFirstChild("HumanoidRootPart")
-                            local hum = char:FindFirstChild("Humanoid")
-                            if root then
-                                root.Anchored = false
-                                root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        local current_char = LocalPlayer.Character
+                        if current_char then
+                            local c_root = current_char:FindFirstChild("HumanoidRootPart")
+                            local c_hum = current_char:FindFirstChild("Humanoid")
+                            if c_root then
+                                c_root.Anchored = false
+                                c_root.AssemblyLinearVelocity = Vector3.new(0,0,0)
                             end
-                            if hum then
-                                hum.PlatformStand = false
+                            if c_hum then
+                                c_hum.PlatformStand = false
                             end
                         end
                         
@@ -1423,21 +1454,21 @@ task.spawn(function()
                         BossDeathTimestamp = nil
                         ForceExit = false
                         IsProcessingRaid = false
+                        LblStatus.Text = "🏠 EXTRAÍDO EXITOSAMENTE."
+                        
                     end)
                     
-                    -- Espera de viaje (Pantalla de carga)
-                    for i = Config.TravelTime + 2, 1, -1 do -- Agregué +2s de seguridad
+                    for i = Config.TravelTime + 2, 1, -1 do 
                         if not ScriptRunning then break end
                         LblStatus.Text = "⏳ VIAJE (" .. i .. ")"
                         task.wait(1) 
                     end
                     
-                    -- Seguro Anti-Atoro Post-Raid
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        char.HumanoidRootPart.Anchored = false
-                        if char:FindFirstChild("Humanoid") then
-                            char.Humanoid.PlatformStand = false
+                    local post_char = LocalPlayer.Character
+                    if post_char and post_char:FindFirstChild("HumanoidRootPart") then
+                        post_char.HumanoidRootPart.Anchored = false
+                        if post_char:FindFirstChild("Humanoid") then
+                            post_char.Humanoid.PlatformStand = false
                         end
                     end
                     
@@ -1446,7 +1477,6 @@ task.spawn(function()
                     ForceExit = false
                     IsProcessingRaid = false
                     
-                    -- Pausa extra antes de soltar a AutoTP para que no se atragante
                     task.wait(1)
                 elseif bossVivo then 
                     LblStatus.Text = "⚔️ PELEANDO CON " .. expectedBossName 
@@ -1564,7 +1594,6 @@ end))
 local EsperandoRespawn = false
 local BossMuertoRaidTrack = false 
 
--- [NUEVO] Función dinámica para mantener el Glitch vivo siempre
 local function AsignarAutoRef(ignorarInstancia)
     local mobs = ObtenerNombresNumerados()
     for _, data in ipairs(mobs) do
@@ -1601,7 +1630,7 @@ task.spawn(function()
                         TargetREFInst = nuevoRef.instancia
                         CurrentREF = nuevoRef.instancia
                         if BtnRef then BtnRef.Text = nuevoRef.id .. " ˅"; BtnRef.TextColor3 = MetColors.Active end
-                        RefreshTeam(true) -- Re-buggear el daño inmediatamente
+                        RefreshTeam(true) 
                     else
                         CurrentREF = nil
                         TargetREFName = nil
@@ -1637,7 +1666,6 @@ task.spawn(function()
                 else if BtnKill then BtnKill.Text = "Matando: " .. TargetKILLName end end
 
             elseif CurrentMode == "TORRE" then
-                -- Mantenemos intacta tu función avanzada de Torre
                 if CurrentKILL and not EstaMuerto(CurrentKILL) then
                     LastTorreKill = CurrentKILL
                 elseif LastTorreKill and EstaMuerto(LastTorreKill) and not IsResettingTower then
@@ -1653,7 +1681,6 @@ task.spawn(function()
                             pcall(function() Remotes:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
                             
                             task.wait(3.5)
-                            -- [NUEVO] Limpieza física en Mapa 2 para evitar bloqueo de secuencias
                             local char = LocalPlayer.Character
                             if char and char:FindFirstChild("HumanoidRootPart") then
                                 char.HumanoidRootPart.Anchored = false
@@ -1661,7 +1688,7 @@ task.spawn(function()
 
                             LblStatus.Text = "🚀 TORRE: ENTRANDO A MI TORRE..."
                             local miTorreArgs = {{ mapId = 50301, hostId = LocalPlayer.UserId }}
-                            local successArgs = {{ slotIndex = 1, mapId = 50301 }} -- [NUEVO] Argumentos de validación
+                            local successArgs = {{ slotIndex = 1, mapId = 50301 }} 
 
                             pcall(function() Remotes:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end)
                             task.wait(0.3)
@@ -1670,11 +1697,9 @@ task.spawn(function()
                             pcall(function() Remotes:WaitForChild("EquipHeroWithData"):FireServer() end)
                             task.wait(1)
                             
-                            -- [NUEVO] Invocación correcta con argumentos para que el servidor no congele el hilo
                             pcall(function() Remotes:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
                             
                             task.wait(2)
-                            -- [NUEVO] Limpieza física final al llegar a la Torre
                             if char and char:FindFirstChild("HumanoidRootPart") then
                                 char.HumanoidRootPart.Anchored = false
                                 if char:FindFirstChild("Humanoid") then
