@@ -2182,7 +2182,7 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
 end)
 
 -- ==============================================================================
--- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - CON MODO BOSS)
+-- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - CON FOCUS BOSS)
 -- ==============================================================================
 local TabAutoRaid = Hub:CreateTab("Incursiones")
 
@@ -2201,7 +2201,8 @@ local RaidState = {
     ExitTriggered = false,
     ExitTime = 0,
     ClaimPosition = nil,
-    CurrentBossMap = nil
+    CurrentBossMap = nil,
+    BossInst = nil -- Instancia del Boss actual
 }
 
 local LblRaidStatus = TabAutoRaid:CreateLabel("Estado: Esperando órdenes...")
@@ -2338,6 +2339,38 @@ local function RefreshTeam()
         pcall(function() if equip then equip:FireServer() end end)
     end)
 end
+
+-- ==========================================
+-- TAREA DEDICADA: FOCUS BOSS ATTACK
+-- ==========================================
+task.spawn(function()
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local CEnemyRem = Remotes:FindFirstChild("ClickEnemy")
+    local PAttackRem = Remotes:FindFirstChild("PlayerClickAttackSkill")
+    local PAttackBase = Remotes:FindFirstChild("PlayerClickAttack")
+
+    while HubRunning do
+        task.wait(0.1)
+        if Config.RaidSettings.AutoRaid and RaidState.IsInInstance and RaidState.BossInst and not Utils.EstaMuerto(RaidState.BossInst) then
+            local eGuid = Utils.GetGUID(RaidState.BossInst)
+            local bossRoot = RaidState.BossInst:FindFirstChild("HumanoidRootPart")
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if eGuid and bossRoot and myRoot then
+                -- Teleport continuo a la espalda del boss
+                myRoot.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 5)
+                myRoot.AssemblyLinearVelocity = Vector3.zero
+
+                -- Spam de ataques al boss
+                pcall(function()
+                    if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = RaidState.BossInst }) end
+                    if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                    if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                end)
+            end
+        end
+    end
+end)
 
 -- ==========================================
 -- MOTOR DE PUNTUACIÓN Y TP
@@ -2515,6 +2548,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LastBossPos = nil
             RaidState.IsProcessing = false
             RaidState.EntryTime = 0
+            RaidState.BossInst = nil
             
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
@@ -2547,7 +2581,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end)
             end
         else
-            LblRaidStatus.Text = string.format("📡 Buscando raids... (%d activas)", totalActive or 0)
+            LblRaidStatus.Text = string.format("💤 Raids en Descanso (5 min). Esperando...", totalActive or 0)
         end
     end
 
@@ -2557,7 +2591,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         
         local bestRaid, totalActive = GetBestGlobalRaid()
         if totalActive == 0 then
-            LblRaidStatus.Text = "💤 Raids Cerradas. Esperando apertura..."
+            LblRaidStatus.Text = "💤 Raids en Descanso (5 min). Esperando..."
             return 
         end
         
@@ -2645,16 +2679,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     RaidState.ExitTime = 0
                     RaidState.NoBossTimer = nil
                     LastBossPos = nil
+                    RaidState.BossInst = nil
                     RaidState.SawBossAlive = false
                     
-                    -- Implementación del modo BOSS (TP automático y re-equip)
                     task.spawn(function()
                         task.wait(1.5)
                         if HubRunning and RaidState.IsInInstance then
                             if Config.RaidSettings.AutoReequip then RefreshTeam() end
-                            if LastBossPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                LocalPlayer.Character.HumanoidRootPart.CFrame = LastBossPos * CFrame.new(0, 0, 5)
-                            end
                             pcall(function()
                                 local count = 0
                                 for _, obj in pairs(Workspace:GetDescendants()) do 
@@ -2704,10 +2735,11 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob and mob.Name and string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true) then
+                    if expectedBoss and mob.Name:lower():find(expectedBoss:lower()) then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then 
                             bossAlive = true 
+                            RaidState.BossInst = mob -- Almacenamos el boss para el Hilo de Ataque
                             local bossRoot = mob:FindFirstChild("HumanoidRootPart")
                             if bossRoot then LastBossPos = bossRoot.CFrame end
                             break 
@@ -2716,6 +2748,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then
                             bossAlive = true
+                            RaidState.BossInst = mob
                             LastBossPos = mob.HumanoidRootPart.CFrame
                             break
                         end
@@ -2731,7 +2764,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 if RaidState.SawBossAlive then
                     RaidState.NoBossTimer = nil 
                     if not RaidState.BossDeathTime then 
-                        RaidState.BossDeathTime = tick() 
+                        RaidState.BossDeathTime = tick()
+                        RaidState.BossInst = nil -- Limpiamos el boss del Hilo de Ataque
                         LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
                         
                         task.spawn(function()
@@ -2876,6 +2910,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 RaidState.ForceExit = false
                 RaidState.IsProcessing = false
                 RaidState.ExitTriggered = false
+                RaidState.BossInst = nil
                 
                 if extractSuccess then
                     LblRaidStatus.Text = "🏠 Extraído exitosamente."
