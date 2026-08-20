@@ -2182,9 +2182,11 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
 end)
 
 -- ==============================================================================
--- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - SIN COMBATE)
+-- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - CON MODO BOSS)
 -- ==============================================================================
 local TabAutoRaid = Hub:CreateTab("Incursiones")
+
+Config.RaidSettings.AutoReequip = Config.RaidSettings.AutoReequip or false
 
 local RaidState = {
     IsProcessing = false,
@@ -2218,6 +2220,9 @@ local BtnAutoTP = TabAutoRaid:CreateLargeToggle(
     Config.RaidSettings.AutoTP, 
     function(state) Config.RaidSettings.AutoTP = state end
 )
+
+-- Integración Toggle Reequipado de Héroes
+TabAutoRaid:CreateSideToggle("REEQUIPAR HÉROES EN RAID", Config.RaidSettings.AutoReequip, function(state) Config.RaidSettings.AutoReequip = state; SaveConfig() end)
 
 TabAutoRaid:CreateLabel("Lógica de Búsqueda")
 TabAutoRaid:CreateRadioButtons("Priorizar por:", {"MAP", "GRADE"}, Config.RaidSettings.Priority == "MAP" and 1 or 2, function(opt)
@@ -2271,7 +2276,7 @@ local HardRaidsList = {
 local blackOpts = {} for _, v in ipairs(HardRaidsList) do table.insert(blackOpts, {Label = v, Key = v}) end
 TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSettings.Blacklist)
 
--- Runas UI (Compacto)
+-- Runas UI
 TabAutoRaid:CreateLabel("Uso de Runas")
 local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 
@@ -2318,6 +2323,23 @@ for _, r in ipairs({"D", "B", "S", "G", "N", "M+", "M++"}) do CreateRuneCycler("
 for _, r in ipairs({"E", "D", "C", "A", "S", "G", "N"}) do CreateRuneCycler("ASC", "ASC_" .. r) end
 
 -- ==========================================
+-- MOTOR DE REFRESH DE EQUIPO Y HEROES
+-- ==========================================
+local LastRefreshTime = 0
+local function RefreshTeam()
+    if tick() - LastRefreshTime < 2 then return end
+    LastRefreshTime = tick()
+    task.spawn(function()
+        local remotes = ReplicatedStorage:WaitForChild("Remotes")
+        local unequip = remotes:FindFirstChild("UnequipAllHero") or remotes:FindFirstChild("UnequipAll")
+        local equip = remotes:FindFirstChild("AutoEquipBestHero") or remotes:FindFirstChild("EquipBest")
+        pcall(function() if unequip then unequip:FireServer() end end)
+        task.wait(0.6)
+        pcall(function() if equip then equip:FireServer() end end)
+    end)
+end
+
+-- ==========================================
 -- MOTOR DE PUNTUACIÓN Y TP
 -- ==========================================
 local function GetBestGlobalRaid()
@@ -2328,7 +2350,6 @@ local function GetBestGlobalRaid()
         
         local mapIdx = mapId > 50000 and (mapId - 50000) or mapId
         
-        -- FIX 1: Lógica blindada igual a ParseRaidID (evita que lvlRaw sea 0 o negativo)
         local isAsc = false; local lvlRaw = 1
         if info.raidId and info.raidId >= 935000 then 
             isAsc = true; lvlRaw = info.raidId - 935000 - (mapIdx * 100)
@@ -2341,26 +2362,22 @@ local function GetBestGlobalRaid()
         local modeStr = isAsc and "A" or "N"
         local raidKey = modeStr .. "-" .. tostring(mapIdx) .. "-" .. rankStr
         
-        -- FIX 2: Chequeo de mapas dual. Soporta la lectura del config como String y como Int (JSON safety)
         if not Config.RaidSettings.AllowedMaps[mapIdx] and not Config.RaidSettings.AllowedMaps[tostring(mapIdx)] then continue end
         
-        -- Validadores de Grado y Modalidad
         if isAsc and not Config.RaidSettings.AllowedGradesASC[rankStr] then continue end
         if not isAsc and not Config.RaidSettings.AllowedGradesNormal[rankStr] then continue end
         if isAsc and not Config.RaidSettings.AllowedModes.ASC then continue end
         if not isAsc and not Config.RaidSettings.AllowedModes.Normal then continue end
         if Config.RaidSettings.Blacklist[raidKey] then continue end
 
-        -- Evaluadores Especiales
         local isVip, vipRank = false, 0
         local runeKey = isAsc and ("ASC_" .. rankStr) or rankStr
         local isRuneTarget = Config.RaidSettings.Runes[runeKey] and (Config.RaidSettings.Runes[runeKey] > 0)
         for idx, vKey in ipairs(Config.RaidSettings.VipList) do if raidKey == vKey then isVip = true; vipRank = idx; break end end
 
-        -- Sistema de Scoring
         local score = 0
         if isAsc and mapIdx == 18 and (rankStr == "M+" or rankStr == "M++") then
-            score = 200000000 -- Prioridad Absoluta (A-16)
+            score = 200000000 
         elseif isVip then 
             score = 100000000 - (vipRank * 10000)
         elseif isRuneTarget then
@@ -2419,7 +2436,6 @@ local BossPorMapaASC = {
 }
 local CurrentRaidIsASC = false
 
--- [INTEGRACIÓN NUEVA] Manejador Avanzado de Pantallas de Raid (Basado en tu código)
 local function HandleRaidRewardUI()
     local pGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not pGui then return false end
@@ -2429,7 +2445,6 @@ local function HandleRaidRewardUI()
         local settlement = raidPanel:FindFirstChild("SettlementFrame")
         local defeatFrame = raidPanel:FindFirstChild("Defeat")
         
-        -- Refuerzo del cobro por si el trigger principal falló
         pcall(function() ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GainRaidsRewards"):InvokeServer({1}) end)
         
         if settlement and settlement.Visible then
@@ -2486,11 +2501,9 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     -- [CORRECCIÓN COOLDOWN] Detección de regreso al lobby
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
-            -- Calculamos cuánto tiempo pasó desde que creamos/entramos a la raid
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
 
-            -- Limpiamos todo el estado de la raid
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
             RaidState.ForceExit = false
@@ -2506,7 +2519,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
             
-            -- INICIAMOS EL COOLDOWN SOLO SI AÚN QUEDAN SEGUNDOS PENDIENTES
             if cdRestante > 0 then
                 LblRaidStatus.Text = "❄️ CD del Servidor (" .. math.ceil(cdRestante) .. "s)"
                 HandleRaidCooldown(cdRestante)
@@ -2526,7 +2538,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = bestRaid.info.mapId}) end)
                 _G.LastSelectedMap = bestRaid.mapIdx
                 
-                -- [NUEVO] Tiempo extendido para cargar mapa y desanclaje físico
                 task.delay(4.5, function()
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -2607,17 +2618,16 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
 
-                -- [MEJORA] Validación estricta por magnitud de TP (Evidencia real de cambio de mapa)
                 LblRaidStatus.Text = "🎲 VALIDANDO ACCESO..." 
                 local checkStart = tick()
                 local tpSuccess = false
                 
-                while (tick() - checkStart) < 8 do 
+                while (tick() - checkStart) < 3.0 do 
                     task.wait(0.2)
                     if not HubRunning then return end
                     local currentChar = LocalPlayer.Character
                     if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                        -- Si la distancia desde el portal original es inmensa (> 3000), significa que viajamos al mapa de la Raid
+                        -- Validación por variación significativa de coordenadas
                         if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 3000 then 
                             tpSuccess = true
                             break 
@@ -2637,8 +2647,14 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     LastBossPos = nil
                     RaidState.SawBossAlive = false
                     
-                    task.delay(1.5, function()
+                    -- Implementación del modo BOSS (TP automático y re-equip)
+                    task.spawn(function()
+                        task.wait(1.5)
                         if HubRunning and RaidState.IsInInstance then
+                            if Config.RaidSettings.AutoReequip then RefreshTeam() end
+                            if LastBossPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                LocalPlayer.Character.HumanoidRootPart.CFrame = LastBossPos * CFrame.new(0, 0, 5)
+                            end
                             pcall(function()
                                 local count = 0
                                 for _, obj in pairs(Workspace:GetDescendants()) do 
@@ -2658,7 +2674,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     end)
                 else
                     LblRaidStatus.Text = "⚠️ Falla al entrar."
-                    HandleRaidCooldown(5) -- Aumentado a 5s para prevenir spam al servidor
+                    HandleRaidCooldown(5)
                 end
                 
                 RaidState.IsProcessing = false
@@ -2694,28 +2710,25 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             bossAlive = true 
                             local bossRoot = mob:FindFirstChild("HumanoidRootPart")
                             if bossRoot then LastBossPos = bossRoot.CFrame end
-                            break -- [MODIFICADO] Solo se detiene si lo encuentra VIVO. Si está muerto, sigue buscando.
+                            break 
                         end
                     elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then
                             bossAlive = true
                             LastBossPos = mob.HumanoidRootPart.CFrame
-                            break -- [MODIFICADO]
+                            break
                         end
                     end
                 end
             end
 
-            -- [MODIFICADO] Lógica estricta de validación
             if bossAlive then
-                RaidState.SawBossAlive = true -- Registramos que el nuevo jefe ya apareció
+                RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
                 LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
             elseif bossFound and not bossAlive then
-                -- Hay un cuerpo, pero debemos verificar si es el jefe nuevo o el de la raid anterior
                 if RaidState.SawBossAlive then
-                    -- Si lo vimos vivo en esta misma raid, entonces sí es el jefe que acabamos de derrotar
                     RaidState.NoBossTimer = nil 
                     if not RaidState.BossDeathTime then 
                         RaidState.BossDeathTime = tick() 
@@ -2740,7 +2753,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         end)
                     end
                 else
-                    -- Nunca lo vimos vivo. Es un cuerpo viejo o levantado como sombra, lo ignoramos.
                     if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
                     local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
                     LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior. Esperando spawn (" .. segundosPasados .. "s)..."
@@ -2770,10 +2782,9 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.ExitTime = tick()
             RaidState.IsProcessing = true
             
-            -- Definimos el mapa de retorno exacto antes de que el script pierda el contexto
             local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
             local mapTarget = 50000 + safeMapIdx
-            _G.MapaOrigenAntesRuna = nil -- Limpiamos para no repetir
+            _G.MapaOrigenAntesRuna = nil
             
             LblRaidStatus.Text = "🎁 Buscando cofre y reclamando..."
             
@@ -2781,7 +2792,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local exitStartPos = root and root.Position or Vector3.zero
                 
-                -- [NUEVO] Paso 1: Buscar cofre y hacer TP
+                -- Paso 1: Buscar cofre y hacer TP
                 if root then
                     local cofreEncontrado = false
                     for _, v in pairs(Workspace:GetDescendants()) do
@@ -2800,16 +2811,16 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             end
                         end
                     end
-                    if cofreEncontrado then task.wait(0.5) end -- Breve pausa para asegurar registro de posición
+                    if cofreEncontrado then task.wait(0.5) end
                 end
                 
-                -- [NUEVO] Paso 2: Ocultar UI y Cobrar
+                -- Paso 2: Ocultar UI y Cobrar
                 local pGui = LocalPlayer:FindFirstChild("PlayerGui")
                 if pGui and pGui:FindFirstChild("RaidsFightPanel") then 
                     pGui.RaidsFightPanel.Enabled = false 
                 end
                 pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
-                task.wait(1.5) -- Esperar a que el servidor procese el cobro
+                task.wait(1.5) 
                 
                 LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
                 
@@ -2820,18 +2831,12 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
                     intentos = intentos + 1
                     
-                    -- 1. Intentamos salir formalmente de la raid primero
-                    pcall(function() 
-                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
-                    end)
+                    pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
+                    task.wait(1.0)
                     
-                    -- 2. Agregamos la pausa que sugeriste para evitar el solapamiento de peticiones
-                    task.wait(1.5)
-                    
-                    -- 3. Verificamos si realmente cambió de mapa (distancia inmensa)
                     local waitChecks = 0
-                    while waitChecks < 10 do
-                        task.wait(0.3)
+                    while waitChecks < 5 do
+                        task.wait(0.2)
                         waitChecks = waitChecks + 1
                         local char = LocalPlayer.Character
                         if char and char:FindFirstChild("HumanoidRootPart") then
@@ -2842,17 +2847,10 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         end
                     end
                     
-                    -- 4. Si el primero falló y aún no salimos, usamos el TP directo como rescate
-                    if not extractSuccess then
-                        pcall(function()
-                            ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget})
-                        end)
-                        task.wait(1.5) -- Esperamos a que el servidor procese este segundo intento
-                    else
-                        break -- Si ya salimos con éxito, rompemos el ciclo
-                    end
-                    
                     if extractSuccess then break end
+                    
+                    pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget}) end)
+                    task.wait(1.0)
                     LblRaidStatus.Text = "⚠️ Reintentando extracción ("..intentos.."/5)..."
                 end
                 
