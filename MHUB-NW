@@ -1286,14 +1286,19 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA
+-- [4] PESTAÑA: METRALLETA (CON ANIMATION CANCELING)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
 local MetState = {
     Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
-    ScannedMobsCache = {} 
+    ScannedMobsCache = {},
+    -- Variables del Cerebro Intermitente
+    InternalAttackActive = false,
+    LastClickedGUID = nil,
+    TIEMPO_ENCENDIDO = 0.30,
+    TIEMPO_APAGADO = 0.05
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1440,6 +1445,11 @@ TabMetralleta:CreateRadioButtons("Modo de Caza", {"SOLO", "SEC", "BOSS"}, modoMa
     Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
 end)
 
+TabMetralleta:CreateLabel("Ajuste de Animation Canceling")
+TabMetralleta:CreateSlider("Tiempo Ataque (ON) (10 = 0.1s)", 10, 100, 30, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
+TabMetralleta:CreateSlider("Tiempo Corte (OFF) (1 = 0.01s)", 1, 20, 5, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
+
+-- Lógica de rastreo de Targets
 task.spawn(function()
     while task.wait(0.5) do
         if not HubRunning then break end 
@@ -1497,7 +1507,6 @@ task.spawn(function()
                         task.spawn(function()
                             task.wait(1)
                             local rt = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                            -- if rt then rt.CFrame = rt.CFrame * CFrame.new(0, 0, -10) end
                             task.wait(0.2); MetCaza.BossEspera = false
                         end)
                         continue
@@ -1514,9 +1523,6 @@ task.spawn(function()
             end
         end
 
-        -- ====================================================================
-        -- [ NUEVO ]: Reasignación de Target de Referencia si muere prematuramente
-        -- ====================================================================
         if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
             if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
                 local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1524,9 +1530,7 @@ task.spawn(function()
                 if myRoot and fld then
                     local newRef = nil
                     local bestDist = math.huge
-                    
                     for _, enemy in pairs(fld:GetChildren()) do
-                        -- Buscamos el mob válido más cercano que NO sea el target a matar
                         if enemy ~= MetState.TargetKillInst and Utils.EsMobValido(enemy, myRoot, MetState.Limites) then
                             local dist = (enemy.HumanoidRootPart.Position - myRoot.Position).Magnitude
                             if dist < bestDist then
@@ -1535,7 +1539,6 @@ task.spawn(function()
                             end
                         end
                     end
-                    
                     MetState.TargetRefInst = newRef
                 end
             end
@@ -1579,7 +1582,7 @@ local metHbConn = RunService.Heartbeat:Connect(function()
     end
 
     if myRoot and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-        local targetPos, targetCFrame = MetState.TargetKillInst.HumanoidRootPart.Position, MetState.TargetKillInst.HumanoidRootPart.CFrame
+        local targetPos = MetState.TargetKillInst.HumanoidRootPart.Position
         
         myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
         myRoot.AssemblyLinearVelocity = Vector3.zero
@@ -1589,11 +1592,9 @@ local metHbConn = RunService.Heartbeat:Connect(function()
             if not MetCFrames[MetState.TargetRefInst] then 
                 MetCFrames[MetState.TargetRefInst] = refRoot.CFrame 
             end
-            
             refRoot.CFrame = myRoot.CFrame * CFrame.new(0, 25, 20)
             refRoot.AssemblyLinearVelocity = Vector3.zero
         end
-        
         
         local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
         if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
@@ -1611,27 +1612,100 @@ local metHbConn = RunService.Heartbeat:Connect(function()
 end)
 table.insert(Hub.Connections, metHbConn)
 
+-- ==========================================
+-- EL NÚCLEO: INYECCIÓN DE DAÑO (JUGADOR + HÉROES)
+-- ==========================================
+local function FireAttack(enemyInst, isRef)
+    local eGuid = Utils.GetGUID(enemyInst)
+    if not eGuid then return end
+    local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if not Remotes then return end
+
+    task.spawn(function()
+        pcall(function()
+            -- El reseteo del cooldown se aplica mediante el cerebro intermitente (solo al target principal)
+            if not isRef then
+                if MetState.LastClickedGUID ~= eGuid then
+                    MetState.LastClickedGUID = eGuid
+                    if Remotes:FindFirstChild("ClickEnemy") then 
+                        Remotes.ClickEnemy:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = enemyInst }) 
+                    end
+                end
+            else
+                if Remotes:FindFirstChild("ClickEnemy") then 
+                    Remotes.ClickEnemy:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = enemyInst }) 
+                end
+            end
+            
+            -- Habilidades de tu personaje
+            if Remotes:FindFirstChild("PlayerClickAttackSkill") then 
+                Remotes.PlayerClickAttackSkill:FireServer({ ["attackEnemyGUID"] = eGuid })
+                Remotes.PlayerClickAttackSkill:FireServer({ ["autoClickEnemyGUID"] = eGuid })
+            end
+            if Remotes:FindFirstChild("PlayerClickAttack") then 
+                Remotes.PlayerClickAttack:FireServer({ ["attackEnemyGUID"] = eGuid }) 
+            end
+
+            -- Habilidades bestiales de los Héroes
+            local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+            if heroesFolder then
+                local myHeroes = heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+                if myHeroes then
+                    for _, hero in pairs(myHeroes:GetChildren()) do
+                        local hGuid = Utils.GetGUID(hero)
+                        if hGuid and Remotes:FindFirstChild("HeroUseSkill") then
+                            Remotes.HeroUseSkill:FireServer({
+                                {
+                                    ["heroGuid"] = hGuid,
+                                    ["attackType"] = math.random(1, 3),
+                                    ["userId"] = LocalPlayer.UserId,
+                                    ["enemyGuid"] = eGuid
+                                }
+                            })
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+-- ==========================================
+-- CEREBRO INTERMITENTE (TIMER CANCELADOR)
+-- ==========================================
+task.spawn(function()
+    while HubRunning do
+        if MetState.Activo then
+            MetState.InternalAttackActive = true
+            task.wait(MetState.TIEMPO_ENCENDIDO)
+            
+            MetState.InternalAttackActive = false
+            MetState.LastClickedGUID = nil -- Borra el target para forzar el reinicio (cooldown bypass)
+            task.wait(MetState.TIEMPO_APAGADO)
+        else
+            MetState.InternalAttackActive = false
+            MetState.LastClickedGUID = nil
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- ==========================================
+-- DISPARADOR DE ATAQUES ASÍNCRONOS
+-- ==========================================
 task.spawn(function()
     local frames = 0
     while HubRunning do
         task.wait(MetState.Vel)
-        if MetState.Activo then
+        if MetState.Activo and MetState.InternalAttackActive then
             frames = frames + 1
-            local rGuid = (MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst)) and Utils.GetGUID(MetState.TargetRefInst) or nil
-            local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
-            if kGuid then
-                if rGuid and frames % 2 == 0 then
-                    task.spawn(function() pcall(function()
-                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
-                        if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid }) end
-                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) end
-                    end) end)
+            if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+                FireAttack(MetState.TargetKillInst, false)
+                
+                -- Se mantiene la mecánica de Target Splitting para no llamar la atención del sistema antihack
+                if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and frames % 2 == 0 then
+                    FireAttack(MetState.TargetRefInst, true)
                 end
-                task.spawn(function() pcall(function()
-                    if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
-                    if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid }) end
-                    if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
-                end) end)
             end
         end
     end
