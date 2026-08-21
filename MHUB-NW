@@ -1298,7 +1298,7 @@ local MetState = {
     InternalAttackActive = false,
     LastClickedGUID = nil,
     TIEMPO_ENCENDIDO = 0.30,
-    TIEMPO_APAGADO = 0.05
+    TIEMPO_APAGADO = 0.30
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
