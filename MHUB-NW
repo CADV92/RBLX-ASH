@@ -1286,7 +1286,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (CON ANIMATION CANCELING)
+-- [4] PESTAÑA: METRALLETA (CEREBRO INTERMITENTE 0.3s)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1294,10 +1294,11 @@ local MetState = {
     Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
     ScannedMobsCache = {},
+    -- Lógica Standalone: Cerebro Intermitente
     InternalAttackActive = false,
     LastClickedGUID = nil,
-    TIEMPO_ENCENDIDO = 0.30, -- Ajustado a 0.3s por defecto
-    TIEMPO_APAGADO = 0.30    -- Ajustado a 0.3s por defecto
+    TIEMPO_ENCENDIDO = 0.30, -- Tiempo de ataque
+    TIEMPO_APAGADO = 0.30    -- Tiempo de apagón/reset
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1445,10 +1446,12 @@ TabMetralleta:CreateRadioButtons("Modo de Caza", {"SOLO", "SEC", "BOSS"}, modoMa
 end)
 
 TabMetralleta:CreateLabel("Ajuste de Animation Canceling")
-TabMetralleta:CreateSlider("Tiempo Ataque (ON) (10 = 0.1s)", 10, 100, 30, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
-TabMetralleta:CreateSlider("Tiempo Corte (OFF) (10 = 0.1s)", 10, 100, 30, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
+TabMetralleta:CreateSlider("Tiempo Ataque (ON) (30 = 0.3s)", 10, 100, 30, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
+TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
 
--- Lógica de rastreo de Targets
+-- ==========================================
+-- BUCLE: LÓGICA DE RASTREO Y ASIGNACIÓN
+-- ==========================================
 task.spawn(function()
     while task.wait(0.5) do
         if not HubRunning then break end 
@@ -1522,6 +1525,7 @@ task.spawn(function()
             end
         end
 
+        -- Reasignación del Target de Referencia si muere prematuramente
         if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
             if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
                 local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1545,6 +1549,9 @@ task.spawn(function()
     end
 end)
 
+-- ==========================================
+-- BUCLE: POSICIONAMIENTO DEL JUGADOR
+-- ==========================================
 local metHbConn = RunService.Heartbeat:Connect(function()
     if not HubRunning then 
         RestaurarMetralleta()
@@ -1574,6 +1581,7 @@ local metHbConn = RunService.Heartbeat:Connect(function()
     end
 
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
     for mob, originalCF in pairs(MetCFrames) do
         if mob ~= MetState.TargetRefInst and typeof(mob) == "Instance" and mob.Parent and mob:FindFirstChild("HumanoidRootPart") then 
             mob.HumanoidRootPart.CFrame = originalCF; MetCFrames[mob] = nil 
@@ -1583,8 +1591,10 @@ local metHbConn = RunService.Heartbeat:Connect(function()
     if myRoot and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
         local targetPos = MetState.TargetKillInst.HumanoidRootPart.Position
         
+        -- Posicionamiento del Jugador
         myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
         myRoot.AssemblyLinearVelocity = Vector3.zero
+        myRoot.Anchored = true -- Equivalente a StabilizePlayer(true) del Standalone
         
         if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and MetState.TargetRefInst:FindFirstChild("HumanoidRootPart") then
             local refRoot = MetState.TargetRefInst.HumanoidRootPart
@@ -1595,11 +1605,10 @@ local metHbConn = RunService.Heartbeat:Connect(function()
             refRoot.AssemblyLinearVelocity = Vector3.zero
         end
         
+        -- Acercamiento seguro de Héroes
         local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
         if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
             for _, pet in pairs(heroesFolder["Hero_" .. tostring(LocalPlayer.UserId)]:GetChildren()) do
-                local hum = pet:FindFirstChildOfClass("Humanoid")
-                if hum then hum.WalkSpeed = 16 end 
                 local petRoot = pet:FindFirstChild("HumanoidRootPart")
                 if petRoot and (petRoot.Position - targetPos).Magnitude > 25 then 
                     petRoot.CFrame = CFrame.new(targetPos + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)), targetPos)
@@ -1607,12 +1616,14 @@ local metHbConn = RunService.Heartbeat:Connect(function()
                 end
             end
         end
+    else
+        if myRoot then myRoot.Anchored = false end
     end
 end)
 table.insert(Hub.Connections, metHbConn)
 
 -- ==========================================
--- EL NÚCLEO: INYECCIÓN DE DAÑO (JUGADOR + HÉROES)
+-- FUNCIÓN DE ATAQUE SILENCIOSO
 -- ==========================================
 local function FireAttack(enemyInst, isRef)
     local eGuid = Utils.GetGUID(enemyInst)
@@ -1622,8 +1633,8 @@ local function FireAttack(enemyInst, isRef)
 
     task.spawn(function()
         pcall(function()
-            -- El ClickEnemy SOLO se envía al target principal (KILL)
-            -- Esto evita que la IA cambie de objetivo y haga caminar a los héroes lejos[cite: 1]
+            -- PARA QUE LOS HÉROES NO SE VAYAN:
+            -- 1. El ClickEnemy se envía SOLO al TargetKillInst
             if not isRef then
                 if MetState.LastClickedGUID ~= eGuid then
                     MetState.LastClickedGUID = eGuid
@@ -1633,7 +1644,7 @@ local function FireAttack(enemyInst, isRef)
                 end
             end
             
-            -- Habilidades de tu personaje (Se envía a ambos para el Desync)
+            -- 2. Habilidades de tu personaje (Esto sí se envía a ambos para el Desync)
             if Remotes:FindFirstChild("PlayerClickAttackSkill") then 
                 Remotes.PlayerClickAttackSkill:FireServer({ ["attackEnemyGUID"] = eGuid })
                 Remotes.PlayerClickAttackSkill:FireServer({ ["autoClickEnemyGUID"] = eGuid })
@@ -1642,7 +1653,7 @@ local function FireAttack(enemyInst, isRef)
                 Remotes.PlayerClickAttack:FireServer({ ["attackEnemyGUID"] = eGuid }) 
             end
 
-            -- Habilidades de los Héroes SOLO al target principal para enfocar daño masivo
+            -- 3. Habilidades de los Héroes (Se envía SOLO al TargetKillInst para que lo rematen)
             if not isRef then
                 local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
                 if heroesFolder then
@@ -1669,7 +1680,7 @@ local function FireAttack(enemyInst, isRef)
 end
 
 -- ==========================================
--- CEREBRO INTERMITENTE (TIMER CANCELADOR)
+-- CEREBRO INTERMITENTE
 -- ==========================================
 task.spawn(function()
     while HubRunning do
@@ -1678,7 +1689,7 @@ task.spawn(function()
             task.wait(MetState.TIEMPO_ENCENDIDO)
             
             MetState.InternalAttackActive = false
-            MetState.LastClickedGUID = nil 
+            MetState.LastClickedGUID = nil -- Borra el target para forzar el bypass del cooldown
             task.wait(MetState.TIEMPO_APAGADO)
         else
             MetState.InternalAttackActive = false
@@ -1698,8 +1709,10 @@ task.spawn(function()
         if MetState.Activo and MetState.InternalAttackActive then
             frames = frames + 1
             if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+                -- Ataca al objetivo principal
                 FireAttack(MetState.TargetKillInst, false)
                 
+                -- Ataca al objetivo secundario de forma intermitente (Aggro Split)
                 if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and frames % 2 == 0 then
                     FireAttack(MetState.TargetRefInst, true)
                 end
