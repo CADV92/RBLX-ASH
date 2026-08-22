@@ -2780,22 +2780,37 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
 
+            -- [NUEVO] Función local ultra-estricta para confirmar la muerte (Inmune al texto "0 / 100")
+            local function EsJefeMuerto(mob)
+                if not mob or not mob.Parent or not mob:FindFirstChild("HumanoidRootPart") then return true end
+                local hum = mob:FindFirstChild("Humanoid")
+                if hum and hum.Health <= 0 then return true end
+                
+                local gui = mob.HumanoidRootPart:FindFirstChild("EnemyNameGui")
+                if gui and gui:FindFirstChild("Progress") and gui.Progress:FindFirstChild("HealthNum") then
+                    local txt = gui.Progress.HealthNum.Text
+                    -- Si está vacío, es "0", o empieza por "0/" o "0 /", está 100% muerto
+                    if txt == "" or txt == "0" or txt:match("^0%s*/") then return true end
+                end
+                
+                return false
+            end
+
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
                     if expectedBoss and mob and mob.Name then
-                        -- 1. Búsqueda Exacta (Filtro infalible contra corchetes y símbolos raros)
+                        -- 1. Búsqueda Exacta
                         local isMatch = (mob.Name == expectedBoss)
-                        
-                        -- 2. Respaldo Flexible (Texto plano ignorando mayúsculas)
+                        -- 2. Respaldo Flexible
                         if not isMatch then
                             isMatch = string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true)
                         end
 
                         if isMatch then
                             bossFound = true
-                            if not Utils.EstaMuerto(mob) then 
+                            if not EsJefeMuerto(mob) then 
                                 bossAlive = true 
-                                RaidState.BossInst = mob -- Almacenamos el boss para el Hilo de Ataque
+                                RaidState.BossInst = mob 
                                 local bossRoot = mob:FindFirstChild("HumanoidRootPart")
                                 if bossRoot then LastBossPos = bossRoot.CFrame end
                                 break 
@@ -2803,7 +2818,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         end
                     elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
-                        if not Utils.EstaMuerto(mob) then
+                        if not EsJefeMuerto(mob) then
                             bossAlive = true
                             RaidState.BossInst = mob
                             local rootFallback = mob:FindFirstChild("HumanoidRootPart")
@@ -2814,18 +2829,21 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end
             end
 
-            -- Lógica estricta de validación
+            -- [NUEVO] Lógica de validación de Estados a prueba de fallos
             if bossAlive then
+                -- EL JEFE ESTÁ VIVO
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
                 LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
-            elseif bossFound and not bossAlive then
+            else
+                -- EL JEFE NO ESTÁ VIVO (Puede ser un cadáver, o desapareció del mapa)
                 if RaidState.SawBossAlive then
+                    -- Ya lo vimos vivo. Como ahora no está, ¡SIGNIFICA QUE LO MATAMOS!
                     RaidState.NoBossTimer = nil 
                     if not RaidState.BossDeathTime then 
                         RaidState.BossDeathTime = tick()
                         RaidState.BossInst = nil -- Limpiamos el boss del Hilo de Ataque
-                        LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
+                        LblRaidStatus.Text = "💀 Jefe Derrotado o Desaparecido. Cobrando..."
                         
                         task.spawn(function()
                             task.wait(1.5)
@@ -2840,31 +2858,34 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             
                             task.wait(1.5)
                             if RaidState.IsInInstance and not RaidState.ExitTriggered then
-                                LblRaidStatus.Text = "Recompensa no hallada. Forzando salida..."
+                                LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
                                 RaidState.ForceExit = true
                             end
                         end)
                     end
                 else
+                    -- NUNCA LO VIMOS VIVO (Esperando Spawn o es un cuerpo viejo bugueado)
                     if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
                     local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
-                    LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior. Esperando spawn (" .. segundosPasados .. "s)..."
                     
-                    if segundosPasados >= 20 then
-                        LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
-                        RaidState.ForceExit = true
-                        RaidState.NoBossTimer = nil
+                    if bossFound then
+                        LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior (" .. segundosPasados .. "s)..."
+                    else
+                        LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
                     end
-                end
-            elseif not bossFound and not RaidState.BossDeathTime then
-                if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
-                local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
-                LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
-                
-                if segundosPasados >= 20 then
-                    LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
-                    RaidState.ForceExit = true
-                    RaidState.NoBossTimer = nil
+                    
+                    -- Failsafe de 30 segundos que solicitaste
+                    if segundosPasados >= 30 then
+                        LblRaidStatus.Text = "⚠️ TIEMPO AGOTADO (30s): Cobrando y saliendo..."
+                        
+                        -- Intentamos cobrar recompensa por si acaso y forzamos salida
+                        task.spawn(function()
+                            pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
+                            task.wait(1.0)
+                            RaidState.ForceExit = true
+                            RaidState.NoBossTimer = nil
+                        end)
+                    end
                 end
             end
         end
