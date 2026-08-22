@@ -2782,27 +2782,39 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob.Name:lower():find(expectedBoss:lower(), 1, true) then
-                        bossFound = true
-                        if not Utils.EstaMuerto(mob) then 
-                            bossAlive = true 
-                            RaidState.BossInst = mob -- Almacenamos el boss para el Hilo de Ataque
-                            local bossRoot = mob:FindFirstChild("HumanoidRootPart")
-                            if bossRoot then LastBossPos = bossRoot.CFrame end
-                            break 
+                    if expectedBoss and mob and mob.Name then
+                        -- 1. Búsqueda Exacta (Filtro infalible contra corchetes y símbolos raros)
+                        local isMatch = (mob.Name == expectedBoss)
+                        
+                        -- 2. Respaldo Flexible (Texto plano ignorando mayúsculas)
+                        if not isMatch then
+                            isMatch = string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true)
+                        end
+
+                        if isMatch then
+                            bossFound = true
+                            if not Utils.EstaMuerto(mob) then 
+                                bossAlive = true 
+                                RaidState.BossInst = mob -- Almacenamos el boss para el Hilo de Ataque
+                                local bossRoot = mob:FindFirstChild("HumanoidRootPart")
+                                if bossRoot then LastBossPos = bossRoot.CFrame end
+                                break 
+                            end
                         end
                     elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then
                             bossAlive = true
                             RaidState.BossInst = mob
-                            LastBossPos = mob.HumanoidRootPart.CFrame
+                            local rootFallback = mob:FindFirstChild("HumanoidRootPart")
+                            if rootFallback then LastBossPos = rootFallback.CFrame end
                             break
                         end
                     end
                 end
             end
 
+            -- Lógica estricta de validación
             if bossAlive then
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
@@ -2838,7 +2850,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
                     LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior. Esperando spawn (" .. segundosPasados .. "s)..."
                     
-                    if segundosPasados >= 5 then
+                    if segundosPasados >= 20 then
                         LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
                         RaidState.ForceExit = true
                         RaidState.NoBossTimer = nil
@@ -2849,13 +2861,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
                 LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
                 
-                if segundosPasados >= 5 then
+                if segundosPasados >= 20 then
                     LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
                     RaidState.ForceExit = true
                     RaidState.NoBossTimer = nil
                 end
             end
-        end 
+        end
 
         -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA (Validación de Coordenadas)
         if RaidState.ForceExit and not RaidState.ExitTriggered then
