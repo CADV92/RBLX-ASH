@@ -2578,12 +2578,15 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     local enLobby = false
     if root then enLobby = Utils.EstaEnLobby(root) end
 
-    -- [CORRECCIÓN COOLDOWN] Detección de regreso al lobby
+    -- ==========================================
+    -- [CORRECCIÓN COOLDOWN] Detección de Lobby y Reset Seguro
+    -- ==========================================
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
 
+            -- Reset All State
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
             RaidState.ForceExit = false
@@ -2594,11 +2597,12 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.ClaimPosition = nil
             LastBossPos = nil
             RaidState.IsProcessing = false
-            RaidState.EntryTime = 0
             RaidState.BossInst = nil
-            
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
+            
+            -- [NUEVO] Cambiamos radicalmente el EntryTime para que cualquier task.spawn viejo se cancele.
+            RaidState.EntryTime = now + 99999 
             
             if cdRestante > 0 then
                 LblRaidStatus.Text = "❄️ CD del Servidor (" .. math.ceil(cdRestante) .. "s)"
@@ -2628,7 +2632,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end)
             end
         else
-            LblRaidStatus.Text = string.format("💤 Raids en Descanso (5 min). Esperando...", totalActive or 0)
+            LblRaidStatus.Text = string.format("💤 Raids en Descanso. Esperando...", totalActive or 0)
         end
     end
 
@@ -2638,7 +2642,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         
         local bestRaid, totalActive = GetBestGlobalRaid()
         if totalActive == 0 then
-            LblRaidStatus.Text = "💤 Raids en Descanso (5 min). Esperando..."
+            LblRaidStatus.Text = "💤 Raids en Descanso. Esperando..."
             return 
         end
         
@@ -2708,7 +2712,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if not HubRunning then return end
                     local currentChar = LocalPlayer.Character
                     if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                        -- Validación por variación significativa de coordenadas
                         if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 3000 then 
                             tpSuccess = true
                             break 
@@ -2719,7 +2722,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 if tpSuccess then
                     LblRaidStatus.Text = "✅ ¡En Instancia! Esperando Jefe..."
                     RaidState.IsInInstance = true
-                    RaidState.EntryTime = tick() 
+                    RaidState.EntryTime = tick() -- ESTABLECEMOS LA NUEVA SESIÓN
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.ExitTriggered = false
@@ -2764,13 +2767,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     if RaidState.IsInInstance and not RaidState.IsProcessing then
         
         HandleRaidRewardUI()
-
-        if RaidState.BossDeathTime and not RaidState.ExitTriggered then
-            if tick() - RaidState.BossDeathTime > 5.0 then
-                LblRaidStatus.Text = "⚠️ Atasco post-jefe detectado. Extrayendo..."
-                RaidState.ForceExit = true
-            end
-        end
+        
+        local currentSession = RaidState.EntryTime -- Asegurar que trabajamos sobre esta sesión
         
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
@@ -2780,7 +2778,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
 
-            -- [NUEVO] Función local ultra-estricta para confirmar la muerte (Inmune al texto "0 / 100")
             local function EsJefeMuerto(mob)
                 if not mob or not mob.Parent or not mob:FindFirstChild("HumanoidRootPart") then return true end
                 local hum = mob:FindFirstChild("Humanoid")
@@ -2789,7 +2786,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local gui = mob.HumanoidRootPart:FindFirstChild("EnemyNameGui")
                 if gui and gui:FindFirstChild("Progress") and gui.Progress:FindFirstChild("HealthNum") then
                     local txt = gui.Progress.HealthNum.Text
-                    -- Si está vacío, es "0", o empieza por "0/" o "0 /", está 100% muerto
                     if txt == "" or txt == "0" or txt:match("^0%s*/") then return true end
                 end
                 
@@ -2799,9 +2795,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
                     if expectedBoss and mob and mob.Name then
-                        -- 1. Búsqueda Exacta
                         local isMatch = (mob.Name == expectedBoss)
-                        -- 2. Respaldo Flexible
                         if not isMatch then
                             isMatch = string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true)
                         end
@@ -2829,24 +2823,23 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end
             end
 
-            -- [NUEVO] Lógica de validación de Estados a prueba de fallos
+            -- Lógica de validación de Estados a prueba de fallos
             if bossAlive then
-                -- EL JEFE ESTÁ VIVO
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
                 LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
             else
-                -- EL JEFE NO ESTÁ VIVO (Puede ser un cadáver, o desapareció del mapa)
                 if RaidState.SawBossAlive then
-                    -- Ya lo vimos vivo. Como ahora no está, ¡SIGNIFICA QUE LO MATAMOS!
                     RaidState.NoBossTimer = nil 
                     if not RaidState.BossDeathTime then 
                         RaidState.BossDeathTime = tick()
-                        RaidState.BossInst = nil -- Limpiamos el boss del Hilo de Ataque
+                        RaidState.BossInst = nil 
                         LblRaidStatus.Text = "💀 Jefe Derrotado o Desaparecido. Cobrando..."
                         
                         task.spawn(function()
                             task.wait(1.5)
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            
                             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                             if myRoot and LastBossPos then
                                 myRoot.CFrame = LastBossPos
@@ -2857,6 +2850,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
                             
                             task.wait(1.5)
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            
                             if RaidState.IsInInstance and not RaidState.ExitTriggered then
                                 LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
                                 RaidState.ForceExit = true
@@ -2864,7 +2859,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         end)
                     end
                 else
-                    -- NUNCA LO VIMOS VIVO (Esperando Spawn o es un cuerpo viejo bugueado)
                     if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
                     local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
                     
@@ -2874,23 +2868,22 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
                     end
                     
-                    -- Failsafe de 30 segundos que solicitaste
                     if segundosPasados >= 30 then
                         LblRaidStatus.Text = "⚠️ TIEMPO AGOTADO (30s): Cobrando y saliendo..."
-                        
-                        -- Intentamos cobrar recompensa por si acaso y forzamos salida
                         task.spawn(function()
                             pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
                             task.wait(1.0)
-                            RaidState.ForceExit = true
-                            RaidState.NoBossTimer = nil
+                            if RaidState.EntryTime == currentSession then 
+                                RaidState.ForceExit = true
+                                RaidState.NoBossTimer = nil
+                            end
                         end)
                     end
                 end
             end
-        end
+        end 
 
-        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA (Validación de Coordenadas)
+        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA
         if RaidState.ForceExit and not RaidState.ExitTriggered then
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
@@ -2900,105 +2893,46 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             local mapTarget = 50000 + safeMapIdx
             _G.MapaOrigenAntesRuna = nil
             
-            LblRaidStatus.Text = "🎁 Buscando cofre y reclamando..."
+            LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local exitStartPos = root and root.Position or Vector3.zero
-                
-                -- Paso 1: Buscar cofre y hacer TP
-                if root then
-                    local cofreEncontrado = false
-                    for _, v in pairs(Workspace:GetDescendants()) do
-                        if v:IsA("Model") or v:IsA("BasePart") then
-                            local name = v.Name:lower()
-                            if name:match("chest") or name:match("reward") or name:match("loot") then
-                                if v:IsA("BasePart") then
-                                    root.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                                    cofreEncontrado = true
-                                    break
-                                elseif v:IsA("Model") and v.PrimaryPart then
-                                    root.CFrame = v.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
-                                    cofreEncontrado = true
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    if cofreEncontrado then task.wait(0.5) end
-                end
-                
-                -- Paso 2: Ocultar UI y Cobrar
-                local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                if pGui and pGui:FindFirstChild("RaidsFightPanel") then 
-                    pGui.RaidsFightPanel.Enabled = false 
-                end
-                pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
-                task.wait(1.5) 
-                
-                LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
-                
-                -- Paso 3: Intentos de salida con validación real de TP
-                local extractSuccess = false
                 local intentos = 0
-
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
+                    if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                    
                     intentos = intentos + 1
-                    
-                    pcall(function() ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) end)
-                    task.wait(1.0)
-                    
-                    local waitChecks = 0
-                    while waitChecks < 5 do
-                        task.wait(0.2)
-                        waitChecks = waitChecks + 1
-                        local char = LocalPlayer.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                            if (char.HumanoidRootPart.Position - exitStartPos).Magnitude > 3000 then
-                                extractSuccess = true
-                                break
-                            end
-                        end
-                    end
-                    
-                    if extractSuccess then break end
-                    
-                    pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = mapTarget}) end)
-                    task.wait(1.0)
-                    LblRaidStatus.Text = "⚠️ Reintentando extracción ("..intentos.."/5)..."
+                    local success = pcall(function() 
+                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
+                    end)
+                    if success then break end
+                    task.wait(1.5)
                 end
                 
-                -- Paso 4: Espera de seguridad y limpieza física
-                task.wait(2.0)
+                -- Permitimos que el juego nos haga TP al Lobby
+                task.wait(4.0)
+                if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
                 
+                -- Limpieza física antibug
                 local char = LocalPlayer.Character
                 if char then
-                    local finalRoot = char:FindFirstChild("HumanoidRootPart")
+                    local root = char:FindFirstChild("HumanoidRootPart")
                     local hum = char:FindFirstChild("Humanoid")
-                    if finalRoot then
-                        finalRoot.Anchored = false
-                        finalRoot.AssemblyLinearVelocity = Vector3.zero
+                    if root then
+                        root.Anchored = false
+                        root.AssemblyLinearVelocity = Vector3.zero
                     end
-                    if hum then
-                        hum.PlatformStand = false
-                    end
+                    if hum then hum.PlatformStand = false end
                 end
                 
-                -- Paso 5: Reset del motor de estado
-                RaidState.IsInInstance = false
-                RaidState.BossDeathTime = nil
-                RaidState.ForceExit = false
-                RaidState.IsProcessing = false
-                RaidState.ExitTriggered = false
-                RaidState.BossInst = nil
-                
-                if extractSuccess then
-                    LblRaidStatus.Text = "🏠 Extraído exitosamente."
-                else
-                    LblRaidStatus.Text = "❌ Fallo crítico al extraer. Revisa la consola."
+                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
+                if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
+                    RaidState.IsInInstance = false
+                    RaidState.BossDeathTime = nil
+                    RaidState.ForceExit = false
+                    RaidState.IsProcessing = false
+                    RaidState.ExitTriggered = false
+                    LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
                 end
-                
-                task.wait(1)
             end)
         end
     end
