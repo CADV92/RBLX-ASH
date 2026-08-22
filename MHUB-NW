@@ -2782,7 +2782,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob.Name:lower():find(expectedBoss:lower()) then
+                    if expectedBoss and mob.Name:lower():find(expectedBoss:lower(), 1, true) then
                         bossFound = true
                         if not Utils.EstaMuerto(mob) then 
                             bossAlive = true 
