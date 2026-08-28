@@ -3158,6 +3158,11 @@ local StarterGui = game:GetService("StarterGui")
 
 local TabCity = Hub:CreateTab("City Raid")
 
+-- Inicializar Configuración del AutoSiege
+Config.CityRaidSettings = Config.CityRaidSettings or {}
+Config.CityRaidSettings.AutoSiege = Config.CityRaidSettings.AutoSiege or false
+Config.CityRaidSettings.TargetCityId = Config.CityRaidSettings.TargetCityId or 1000001
+
 -- ==========================================
 -- 1. Viajes Rápidos a Mapas Clave
 -- ==========================================
@@ -3430,6 +3435,89 @@ end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
         end)
     else
         StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Selecciona un servidor de la lista primero.", Duration = 3 })
+    end
+end)
+
+-- ==========================================
+-- 5. AUTO SIEGE (Francotirador de City Raids)
+-- ==========================================
+TabCity:CreateLabel("5. Auto Siege (Sniper)")
+
+TabCity:CreateSideDropdown("Seleccionar City Raid:", "MAPA 1",
+    function()
+        return {
+            {Name = "MAPA 1", Data = 1000001},
+            {Name = "MAPA 2", Data = 1000002},
+            {Name = "MAPA 3", Data = 1000003},
+            {Name = "MAPA 4", Data = 1000004},
+            {Name = "MAPA 5", Data = 1000005}
+        }
+    end,
+    function(data) 
+        Config.CityRaidSettings.TargetCityId = data
+    end
+)
+
+local LblSiegeStatus = TabCity:CreateLabel("Estado: Inactivo")
+
+TabCity:CreateSideToggle("ACTIVAR AUTO SIEGE", Config.CityRaidSettings.AutoSiege, function(state) 
+    Config.CityRaidSettings.AutoSiege = state 
+end)
+
+-- Bucle Seguro del AutoSiege
+task.spawn(function()
+    local ProtocolManager = nil
+    
+    -- Carga Diferida (Lazy Load) para evitar el error "Requested module experienced an error"
+    task.spawn(function()
+        if not game:IsLoaded() then game.Loaded:Wait() end
+        task.wait(3) -- Margen de seguridad para que UIManager cargue primero
+        pcall(function()
+            ProtocolManager = require(ReplicatedStorage.Scripts.Share.Manager.ProtocolManager)
+        end)
+    end)
+
+    while HubRunning do
+        task.wait(1.5)
+        
+        if Config.CityRaidSettings.AutoSiege and ProtocolManager then
+            local success, responseData = pcall(function()
+                return ProtocolManager.SendMessage(ProtocolManager.Protocols.GetRaidNotifyData.Name)
+            end)
+
+            if success and responseData and responseData.cityRaids then
+                for _, cityRaid in ipairs(responseData.cityRaids) do
+                    if cityRaid.id == Config.CityRaidSettings.TargetCityId then
+                        if cityRaid.state == "Open" then
+                            LblSiegeStatus.Text = "Estado: ¡Abierto! Teletransportando..."
+                            
+                            -- Pausar AutoRaid Normal para que no haya conflictos de TP
+                            if Config.RaidSettings and Config.RaidSettings.AutoRaid then
+                                Config.RaidSettings.AutoRaid = false
+                                pcall(function() StarterGui:SetCore("SendNotification", { Title = "AutoSiege", Text = "AutoRaid pausado por City Raid", Duration = 3 }) end)
+                            end
+
+                            -- Disparar TP
+                            pcall(function()
+                                ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({
+                                    ["mapId"] = Config.CityRaidSettings.TargetCityId
+                                })
+                            end)
+                            
+                            task.wait(10) -- Esperar a que el TP se complete
+                        else
+                            local left = math.max((cityRaid.nextTime or 0) - os.time(), 0)
+                            LblSiegeStatus.Text = string.format("Estado: Esperando apertura (%ds)", left)
+                        end
+                        break
+                    end
+                end
+            else
+                LblSiegeStatus.Text = "Estado: Esperando al servidor..."
+            end
+        elseif not Config.CityRaidSettings.AutoSiege then
+            LblSiegeStatus.Text = "Estado: Inactivo"
+        end
     end
 end)
 
