@@ -1,7 +1,6 @@
 -- ==============================================================================
--- MIRROR HUB - MODULAR, CONCURRENTE Y ROBUSTO (ACTUALIZADO V8.7 - INTEGRADO)
+-- MIRROR HUB - MODULAR, CONCURRENTE Y ROBUSTO (ACTUALIZADO - VERSIÓN MODULAR)
 -- ==============================================================================
-
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -14,28 +13,12 @@ local VirtualUser = game:GetService("VirtualUser")
 local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local TargetGui = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-
 local HubRunning = true 
 _G.MapaOrigenAntesRuna = nil
 
 -- ==============================================================================
--- PALETA DE COLORES (THEME) & DATOS ESTÁTICOS
+-- DATOS ESTÁTICOS
 -- ==============================================================================
-local Theme = {
-    Primary = Color3.fromRGB(110, 65, 160),      -- Púrpura Elegante (Acciones principales)
-    PrimaryDark = Color3.fromRGB(80, 45, 120),   -- Púrpura Oscuro
-    Secondary = Color3.fromRGB(50, 50, 60),      -- Gris Oscuro (Botones inactivos/secundarios)
-    Background = Color3.fromRGB(15, 15, 20),     -- Fondo Principal
-    Panel = Color3.fromRGB(20, 20, 25),          -- Paneles e inputs
-    PanelLight = Color3.fromRGB(30, 30, 40),     -- Fondos de Slider/Toggles
-    Text = Color3.fromRGB(200, 200, 200),        -- Texto normal
-    TextHighlight = Color3.fromRGB(255, 255, 255),-- Texto destacado
-    Danger = Color3.fromRGB(140, 40, 40),        -- Rojo (Detener/Cancelar)
-    Success = Color3.fromRGB(40, 140, 80)        -- Verde (Completado/Viaje)
-}
-
 local TreeColors = {
     ["KEEP"] = Color3.fromRGB(50, 50, 60), ["base"] = Color3.fromRGB(220, 220, 220), ["sword"] = Color3.fromRGB(180, 180, 180),
     ["ice"] = Color3.fromRGB(100, 200, 255), ["blood"] = Color3.fromRGB(255, 60, 60), ["moon"] = Color3.fromRGB(255, 215, 0),
@@ -52,42 +35,21 @@ local GemColorData = {
 }
 
 local ReadSuffixes = { ["k"]=1e3, ["m"]=1e6, ["b"]=1e9, ["t"]=1e12, ["K"]=1e3, ["M"]=1e6, ["B"]=1e9, ["T"]=1e12, ["Qa"]=1e15, ["Qi"]=1e18, ["Sx"]=1e21, ["Sp"]=1e24, ["Oc"]=1e27, ["No"]=1e30, ["Dc"]=1e33, ["Ud"]=1e36, ["Dd"]=1e39, ["Td"]=1e42 }
-for i = 45, 99, 3 do ReadSuffixes["E"..i] = 10^i end
+for i = 45, 120, 3 do ReadSuffixes["E"..i] = 10^i end
 
 -- ==============================================================================
 -- SISTEMA DE CONFIGURACIÓN (JSON)
 -- ==============================================================================
 local ConfigFileName = "mirror_" .. tostring(LocalPlayer.UserId) .. "_config.json"
 local Config = {
-    WalkSpeed = 65,
-    JumpPower = 70,
-    AutoCollect = false,
-    NoClip = false,
-    WallDestroyer = false, -- [NUEVO] Integración de Destructor de Muros
-    KillAura = false,
-    AuraModoSec = false,
-    AuraRadio = 200,
-    AutoRandom = false,
-    MetralletaVel = 2,
-    MetralletaModo = "SOLO",
-    AntiAFK = true,
-
+    WalkSpeed = 65, JumpPower = 70, AutoCollect = false, NoClip = false, WallDestroyer = false, KillAura = false, AuraModoSec = false, AuraRadio = 200, AutoRandom = false, MetralletaVel = 2, MetralletaModo = "SOLO", AntiAFK = true,
     RaidSettings = {
-        AutoRaid = false,
-        AutoTP = false,
-        AllowedMaps = { ["1"]=true, ["2"]=true, ["3"]=true, ["4"]=true, ["5"]=true, ["6"]=true, ["7"]=true, ["8"]=true, ["9"]=true, ["10"]=true, ["11"]=true, ["12"]=true, ["13"]=true, ["14"]=true, ["15"]=true, ["16"]=true, ["17"]=true, ["18"]=true, ["19"]=true, ["20"]=true },
+        AutoRaid = false, AutoTP = false, AllowedMaps = { ["1"]=true, ["2"]=true, ["3"]=true, ["4"]=true, ["5"]=true, ["6"]=true, ["7"]=true, ["8"]=true, ["9"]=true, ["10"]=true, ["11"]=true, ["12"]=true, ["13"]=true, ["14"]=true, ["15"]=true, ["16"]=true, ["17"]=true, ["18"]=true, ["19"]=true, ["20"]=true },
         AllowedGradesNormal = { ["D"]=true, ["B"]=true, ["S"]=true, ["SS"]=true, ["G"]=true, ["N"]=true, ["M+"]=true, ["M++"]=true, ["XM"]=true, ["ULT"]=true },
         AllowedGradesASC = { ["E"]=true, ["D"]=true, ["C"]=true, ["B"]=true, ["A"]=true, ["S"]=true, ["SS"]=true, ["G"]=true, ["N"]=true, ["M"]=true },
-        AllowedModes = { Normal = true, ASC = true },
-        Priority = "MAP",
-        Order = "HIGHEST",
-        Blacklist = {},
-        VipList = { "N-18-S", "N-17-G", "N-16-G", "N-14-M+" },
-        Runes = { ["D"] = 0, ["B"] = 0, ["S"] = 0, ["G"] = 0, ["N"] = 0, ["M+"] = 0, ["M++"] = 0 }
+        AllowedModes = { Normal = true, ASC = true }, Priority = "MAP", Order = "HIGHEST", Blacklist = {}, VipList = { "N-18-S", "N-17-G", "N-16-G", "N-14-M+" }, Runes = { ["D"] = 0, ["B"] = 0, ["S"] = 0, ["G"] = 0, ["N"] = 0, ["M+"] = 0, ["M++"] = 0 }
     },
-    
-    AutoOroEnabled = false,
-    AutoDropEnabled = false,
+    AutoOroEnabled = false, AutoDropEnabled = false,
     StaticGear = {
         ["PODER"]  = { Mounts = {Equip=101017, Buff=101014}, Halos = {Equip=41, Buff=26}, Weapons = {Equip={"b15730e4-583f-44c9-bfaa-d59696ac7c4b"}, Buffer={"14f36c6b-4e88-42fc-8822-a7d5d32abd3c","ac48beac-08d0-4efe-b154-6eba78ff0ad0","081add2e-a1d3-4da1-827b-c0715bf650f2","a4ced63a-4120-453e-8d29-caeb4f908667"}} },
         ["ATAQUE"] = { Mounts = {Equip=101018, Buff=101017}, Halos = {Equip=41, Buff=26}, Weapons = {Equip={"7a014f15-26a7-4d49-b6c8-c9abcbf83e34"}, Buffer={"35e4c2ab-efd3-4925-8830-a71a2c7a96ff","54da5e84-4478-41a1-8319-0ef2dfc00629","d28a2f76-e41d-419b-ae81-0d887f34d5c3"}} },
@@ -101,17 +63,8 @@ local Config = {
         BLUE = { "00096455-268c-4505-b5c2-fdd374aff88e", "daa4bff9-78d9-4b95-8e78-3f26d1003df5", "5608c648-22b8-45fb-810c-156152fd9a47", "df917d23-5d55-4057-88c8-4af02c846c20", "1672ccc9-5fa1-4a93-a152-f51cb6bf41d7", "b01c0f18-c1ff-42e7-80dc-d3f6c01e7875", "22391c78-90f7-4063-896f-27fcdd1d29b2", "4b9982dd-569b-4d3d-806e-2b5d28f3cec1", "a392d04c-0809-4c92-a0c1-c2ca027fdcec", "03a97e75-aba3-4852-add7-10e55a93ca60", "5c2ddbbd-cf7a-4aba-b4a4-e299bc91a866", "b4fbf77d-fe59-44e9-8aec-0b8a7140da4f", "ad4a58e9-fa9a-44c6-830d-6524748dc187", "18b7c24f-987b-42df-98c1-ee04e8794a4d", "1baa5559-cceb-4e5e-8ae3-489ea5a51d2d", "8f9fab79-cc55-4ec0-9965-c56b84351fd9", "670f4c9a-2223-4336-95d4-ddd3acaba57c", "82524c3d-9fa5-4297-b0ea-71a465696bca" },
         GREEN = { "e14f7667-8a5a-43a9-adf7-7880dd7f46b9", "3224f088-d199-4531-86af-c3c968b2e859", "9c4a6414-f87c-4ff8-8498-8bd889249e79", "338a6c8b-bd0e-48d8-87f7-dc033889a31d", "6d32c907-0112-4f34-969e-3e01272192e5", "a1780186-ff46-44ef-896f-12eda0451c7c", "1fcdf3d3-a358-41f1-b515-9698d60b2a21", "c23f8d55-bdad-43ba-8b6d-1d58ba64ae5c", "32c051ba-a9d1-4de8-acc4-563269433af1", "dc7f4723-4460-4802-9bf3-65e0dc97bcb8", "0fc57ec2-5db6-40d7-ac4b-87263dc54c46", "7da5c9c1-b0cd-4980-bd41-3782ee207409", "fbd7edb8-6e5f-4404-b22d-e5909901fab8", "53e0e2c2-555d-4609-8e59-4ca6d5f8d207", "359f1abe-2e5f-418f-893f-74ace781493d", "3217bca6-6abc-4046-9c48-51989030d637", "b7d75987-570b-440c-b3d0-c076a278bf0f", "02f37346-d5ac-4bc8-8fa2-1f6f3c9db31a" }
     },
-    TreeSettings = { 
-        ["ATAQUE"]={Equip="winter",Buff="moon"}, 
-        ["ORO"]={Equip="jack",Buff="moon"}, 
-        ["DROP"]={Equip="KEEP",Buff="KEEP"}, 
-        ["SUERTE"]={Equip="KEEP",Buff="KEEP"}, 
-        ["PODER"]={Equip="jack",Buff="blood"} 
-    },
-    GemSettings = {
-        Principal={S1="AUTO",S2="AUTO",S3="AUTO",S4="AUTO"},
-        Buff={S1="AUTO",S2="AUTO",S3="AUTO",S4="AUTO"}
-    }
+    TreeSettings = { ["ATAQUE"]={Equip="winter",Buff="moon"}, ["ORO"]={Equip="jack",Buff="moon"}, ["DROP"]={Equip="KEEP",Buff="KEEP"}, ["SUERTE"]={Equip="KEEP",Buff="KEEP"}, ["PODER"]={Equip="jack",Buff="blood"} },
+    GemSettings = { Principal={S1="AUTO",S2="AUTO",S3="AUTO",S4="AUTO"}, Buff={S1="AUTO",S2="AUTO",S3="AUTO",S4="AUTO"} }
 }
 
 local function LoadConfig()
@@ -120,21 +73,14 @@ local function LoadConfig()
         if success and type(decoded) == "table" then
             for k, v in pairs(decoded) do
                 if type(Config[k]) == "table" and type(v) == "table" then
-                    for subK, subV in pairs(v) do
-                        Config[k][subK] = subV
-                    end
-                elseif Config[k] ~= nil then 
-                    Config[k] = v 
-                end
+                    for subK, subV in pairs(v) do Config[k][subK] = subV end
+                elseif Config[k] ~= nil then Config[k] = v end
             end
         end
     end
 end
 LoadConfig()
 
--- ==============================================================================
--- [PARCHE ANTI-NIL]
--- ==============================================================================
 Config.RaidSettings = Config.RaidSettings or {}
 Config.RaidSettings.Blacklist = Config.RaidSettings.Blacklist or {}
 Config.RaidSettings.VipList = Config.RaidSettings.VipList or { "N-18-S", "N-17-G", "N-16-G", "N-14-M+" }
@@ -149,897 +95,75 @@ local function SaveConfig()
         local success, encoded = pcall(function() return HttpService:JSONEncode(Config) end)
         if success then
             writefile(ConfigFileName, encoded)
-            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Mirror Hub", Text = "Configuración guardada con éxito.", Duration = 3 }) end)
+            pcall(function() StarterGui:SetCore("SendNotification", { Title = "Mirror Hub", Text = "Configuración guardada.", Duration = 3 }) end)
         end
-    else
-        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Tu ejecutor no soporta guardar archivos.", Duration = 3 }) end)
     end
 end
 
 -- ==============================================================================
--- UTILS
+-- UTILS Y FUNCIONES DE JUEGO (Se mantienen iguales)
 -- ==============================================================================
 local Utils = {}
+function Utils.GetEnemyFolder() return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs") end
+function Utils.GetGUID(model) if not model or typeof(model) ~= "Instance" then return nil end local attr = model:GetAttribute("GUID") or model:GetAttribute("guid") or model:GetAttribute("EnemyGuid") if attr then return attr end local valObj = model:FindFirstChild("GUID") or model:FindFirstChild("EnemyId") if valObj then return valObj.Value end return model.Name end
+function Utils.EstaMuerto(model) if not model or typeof(model) ~= "Instance" or not model.Parent or not model:FindFirstChild("HumanoidRootPart") then return true end local root = model.HumanoidRootPart if root:FindFirstChild("EnemyNameGui") and root.EnemyNameGui:FindFirstChild("Progress") and root.EnemyNameGui.Progress:FindFirstChild("HealthNum") then local txt = root.EnemyNameGui.Progress.HealthNum.Text if txt ~= "" and txt ~= "0" then return false end return true end local hum = model:FindFirstChild("Humanoid") if hum then return hum.Health <= 0 end return true end
+function Utils.EsMobValido(enemy, myRoot, limites) if Utils.EstaMuerto(enemy) then return false end local root = enemy:FindFirstChild("HumanoidRootPart") if not root then return false end local yPos = root.Position.Y if yPos < limites.MinHeight then return false end if math.abs(yPos - limites.BuggedHeight) < limites.BugTolerance then return false end return true end
+function Utils.ParseValue(str) if not str or str == "" then return 0 end if str:find("/") then str = str:split("/")[1] end local cleanStr = str:gsub("HP:", ""):gsub("Health:", ""):gsub("hp:", ""):gsub("%s+", ""):gsub(",", "") local valStr, sufStr = cleanStr:match("^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]; if mult then return num * mult end end return num end return 0 end
+function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then return 0 end local cleanStr = string.gsub(str, "<[^>]+>", "") cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "") local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)] if mult then return num * mult end end return num end return 0 end
+function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
+function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
+function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
-function Utils.GetEnemyFolder()
-    return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs")
-end
-
-function Utils.GetGUID(model)
-    if not model or typeof(model) ~= "Instance" then return nil end
-    local attr = model:GetAttribute("GUID") or model:GetAttribute("guid") or model:GetAttribute("EnemyGuid")
-    if attr then return attr end
-    local valObj = model:FindFirstChild("GUID") or model:FindFirstChild("EnemyId")
-    if valObj then return valObj.Value end
-    return model.Name
-end
-
-function Utils.EstaMuerto(model)
-    if not model or typeof(model) ~= "Instance" or not model.Parent or not model:FindFirstChild("HumanoidRootPart") then return true end
-    local root = model.HumanoidRootPart
-    if root:FindFirstChild("EnemyNameGui") and root.EnemyNameGui:FindFirstChild("Progress") and root.EnemyNameGui.Progress:FindFirstChild("HealthNum") then
-        local txt = root.EnemyNameGui.Progress.HealthNum.Text
-        if txt ~= "" and txt ~= "0" then return false end
-        return true
-    end
-    local hum = model:FindFirstChild("Humanoid")
-    if hum then return hum.Health <= 0 end
-    return true
-end
-
-function Utils.EsMobValido(enemy, myRoot, limites)
-    if Utils.EstaMuerto(enemy) then return false end
-    local root = enemy:FindFirstChild("HumanoidRootPart")
-    if not root then return false end
-    local yPos = root.Position.Y
-    if yPos < limites.MinHeight then return false end
-    if math.abs(yPos - limites.BuggedHeight) < limites.BugTolerance then return false end
-    return true
-end
-
-function Utils.ParseValue(str)
-    if not str or str == "" then return 0 end
-    if str:find("/") then str = str:split("/")[1] end
-    local cleanStr = str:gsub("HP:", ""):gsub("Health:", ""):gsub("hp:", ""):gsub("%s+", ""):gsub(",", "")
-    local valStr, sufStr = cleanStr:match("^([%d%.]+)(.*)$")
-    if valStr then
-        local num = tonumber(valStr) or 0
-        if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]; if mult then return num * mult end end
-        return num
-    end return 0
-end
-
-function Utils.ParseDamageText(str)
-    if not str or type(str) ~= "string" then return 0 end
-    local cleanStr = string.gsub(str, "<[^>]+>", "")
-    cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "")
-    local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$")
-    if valStr then
-        local num = tonumber(valStr) or 0
-        if sufStr and sufStr ~= "" then 
-            local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]
-            if mult then return num * mult end 
-        end
-        return num
-    end 
-    return 0
-end
-
-function Utils.GetCurrentRealHealth(model)
-    if not model then return 0 end
-    local maxVal = 0
-    for _, lbl in pairs(model:GetDescendants()) do
-        if lbl:IsA("TextLabel") and lbl.Visible then
-            local txt = lbl.Text
-            if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then
-                local current = Utils.ParseValue(txt)
-                if current > maxVal then maxVal = current end
-            end
-        end
-    end
-    return maxVal
-end
-
-function Utils.FormatHealth(val)
-    if not val then return "0" end
-    
-    if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end
-    if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end
-    if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end
-    if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end
-    if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end
-    if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end
-    if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end
-    if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end
-    if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end
-    if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end
-    if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end
-    if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end
-    if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end
-    if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end
-    if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end
-    if val >= 1e9 then return string.format("%.2f B", val/1e9) end  if val >= 1e6 then return string.format("%.2f M", val/1e6) end
-    if val >= 1e3 then return string.format("%.2f K", val/1e3) end
-    
-    return tostring(math.floor(val))
-end
-
-function Utils.ManualTeleportAndEnter(isSiege)
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return false end
-    
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then
-            local parentName = v.Parent.Parent and v.Parent.Parent.Name or ""
-            local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City"))
-            
-            if matches then
-                root.CFrame = v.Parent.CFrame
-                task.wait(0.15)
-                if type(fireproximityprompt) == "function" then 
-                    fireproximityprompt(v) 
-                else 
-                    v:InputHoldBegin()
-                    task.wait(v.HoldDuration + 0.1)
-                    v:InputHoldEnd() 
-                end
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- Sanity Check
 local LobbyPortalCache = nil
 function Utils.EstaEnLobby(root)
     if not root then return false end
-    
-    -- Caché: Si ya lo encontramos antes, verificamos directo para ahorrar FPS
-    if LobbyPortalCache and LobbyPortalCache.Parent then
-        if (LobbyPortalCache.Position - root.Position).Magnitude < 5000 then 
-            return true 
-        end
-    end
-
+    if LobbyPortalCache and LobbyPortalCache.Parent then if (LobbyPortalCache.Position - root.Position).Magnitude < 5000 then return true end end
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("ProximityPrompt") and v.Parent and v.Parent.Parent and v.Parent.Parent.Name:find("RaidEnter") and not v.Parent.Parent.Name:find("City") then
             LobbyPortalCache = v.Parent
-            if (v.Parent.Position - root.Position).Magnitude < 5000 then 
-                return true 
-            end
+            if (v.Parent.Position - root.Position).Magnitude < 5000 then return true end
         end
     end
     return false
 end
 
--- ==============================================================================
--- FRAMEWORK: NANO HUB UI
--- ==============================================================================
-local NanoHub = {}
-NanoHub.__index = NanoHub
-
-function NanoHub.new(titleText)
-    local self = setmetatable({}, NanoHub)
-    if TargetGui:FindFirstChild("NanoHub_UI") then TargetGui.NanoHub_UI:Destroy() end
-
-    self.ScreenGui = Instance.new("ScreenGui", TargetGui)
-    self.ScreenGui.Name = "NanoHub_UI"
-    self.ScreenGui.ResetOnSpawn = false
-    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-    self.MainFrame = Instance.new("Frame", self.ScreenGui)
-    self.MainFrame.Size = UDim2.new(0, 520, 0, 360)
-    self.MainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
-    self.MainFrame.BackgroundColor3 = Theme.Background
-    self.MainFrame.Active = true
-    self.MainFrame.Draggable = true
-    Instance.new("UICorner", self.MainFrame).CornerRadius = UDim.new(0, 8)
-    Instance.new("UIStroke", self.MainFrame).Color = Theme.Secondary
-
-    local TopBar = Instance.new("Frame", self.MainFrame)
-    TopBar.Size = UDim2.new(1, 0, 0, 35)
-    TopBar.BackgroundTransparency = 1
-    
-    local Title = Instance.new("TextLabel", TopBar)
-    Title.Size = UDim2.new(1, -40, 1, 0)
-    Title.Position = UDim2.new(0, 15, 0, 0)
-    Title.BackgroundTransparency = 1
-    Title.Text = titleText
-    Title.TextColor3 = Theme.TextHighlight
-    Title.Font = Enum.Font.GothamBlack
-    Title.TextSize = 14
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-
-    local CloseBtn = Instance.new("TextButton", TopBar)
-    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-    CloseBtn.Position = UDim2.new(1, -30, 0, 5)
-    CloseBtn.BackgroundColor3 = Theme.Danger
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Theme.TextHighlight
-    CloseBtn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 4)
-    CloseBtn.MouseButton1Click:Connect(function() self:Destroy() end)
-
-    self.TabContainer = Instance.new("ScrollingFrame", self.MainFrame)
-    self.TabContainer.Size = UDim2.new(0, 130, 1, -35)
-    self.TabContainer.Position = UDim2.new(0, 0, 0, 35)
-    self.TabContainer.BackgroundColor3 = Theme.Panel
-    self.TabContainer.ScrollBarThickness = 2
-    self.TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Instance.new("UICorner", self.TabContainer).CornerRadius = UDim.new(0, 8)
-    local TabLayout = Instance.new("UIListLayout", self.TabContainer)
-    TabLayout.Padding = UDim.new(0, 2)
-
-    self.ContentContainer = Instance.new("Frame", self.MainFrame)
-    self.ContentContainer.Size = UDim2.new(1, -140, 1, -45)
-    self.ContentContainer.Position = UDim2.new(0, 135, 0, 40)
-    self.ContentContainer.BackgroundTransparency = 1
-
-    self.Tabs = {}
-    self.Pages = {}
-    self.Connections = {}
-    
-    local inputConn = UserInputService.InputBegan:Connect(function(input, gpe)
-        if not gpe and input.KeyCode == Enum.KeyCode.LeftControl then
-            self.MainFrame.Visible = not self.MainFrame.Visible
+task.spawn(function()
+    if not getrawmetatable or not newcclosure or not getnamecallmethod then return end
+    local mt = getrawmetatable(game) 
+    if not mt then return end 
+    local oldNamecall = mt.__namecall
+    if setreadonly then setreadonly(mt, false) end
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod() 
+        local args = {...}
+        if method == "FireServer" or method == "InvokeServer" then
+            if self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap" then
+                if args[1] and type(args[1]) == "table" then
+                    local targetID = args[1].mapId or args[1].toMapId
+                    if targetID then 
+                        local numID = tonumber(targetID) 
+                        if numID and numID > 50000 and numID <= 50021 then _G.LastSelectedMap = numID - 50000 end 
+                    end
+                end
+            end
         end
+        return oldNamecall(self, ...)
     end)
-    table.insert(self.Connections, inputConn)
-
-    return self
-end
-
-function NanoHub:Destroy()
-    HubRunning = false
-    for _, conn in ipairs(self.Connections) do
-        if conn.Connected then conn:Disconnect() end
-    end
-    if self.ScreenGui then self.ScreenGui:Destroy() end
-end
-
-function NanoHub:CreateTab(tabName)
-    local hubInstance = self
-    local TabBtn = Instance.new("TextButton", self.TabContainer)
-    TabBtn.Size = UDim2.new(1, 0, 0, 35)
-    TabBtn.BackgroundColor3 = Theme.Panel
-    TabBtn.Text = "  " .. tabName
-    TabBtn.TextColor3 = Theme.Text
-    TabBtn.Font = Enum.Font.GothamBold
-    TabBtn.TextSize = 12
-    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
-
-    local PageScroll = Instance.new("ScrollingFrame", self.ContentContainer)
-    PageScroll.Size = UDim2.new(1, 0, 1, 0)
-    PageScroll.BackgroundTransparency = 1
-    PageScroll.ScrollBarThickness = 3
-    PageScroll.Visible = false
-    PageScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
-    local PageLayout = Instance.new("UIListLayout", PageScroll)
-    PageLayout.Padding = UDim.new(0, 6)
-    PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    TabBtn.MouseButton1Click:Connect(function()
-        for _, page in pairs(self.Pages) do page.Visible = false end
-        for _, btn in pairs(self.Tabs) do 
-            btn.BackgroundColor3 = Theme.Panel
-            btn.TextColor3 = Theme.Text
-        end
-        PageScroll.Visible = true
-        TabBtn.BackgroundColor3 = Theme.Primary
-        TabBtn.TextColor3 = Theme.TextHighlight
-    end)
-
-    table.insert(self.Tabs, TabBtn)
-    table.insert(self.Pages, PageScroll)
-
-    if #self.Tabs == 1 then
-        PageScroll.Visible = true
-        TabBtn.BackgroundColor3 = Theme.Primary
-        TabBtn.TextColor3 = Theme.TextHighlight
-    end
-
-    local TabObject = { LayoutIndex = 0, Page = PageScroll }
-    
-    function TabObject:NextOrder()
-        self.LayoutIndex = self.LayoutIndex + 1
-        return self.LayoutIndex
-    end
-    
-    function TabObject:CreateLabel(text)
-        local Lbl = Instance.new("TextLabel", PageScroll)
-        Lbl.LayoutOrder = self:NextOrder()
-        Lbl.Size = UDim2.new(1, 0, 0, 20)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 12
-        Lbl.TextXAlignment = Enum.TextXAlignment.Center
-        return Lbl
-    end
-
-    function TabObject:CreateButton(text, color, callback)
-        local Btn = Instance.new("TextButton", PageScroll)
-        Btn.LayoutOrder = self:NextOrder()
-        Btn.Size = UDim2.new(1, -5, 0, 32)
-        Btn.BackgroundColor3 = color or Theme.Secondary
-        Btn.Text = text
-        Btn.TextColor3 = Theme.TextHighlight
-        Btn.Font = Enum.Font.GothamBold
-        Btn.TextSize = 12
-        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-        Btn.MouseButton1Click:Connect(function() if callback then task.spawn(callback) end end)
-        return Btn
-    end
-
-    function TabObject:CreateDualButtons(text1, color1, cb1, text2, color2, cb2)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 32)
-        Frame.BackgroundTransparency = 1
-
-        local Btn1 = Instance.new("TextButton", Frame)
-        Btn1.Size = UDim2.new(0.48, 0, 1, 0)
-        Btn1.BackgroundColor3 = color1 or Theme.Secondary
-        Btn1.Text = text1
-        Btn1.TextColor3 = Theme.TextHighlight
-        Btn1.Font = Enum.Font.GothamBold
-        Btn1.TextSize = 12
-        Instance.new("UICorner", Btn1).CornerRadius = UDim.new(0, 6)
-        Btn1.MouseButton1Click:Connect(function() if cb1 then task.spawn(cb1) end end)
-
-        local Btn2 = Instance.new("TextButton", Frame)
-        Btn2.Size = UDim2.new(0.48, 0, 1, 0)
-        Btn2.Position = UDim2.new(0.52, 0, 0, 0)
-        Btn2.BackgroundColor3 = color2 or Theme.Secondary
-        Btn2.Text = text2
-        Btn2.TextColor3 = Theme.TextHighlight
-        Btn2.Font = Enum.Font.GothamBold
-        Btn2.TextSize = 12
-        Instance.new("UICorner", Btn2).CornerRadius = UDim.new(0, 6)
-        Btn2.MouseButton1Click:Connect(function() if cb2 then task.spawn(cb2) end end)
-    end
-
-    function TabObject:CreateSideTripleButtons(text, text1, color1, cb1, text2, color2, cb2, text3, color3, cb3)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 32)
-        Frame.BackgroundTransparency = 1
-
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(0.38, -5, 1, 0)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 12
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local w = 0.2
-        local gap = 0.01
-
-        local function CreateSmallBtn(txt, col, cb, posX)
-            local Btn = Instance.new("TextButton", Frame)
-            Btn.Size = UDim2.new(w, 0, 1, 0)
-            Btn.Position = UDim2.new(posX, 0, 0, 0)
-            Btn.BackgroundColor3 = col or Theme.Secondary
-            Btn.Text = txt
-            Btn.TextColor3 = Theme.TextHighlight
-            Btn.Font = Enum.Font.GothamBold
-            Btn.TextSize = 11
-            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-            Btn.MouseButton1Click:Connect(function() if cb then task.spawn(cb) end end)
-        end
-
-        CreateSmallBtn(text1, color1, cb1, 0.38)
-        CreateSmallBtn(text2, color2, cb2, 0.38 + w + gap)
-        CreateSmallBtn(text3, color3, cb3, 0.38 + (w*2) + (gap*2))
-    end
-
-    function TabObject:CreateSideToggle(text, default, callback)
-        local state = default
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 32)
-        Frame.BackgroundTransparency = 1
-        
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(0.7, -5, 1, 0)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 12
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local SwitchBtn = Instance.new("TextButton", Frame)
-        SwitchBtn.Size = UDim2.new(0, 38, 0, 20)
-        SwitchBtn.Position = UDim2.new(1, -40, 0.5, -10)
-        SwitchBtn.Text = ""
-        SwitchBtn.AutoButtonColor = false
-        SwitchBtn.BackgroundColor3 = state and Theme.Primary or Theme.Secondary
-        Instance.new("UICorner", SwitchBtn).CornerRadius = UDim.new(1, 0)
-
-        local Circle = Instance.new("Frame", SwitchBtn)
-        Circle.Size = UDim2.new(0, 16, 0, 16)
-        Circle.Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
-
-        SwitchBtn.MouseButton1Click:Connect(function()
-            state = not state
-            TweenService:Create(SwitchBtn, TweenInfo.new(0.25), {BackgroundColor3 = state and Theme.Primary or Theme.Secondary}):Play()
-            TweenService:Create(Circle, TweenInfo.new(0.25), {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}):Play()
-            if callback then task.spawn(function() callback(state) end) end
-        end)
-    end
-
-    function TabObject:CreateSlider(text, min, max, default, callback, showReset)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 45)
-        Frame.BackgroundTransparency = 1
-        
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(showReset and 0.7 or 1, 0, 0, 20)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text .. ": " .. default
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 11
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local BG = Instance.new("Frame", Frame)
-        BG.Size = UDim2.new(1, 0, 0, 10)
-        BG.Position = UDim2.new(0, 0, 0, 25)
-        BG.BackgroundColor3 = Theme.PanelLight
-        Instance.new("UICorner", BG).CornerRadius = UDim.new(1, 0)
-
-        local Fill = Instance.new("Frame", BG)
-        Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
-        Fill.BackgroundColor3 = Theme.Primary
-        Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-
-        local Btn = Instance.new("TextButton", BG)
-        Btn.Size = UDim2.new(1, 0, 1, 0)
-        Btn.BackgroundTransparency = 1
-        Btn.Text = ""
-
-        local function UpdateValue(val)
-            val = math.clamp(val, min, max)
-            local pos = (val - min) / (max - min)
-            Fill.Size = UDim2.new(pos, 0, 1, 0)
-            Lbl.Text = text .. ": " .. val
-            callback(val)
-        end
-
-        if showReset then
-            local ResetBtn = Instance.new("TextButton", Frame)
-            ResetBtn.Size = UDim2.new(0.28, 0, 0, 20)
-            ResetBtn.Position = UDim2.new(0.72, 0, 0, 0)
-            ResetBtn.BackgroundColor3 = Theme.Secondary
-            ResetBtn.Text = "RESET"
-            ResetBtn.TextColor3 = Theme.Text
-            ResetBtn.Font = Enum.Font.GothamMedium
-            ResetBtn.TextSize = 10
-            Instance.new("UICorner", ResetBtn).CornerRadius = UDim.new(0, 4)
-            ResetBtn.MouseButton1Click:Connect(function() UpdateValue(default) end)
-        end
-
-        local dragging = false
-        Btn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
-        UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        
-        local conn = UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local pos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1)
-                local val = math.floor(min + ((max - min) * pos))
-                UpdateValue(val)
-            end
-        end)
-        table.insert(hubInstance.Connections, conn) 
-        
-        return { Set = UpdateValue }
-    end
-
-    function TabObject:CreateSliderWithToggle(text, min, max, default, callbackSlider, toggleState, txtTrue, txtFalse, callbackToggle)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 45)
-        Frame.BackgroundTransparency = 1
-        
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(0.65, 0, 0, 20)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text .. ": " .. default
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 11
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local BG = Instance.new("Frame", Frame)
-        BG.Size = UDim2.new(1, 0, 0, 10)
-        BG.Position = UDim2.new(0, 0, 0, 25)
-        BG.BackgroundColor3 = Theme.PanelLight
-        Instance.new("UICorner", BG).CornerRadius = UDim.new(1, 0)
-
-        local Fill = Instance.new("Frame", BG)
-        Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
-        Fill.BackgroundColor3 = Theme.Primary
-        Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-
-        local Btn = Instance.new("TextButton", BG)
-        Btn.Size = UDim2.new(1, 0, 1, 0)
-        Btn.BackgroundTransparency = 1
-        Btn.Text = ""
-
-        local function UpdateValue(val)
-            val = math.clamp(val, min, max)
-            local pos = (val - min) / (max - min)
-            Fill.Size = UDim2.new(pos, 0, 1, 0)
-            Lbl.Text = text .. ": " .. val
-            callbackSlider(val)
-        end
-
-        local ToggleContainer = Instance.new("Frame", Frame)
-        ToggleContainer.Size = UDim2.new(0.35, 0, 0, 20)
-        ToggleContainer.Position = UDim2.new(0.65, 0, 0, 0)
-        ToggleContainer.BackgroundTransparency = 1
-
-        local ToggleLbl = Instance.new("TextLabel", ToggleContainer)
-        ToggleLbl.Size = UDim2.new(1, -42, 1, 0)
-        ToggleLbl.BackgroundTransparency = 1
-        ToggleLbl.Text = toggleState and txtTrue or txtFalse
-        ToggleLbl.TextColor3 = Theme.Text
-        ToggleLbl.Font = Enum.Font.GothamMedium
-        ToggleLbl.TextSize = 10
-        ToggleLbl.TextXAlignment = Enum.TextXAlignment.Right
-
-        local SwitchBtn = Instance.new("TextButton", ToggleContainer)
-        SwitchBtn.Size = UDim2.new(0, 36, 0, 18)
-        SwitchBtn.Position = UDim2.new(1, -36, 0.5, -9)
-        SwitchBtn.Text = ""
-        SwitchBtn.AutoButtonColor = false
-        SwitchBtn.BackgroundColor3 = toggleState and Theme.Primary or Theme.Secondary
-        Instance.new("UICorner", SwitchBtn).CornerRadius = UDim.new(1, 0)
-
-        local Circle = Instance.new("Frame", SwitchBtn)
-        Circle.Size = UDim2.new(0, 14, 0, 14)
-        Circle.Position = toggleState and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
-        Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
-        
-        SwitchBtn.MouseButton1Click:Connect(function()
-            toggleState = not toggleState
-            ToggleLbl.Text = toggleState and txtTrue or txtFalse
-            TweenService:Create(SwitchBtn, TweenInfo.new(0.25), {BackgroundColor3 = toggleState and Theme.Primary or Theme.Secondary}):Play()
-            TweenService:Create(Circle, TweenInfo.new(0.25), {Position = toggleState and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)}):Play()
-            callbackToggle(toggleState)
-        end)
-
-        local dragging = false
-        Btn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
-        UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        
-        local conn = UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local pos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1)
-                local val = math.floor(min + ((max - min) * pos))
-                UpdateValue(val)
-            end
-        end)
-        table.insert(hubInstance.Connections, conn)
-    end
-
-    function TabObject:CreateDropdown(text, refreshFunc, selectFunc)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 32)
-        Frame.BackgroundColor3 = Theme.Secondary
-        Frame.ZIndex = 1
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
-
-        local MainBtn = Instance.new("TextButton", Frame)
-        MainBtn.Size = UDim2.new(1, 0, 1, 0)
-        MainBtn.BackgroundTransparency = 1
-        MainBtn.Text = "  " .. text
-        MainBtn.TextColor3 = Theme.TextHighlight
-        MainBtn.Font = Enum.Font.GothamMedium
-        MainBtn.TextSize = 12
-        MainBtn.TextXAlignment = Enum.TextXAlignment.Left
-
-        local DropScroll = Instance.new("ScrollingFrame", Frame)
-        DropScroll.Size = UDim2.new(1, 0, 0, 120)
-        DropScroll.Position = UDim2.new(0, 0, 1, 2)
-        DropScroll.BackgroundColor3 = Theme.PanelLight
-        DropScroll.Visible = false
-        DropScroll.ScrollBarThickness = 3
-        DropScroll.ZIndex = 50 
-        Instance.new("UICorner", DropScroll).CornerRadius = UDim.new(0, 6)
-        local DLayout = Instance.new("UIListLayout", DropScroll)
-
-        MainBtn.MouseButton1Click:Connect(function()
-            DropScroll.Visible = not DropScroll.Visible
-            if DropScroll.Visible then
-                Frame.ZIndex = 5 
-                for _, v in pairs(DropScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-                local options = refreshFunc()
-                DropScroll.CanvasSize = UDim2.new(0, 0, 0, #options * 25)
-                for _, opt in ipairs(options) do
-                    local btn = Instance.new("TextButton", DropScroll)
-                    btn.Size = UDim2.new(1, 0, 0, 25)
-                    btn.BackgroundTransparency = 1
-                    btn.Text = "  " .. opt.Name
-                    btn.TextColor3 = Theme.Text
-                    btn.Font = Enum.Font.Gotham
-                    btn.TextSize = 11
-                    btn.TextXAlignment = Enum.TextXAlignment.Left
-                    btn.ZIndex = 51
-                    btn.MouseButton1Click:Connect(function()
-                        MainBtn.Text = "  " .. text .. ": " .. opt.Name
-                        DropScroll.Visible = false
-                        Frame.ZIndex = 1
-                        selectFunc(opt.Data)
-                    end)
-                end
-            else
-                Frame.ZIndex = 1
-            end
-        end)
-        return MainBtn
-    end
-
-    function TabObject:CreateSideDropdown(text, defaultText, refreshFunc, selectFunc)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 32)
-        Frame.BackgroundTransparency = 1
-        Frame.ZIndex = 1
-
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(0.6, -5, 1, 0)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = text
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 12
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local MainBtn = Instance.new("TextButton", Frame)
-        MainBtn.Size = UDim2.new(0.4, 0, 1, 0)
-        MainBtn.Position = UDim2.new(0.6, 0, 0, 0)
-        MainBtn.BackgroundColor3 = Theme.Secondary
-        MainBtn.Text = defaultText
-        MainBtn.TextColor3 = Theme.TextHighlight
-        MainBtn.Font = Enum.Font.GothamMedium
-        MainBtn.TextSize = 12
-        Instance.new("UICorner", MainBtn).CornerRadius = UDim.new(0, 6)
-
-        local DropScroll = Instance.new("ScrollingFrame", Frame)
-        DropScroll.Size = UDim2.new(0.4, 0, 0, 100)
-        DropScroll.Position = UDim2.new(0.6, 0, 1, 2)
-        DropScroll.BackgroundColor3 = Theme.PanelLight
-        DropScroll.Visible = false
-        DropScroll.ScrollBarThickness = 3
-        DropScroll.ZIndex = 50
-        Instance.new("UICorner", DropScroll).CornerRadius = UDim.new(0, 6)
-        local DLayout = Instance.new("UIListLayout", DropScroll)
-
-        MainBtn.MouseButton1Click:Connect(function()
-            DropScroll.Visible = not DropScroll.Visible
-            if DropScroll.Visible then
-                Frame.ZIndex = 5
-                for _, v in pairs(DropScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-                local options = refreshFunc()
-                DropScroll.CanvasSize = UDim2.new(0, 0, 0, #options * 25)
-                for _, opt in ipairs(options) do
-                    local btn = Instance.new("TextButton", DropScroll)
-                    btn.Size = UDim2.new(1, 0, 0, 25)
-                    btn.BackgroundTransparency = 1
-                    btn.Text = opt.Name
-                    btn.TextColor3 = Theme.Text
-                    btn.Font = Enum.Font.Gotham
-                    btn.TextSize = 11
-                    btn.TextXAlignment = Enum.TextXAlignment.Center
-                    btn.ZIndex = 51
-                    btn.MouseButton1Click:Connect(function()
-                        MainBtn.Text = opt.Name
-                        DropScroll.Visible = false
-                        Frame.ZIndex = 1
-                        selectFunc(opt.Data)
-                    end)
-                end
-            else
-                Frame.ZIndex = 1
-            end
-        end)
-    end
-
-    function TabObject:CreateRadioButtons(title, options, defaultIndex, callback)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 48)
-        Frame.BackgroundTransparency = 1
-
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(1, 0, 0, 15)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = title
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 11
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local BtnContainer = Instance.new("Frame", Frame)
-        BtnContainer.Size = UDim2.new(1, 0, 0, 28)
-        BtnContainer.Position = UDim2.new(0, 0, 0, 18)
-        BtnContainer.BackgroundColor3 = Theme.PanelLight
-        Instance.new("UICorner", BtnContainer).CornerRadius = UDim.new(0, 6)
-
-        local Layout = Instance.new("UIListLayout", BtnContainer)
-        Layout.FillDirection = Enum.FillDirection.Horizontal
-        Layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-        local btns = {}
-        for i, opt in ipairs(options) do
-            local btn = Instance.new("TextButton", BtnContainer)
-            btn.Size = UDim2.new(1/#options, 0, 1, 0)
-            btn.BackgroundTransparency = (i == defaultIndex) and 0 or 1
-            btn.BackgroundColor3 = Theme.Primary
-            btn.Text = opt
-            btn.TextColor3 = (i == defaultIndex) and Theme.TextHighlight or Theme.Text
-            btn.Font = Enum.Font.GothamMedium
-            btn.TextSize = 11
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
-            btn.MouseButton1Click:Connect(function()
-                for j, b in ipairs(btns) do
-                    b.BackgroundTransparency = 1
-                    b.TextColor3 = Theme.Text
-                end
-                btn.BackgroundTransparency = 0
-                btn.TextColor3 = Theme.TextHighlight
-                callback(opt, i)
-            end)
-            table.insert(btns, btn)
-        end
-    end
-
-    function TabObject:CreateGridToggles(title, options, configTable)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 20 + math.ceil(#options / 5) * 28)
-        Frame.BackgroundTransparency = 1
-
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(1, 0, 0, 15)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = title
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 11
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local GridContainer = Instance.new("Frame", Frame)
-        GridContainer.Size = UDim2.new(1, 0, 1, -20)
-        GridContainer.Position = UDim2.new(0, 0, 0, 20)
-        GridContainer.BackgroundTransparency = 1
-
-        local Grid = Instance.new("UIGridLayout", GridContainer)
-        Grid.CellSize = UDim2.new(0.18, 0, 0, 24)
-        Grid.CellPadding = UDim2.new(0.02, 0, 0, 4)
-        Grid.SortOrder = Enum.SortOrder.LayoutOrder
-
-        for i, opt in ipairs(options) do
-            local key = opt.Key or opt.Label
-            local Btn = Instance.new("TextButton", GridContainer)
-            Btn.Text = opt.Label
-            Btn.Font = Enum.Font.GothamBold
-            Btn.TextSize = 10
-            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
-
-            local function UpdateVisual()
-                -- Leemos el valor buscando tanto como string como número (Bypass de JSON)
-                local isEnabled = configTable[key]
-                if isEnabled == nil and tonumber(key) then isEnabled = configTable[tonumber(key)] end
-                if isEnabled == nil then isEnabled = configTable[tostring(key)] end
-                
-                Btn.BackgroundColor3 = isEnabled and Theme.Primary or Theme.Secondary
-                Btn.TextColor3 = isEnabled and Theme.TextHighlight or Theme.Text
-            end
-            UpdateVisual()
-
-            Btn.MouseButton1Click:Connect(function()
-                -- Obtenemos el estado actual leyendo ambos formatos
-                local currentState = configTable[key]
-                if currentState == nil and tonumber(key) then currentState = configTable[tonumber(key)] end
-                if currentState == nil then currentState = configTable[tostring(key)] end
-                
-                local newState = not currentState
-                
-                -- Guardamos en AMBOS formatos para que ni la UI ni el JSON fallen
-                configTable[tostring(key)] = newState
-                if tonumber(key) then configTable[tonumber(key)] = newState end
-                
-                UpdateVisual()
-                if SaveConfig then SaveConfig() end
-            end)
-        end
-    end
-
-    function TabObject:CreateLargeToggle(textOff, textOn, colorOff, colorOn, defaultState, callback)
-        local state = defaultState
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 40)
-        Frame.BackgroundTransparency = 1
-
-        local Btn = Instance.new("TextButton", Frame)
-        Btn.Size = UDim2.new(1, 0, 1, 0)
-        Btn.BackgroundColor3 = state and colorOn or colorOff
-        Btn.Text = state and textOn or textOff
-        Btn.TextColor3 = Theme.TextHighlight
-        Btn.Font = Enum.Font.GothamBlack
-        Btn.TextSize = 14
-        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-
-        Btn.MouseButton1Click:Connect(function()
-            state = not state
-            Btn.Text = state and textOn or textOff
-            TweenService:Create(Btn, TweenInfo.new(0.2), {BackgroundColor3 = state and colorOn or colorOff}):Play()
-            if callback then task.spawn(function() callback(state) end) end
-        end)
-        
-        return {
-            SetState = function(newState, customText)
-                state = newState
-                Btn.Text = customText or (state and textOn or textOff)
-                Btn.BackgroundColor3 = state and colorOn or colorOff
-            end
-        }
-    end
-
-    function TabObject:CreateTextBox(title, defaultText, callback)
-        local Frame = Instance.new("Frame", PageScroll)
-        Frame.LayoutOrder = self:NextOrder()
-        Frame.Size = UDim2.new(1, -5, 0, 50)
-        Frame.BackgroundTransparency = 1
-
-        local Lbl = Instance.new("TextLabel", Frame)
-        Lbl.Size = UDim2.new(1, 0, 0, 15)
-        Lbl.BackgroundTransparency = 1
-        Lbl.Text = title
-        Lbl.TextColor3 = Theme.Text
-        Lbl.Font = Enum.Font.GothamMedium
-        Lbl.TextSize = 11
-        Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local Box = Instance.new("TextBox", Frame)
-        Box.Size = UDim2.new(1, 0, 0, 30)
-        Box.Position = UDim2.new(0, 0, 0, 20)
-        Box.BackgroundColor3 = Theme.PanelLight
-        Box.TextColor3 = Theme.TextHighlight
-        Box.Font = Enum.Font.Code
-        Box.TextSize = 11
-        Box.Text = defaultText
-        Box.ClearTextOnFocus = false
-        Box.TextXAlignment = Enum.TextXAlignment.Left
-        Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 4)
-        Instance.new("UIStroke", Box).Color = Theme.Secondary
-
-        Box.FocusLost:Connect(function() callback(Box.Text) end)
-    end
-
-    return TabObject
-end
+    if setreadonly then setreadonly(mt, true) end
+end)
+
+-- ==============================================================================
+-- CARGA DE LA LIBRERÍA MODULAR DE INTERFAZ 
+-- ==============================================================================
+local NanoHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/CADV92/RBLX-ASH/refs/heads/main/NanoHub"))()
+local Theme = NanoHub.Theme
+local TargetGui = NanoHub.TargetGui
 
 local Hub = NanoHub.new("MIRROR HUB")
+Hub.OnClose = function() HubRunning = false end
 
 -- =========================================================
--- [1] PESTAÑA: PLAYER
+-- AQUÍ COMIENZA LA PESTAÑA: PLAYER (Y el resto de tu código intacto)
 -- =========================================================
 local TabPlayer = Hub:CreateTab("Player")
 
@@ -1052,11 +176,8 @@ local CollectRemote = ReplicatedStorage:WaitForChild("Remotes", 10) and Replicat
 
 TabPlayer:CreateSideToggle("AUTOCOLLECT", Config.AutoCollect, function(state) Config.AutoCollect = state end)
 TabPlayer:CreateSideToggle("NO CLIP", Config.NoClip, function(state) Config.NoClip = state end)
-
--- [NUEVO] Botón Toggle para Destructor de Muros
 TabPlayer:CreateSideToggle("DESTRUCTOR DE MUROS", Config.WallDestroyer, function(state) Config.WallDestroyer = state end)
 
--- Atajo Tecla N para NoClip
 local noclipKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == Enum.KeyCode.N then
         Config.NoClip = not Config.NoClip
@@ -1064,6 +185,7 @@ local noclipKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 table.insert(Hub.Connections, noclipKeyConn)
+
 
 -- ==========================================
 -- INTEGRACIÓN: MONITOR DE COMBATE
@@ -1139,8 +261,8 @@ ResetDmgBtn.TextSize = 11
 Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
 
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
-ToggleAutoOro.Size = UDim2.new(0.32, 0, 0, 25)
-ToggleAutoOro.Position = UDim2.new(0.04, 0, 0, 90)
+ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
+ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
 ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary
 ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
 ToggleAutoOro.TextColor3 = Theme.TextHighlight
@@ -1154,8 +276,8 @@ ToggleAutoOro.MouseButton1Click:Connect(function()
 end)
 
 local ToggleAutoDrop = Instance.new("TextButton", MonitorFrame)
-ToggleAutoDrop.Size = UDim2.new(0.32, 0, 0, 25)
-ToggleAutoDrop.Position = UDim2.new(0.38, 0, 0, 90)
+ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 25)
+ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 90)
 ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary
 ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
 ToggleAutoDrop.TextColor3 = Theme.TextHighlight
@@ -1168,10 +290,9 @@ ToggleAutoDrop.MouseButton1Click:Connect(function()
     ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary 
 end)
 
--- Botón Pociones de Oro
 local ToggleAutoPots = Instance.new("TextButton", MonitorFrame)
 ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 25)
-ToggleAutoPots.Position = UDim2.new(0.72, 0, 0, 90)
+ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 90)
 ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
 ToggleAutoPots.Text = "🧪"
 ToggleAutoPots.TextColor3 = Theme.TextHighlight
@@ -1183,23 +304,6 @@ ToggleAutoPots.MouseButton1Click:Connect(function()
     Config.AutoGoldPotions = not Config.AutoGoldPotions
     ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
     ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
-end)
-
--- Botón Pociones de Ataque [NUEVO]
-local ToggleAutoAtkPots = Instance.new("TextButton", MonitorFrame)
-ToggleAutoAtkPots.Size = UDim2.new(0.12, 0, 0, 25)
-ToggleAutoAtkPots.Position = UDim2.new(0.85, 0, 0, 90)
-ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-ToggleAutoAtkPots.Text = "⚔️"
-ToggleAutoAtkPots.TextColor3 = Theme.TextHighlight
-ToggleAutoAtkPots.Font = Enum.Font.GothamBold
-ToggleAutoAtkPots.TextSize = 12
-ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
-Instance.new("UICorner", ToggleAutoAtkPots).CornerRadius = UDim.new(0, 4)
-ToggleAutoAtkPots.MouseButton1Click:Connect(function() 
-    Config.AutoAttackPotions = not Config.AutoAttackPotions
-    ToggleAutoAtkPots.BackgroundColor3 = Config.AutoAttackPotions and Theme.Primary or Theme.Secondary
-    ToggleAutoAtkPots.BackgroundTransparency = Config.AutoAttackPotions and 0 or 0.6
 end)
 
 local TotalDamageDealt = 0
@@ -1231,8 +335,9 @@ end)
 table.insert(Hub.Connections, damageConn)
 
 local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
-local LastAtkPotionS, LastAtkPotionM, LastAtkPotionL = 0, 0, 0
+local LastGoldPotionS = 0
+local LastGoldPotionM = 0
+local LastGoldPotionL = 0
 local COOLDOWN_S = 600
 local COOLDOWN_M = 1800
 local COOLDOWN_L = 2400
@@ -1240,17 +345,19 @@ local COOLDOWN_L = 2400
 local function AutoUseGoldPotions()
     if not Config.AutoGoldPotions or not UseItemRemote then return end
     local now = os.time()
-    if now - LastGoldPotionS >= COOLDOWN_S then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end); LastGoldPotionS = now end
-    if now - LastGoldPotionM >= COOLDOWN_M then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end); LastGoldPotionM = now end
-    if now - LastGoldPotionL >= COOLDOWN_L then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end); LastGoldPotionL = now end
-end
 
-local function AutoUseAttackPotions()
-    if not Config.AutoAttackPotions or not UseItemRemote then return end
-    local now = os.time()
-    if now - LastAtkPotionS >= COOLDOWN_S then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10048, useCount = 1 }) end) end); LastAtkPotionS = now end
-    if now - LastAtkPotionM >= COOLDOWN_M then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10051, useCount = 1 }) end) end); LastAtkPotionM = now end
-    if now - LastAtkPotionL >= COOLDOWN_L then task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10060, useCount = 1 }) end) end); LastAtkPotionL = now end
+    if now - LastGoldPotionS >= COOLDOWN_S then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
+        LastGoldPotionS = now
+    end
+    if now - LastGoldPotionM >= COOLDOWN_M then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
+        LastGoldPotionM = now
+    end
+    if now - LastGoldPotionL >= COOLDOWN_L then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
+        LastGoldPotionL = now
+    end
 end
 
 TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
@@ -1365,11 +472,6 @@ local monitorConn = RunService.Heartbeat:Connect(function()
     end
 
     if CurrentTarget then
-        AutoUseAttackPotions() -- [NUEVO] Inyecta las pociones de ataque durante el combate
-        local hp = Utils.GetCurrentRealHealth(CurrentTarget)
-        TargetLabel.Text = "🎯 " .. CurrentTarget.Name
-        HpLabel.Text = "❤️ " .. Utils.FormatHealth(hp)
-
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
@@ -1871,7 +973,7 @@ end)
 -- =========================================================
 local MapPanel = Instance.new("Frame", Hub.ScreenGui)
 MapPanel.Name = "MapTeleportPanel"
-MapPanel.Size = UDim2.new(0, 160, 0, 335)
+MapPanel.Size = UDim2.new(0, 160, 0, 365)
 MapPanel.Position = UDim2.new(0.5, 270, 0.5, -167)
 MapPanel.BackgroundColor3 = Theme.Background
 MapPanel.Active = true
@@ -1901,18 +1003,17 @@ Instance.new("UICorner", MapCloseBtn).CornerRadius = UDim.new(0, 4)
 MapCloseBtn.MouseButton1Click:Connect(function() MapPanel.Visible = false end)
 
 local MapScroll = Instance.new("ScrollingFrame", MapPanel)
-MapScroll.Size = UDim2.new(1, -12, 1, -35)
-MapScroll.Position = UDim2.new(0, 6, 0, 30)
-MapScroll.BackgroundTransparency = 1
-MapScroll.ScrollBarThickness = 2
-MapScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local MapContainer = Instance.new("Frame", MapPanel)
+MapContainer.Size = UDim2.new(1, -12, 1, -35)
+MapContainer.Position = UDim2.new(0, 6, 0, 30)
+MapContainer.BackgroundTransparency = 1
 
-local MapGrid = Instance.new("UIGridLayout", MapScroll)
+local MapGrid = Instance.new("UIGridLayout", MapContainer)
 MapGrid.CellSize = UDim2.new(0.47, 0, 0, 26)
 MapGrid.CellPadding = UDim2.new(0.04, 0, 0, 4)
 
-for i = 1, 20 do
-    local btn = Instance.new("TextButton", MapScroll)
+for i = 1, 21 do
+    local btn = Instance.new("TextButton", MapContainer)
     btn.BackgroundColor3 = Theme.Secondary
     btn.Text = string.format("M %02d", i) 
     btn.TextColor3 = Theme.TextHighlight
@@ -2185,18 +1286,27 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA
+-- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + CORREA + DESYNC)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
 local MetState = {
-    Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
+    Activo = false, 
+    ModoManual = false, 
+    TargetKillInst = nil, 
     Limites = LimitesMobsBase,
-    ScannedMobsCache = {} 
+    ScannedMobsCache = {},
+    MovimientoLibre = false, -- Control de anclaje del jugador
+    
+    -- Cerebro y Tiempos (Controlables por UI)
+    InternalPulse = false,
+    CurrentRandomTarget = nil,
+    TIEMPO_ENCENDIDO = 0.25,
+    TIEMPO_APAGADO = 0.25,
+    WAIT_TIME = 0.05
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
-    WasTorreMobAlive = false, TorreResetting = false, -- [CORREGIDO] Variables inicializadas
     BossList = {
         "Antares", "Arch Lich", "Ashborn", "Frostborne", "Frostborne1", 
         "Giant Arachnid Buryura", "Giant Monarch", "Igris", "Kargalgan", 
@@ -2205,7 +1315,6 @@ local MetCaza = {
         "Absolute", "Broly", "Goku[Super4]" 
     }
 }
-local MetCFrames = {}
 
 local FocusHighlight = Instance.new("Highlight")
 FocusHighlight.Name = "MetralletaFocus"
@@ -2216,13 +1325,18 @@ FocusHighlight.OutlineTransparency = 0.1
 pcall(function() FocusHighlight.Parent = CoreGui end)
 if not FocusHighlight.Parent then FocusHighlight.Parent = TargetGui end
 
-local function RestaurarMetralleta()
-    for mob, cframe in pairs(MetCFrames) do
-        if typeof(mob) == "Instance" and mob.Parent and mob:FindFirstChild("HumanoidRootPart") then 
-            mob.HumanoidRootPart.CFrame = cframe 
+local function RestaurarFisicas()
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if myRoot then myRoot.Anchored = false end
+    
+    local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+    local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+    if myHeroes then
+        for _, hero in pairs(myHeroes:GetChildren()) do
+            local hRoot = hero:FindFirstChild("HumanoidRootPart")
+            if hRoot then hRoot.Anchored = false end
         end
     end
-    MetCFrames = {}
 end
 
 local LblStatusMet = TabMetralleta:CreateLabel("Estado: En reposo")
@@ -2253,7 +1367,6 @@ end)
 TabMetralleta:CreateDropdown("Objetivo Manual", 
     function()
         local lista = {{Name = "AUTO (Más Cercano)", Data = nil}}
-        
         if MetState.Activo then
             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if myRoot then
@@ -2285,70 +1398,50 @@ TabMetralleta:CreateDropdown("Objetivo Manual",
             MetState.ModoManual = false; MetState.TargetKillInst = nil 
         else 
             MetState.ModoManual = true; MetState.TargetKillInst = selectedInst 
-            local fld = Utils.GetEnemyFolder()
-            if fld then 
-                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local mobs = {}
-                for _, e in pairs(fld:GetChildren()) do
-                    if Utils.EsMobValido(e, myRoot, MetState.Limites) then
-                        table.insert(mobs, { inst = e, dist = (e.HumanoidRootPart.Position - myRoot.Position).Magnitude })
-                    end
-                end
-                table.sort(mobs, function(a, b) return a.dist < b.dist end)
-                for _, data in ipairs(mobs) do if data.inst ~= MetState.TargetKillInst then MetState.TargetRefInst = data.inst; break end end
-            end
         end
     end
 )
 
-local function ToggleMetralleta()
+local btnMetToggle = TabMetralleta:CreateButton("INICIAR SECUENCIA NUKER", Theme.Primary, function()
     MetState.Activo = not MetState.Activo
     if MetState.Activo then
         if not MetState.ModoManual then 
             MetState.TargetKillInst = nil
-            MetState.TargetRefInst = nil 
             MetCaza.SoloName = ""
             MetCaza.SecName = ""
             MetCaza.BossEspera = false
             MetCaza.WasBossAlive = false
         end
     else
-        RestaurarMetralleta()
+        RestaurarFisicas()
+        FocusHighlight.Adornee = nil
+        LblStatusMet.Text = "Estado: En reposo"
     end
-end
+    btnMetToggle.Text = MetState.Activo and "DETENER SECUENCIA" or "INICIAR SECUENCIA NUKER"
+    btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
+end)
 
-local btnMetToggle = TabMetralleta:CreateButton("INICIAR SECUENCIA", Theme.Primary, ToggleMetralleta)
+local modoMap = { ["SOLO"]=1, ["SEC"]=2, ["BOSS"]=3 }
+TabMetralleta:CreateRadioButtons("Modo de Caza Automático", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
+    Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
+end)
 
-local metKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.K then
-        ToggleMetralleta()
-        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = MetState.Activo and "Activada" or "Desactivada", Duration = 2 }) end)
+TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function(state)
+    MetState.MovimientoLibre = state
+    if state then
+        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then myRoot.Anchored = false end
     end
 end)
-table.insert(Hub.Connections, metKeyConn)
 
-local metSpeedMap = {0.1, 0.05, 0.03, 0.01, 0.01, 0.01} -- El 0 fuerza el mínimo yield posible
-local metReqsMap = {5, 5, 2, 2, 4, 6} -- Multiplicador de peticiones simultáneas por tick
-MetState.Vel = metSpeedMap[Config.MetralletaVel] or 0.05
-MetState.Reqs = metReqsMap[Config.MetralletaVel] or 1
+TabMetralleta:CreateLabel("Ajustes de Velocidad (Recomendado: 0.05)")
+TabMetralleta:CreateSlider("Velocidad Bucle Red (5 = 0.05s)", 1, 10, 5, function(v) MetState.WAIT_TIME = v / 100 end, true)
+TabMetralleta:CreateSlider("Cerebro: Tiempo Ataque (25 = 0.25s)", 10, 100, 25, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
+TabMetralleta:CreateSlider("Cerebro: Tiempo Apagón (25 = 0.25s)", 5, 100, 25, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
 
-local MetralletaIndex = (Config.MetralletaModo == "SOLO" and 1) or (Config.MetralletaModo == "SEC" and 2) or (Config.MetralletaModo == "BOSS" and 3) or (Config.MetralletaModo == "TORRE" and 4) or 1
-TabMetralleta:CreateRadioButtons("Modo de Farmeo:", {"SOLO", "SEC", "BOSS", "TORRE"}, MetralletaIndex, function(opt)
-    Config.MetralletaModo = opt
-    MetCaza.SoloName = ""
-    MetCaza.SecName = ""
-    MetCaza.BossEspera = false
-    MetCaza.WasTorreMobAlive = false
-    MetCaza.TorreResetting = false
-    pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo cambiado a: " .. opt, Duration = 2 }) end)
-end)
-
-TabMetralleta:CreateRadioButtons("Velocidad de Red", {"x1", "x2", "x3", "x4", "x5", "MAX"}, Config.MetralletaVel, function(opt, idx)
-    Config.MetralletaVel = idx
-    MetState.Vel = metSpeedMap[idx] or 0.05
-    MetState.Reqs = metReqsMap[idx] or 1
-end)
-
+-- ==========================================
+-- 1. LÓGICA DE ASIGNACIÓN (Target Automático)
+-- ==========================================
 task.spawn(function()
     while task.wait(0.5) do
         if not HubRunning then break end 
@@ -2359,7 +1452,8 @@ task.spawn(function()
         end
         
         if MetCaza.BossEspera then 
-            LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."; continue 
+            LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."
+            continue 
         end
 
         if not MetState.ModoManual and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
@@ -2378,228 +1472,179 @@ task.spawn(function()
             end
 
             if #mobs == 0 then
-                MetState.TargetKillInst, MetState.TargetRefInst = nil, nil
+                MetState.TargetKillInst = nil
             else
                 if Config.MetralletaModo == "SOLO" then
                     if MetCaza.SoloName == "" then MetCaza.SoloName = mobs[1].name end
-                    local soloInst, refInst = nil, nil
                     for _, data in ipairs(mobs) do
-                        if data.name == MetCaza.SoloName and not soloInst then soloInst = data.inst
-                        elseif data.name ~= MetCaza.SoloName and not refInst then refInst = data.inst end
+                        if data.name == MetCaza.SoloName then MetState.TargetKillInst = data.inst; break end
                     end
-                    MetState.TargetKillInst = soloInst; MetState.TargetRefInst = refInst
 
                 elseif Config.MetralletaModo == "SEC" then
                     if MetCaza.SecName == "" then MetCaza.SecName = mobs[1].name end
                     local seqInst = nil
                     for _, data in ipairs(mobs) do if data.name == MetCaza.SecName then seqInst = data.inst; break end end
-                    
-                    if seqInst then MetState.TargetKillInst = seqInst
-                    else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
-                    
-                    MetState.TargetRefInst = nil
-                    for _, data in ipairs(mobs) do if data.inst ~= MetState.TargetKillInst then MetState.TargetRefInst = data.inst; break end end
+                    if seqInst then MetState.TargetKillInst = seqInst else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
 
                 elseif Config.MetralletaModo == "BOSS" then
                     if MetCaza.WasBossAlive and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
-                        MetCaza.BossEspera = true; MetCaza.WasBossAlive = false; MetState.TargetKillInst, MetState.TargetRefInst = nil, nil
-                        task.spawn(function()
-                            task.wait(1)
-                            local rt = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                            task.wait(0.2); MetCaza.BossEspera = false
-                        end)
+                        MetCaza.BossEspera = true; MetCaza.WasBossAlive = false; MetState.TargetKillInst = nil
+                        task.spawn(function() task.wait(1.2); MetCaza.BossEspera = false end)
                         continue
                     end
-
                     local bossInst = nil
                     for _, data in ipairs(mobs) do if table.find(MetCaza.BossList, data.name) then bossInst = data.inst; break end end
-                    
-                    MetState.TargetKillInst = bossInst; MetCaza.WasBossAlive = (MetState.TargetKillInst ~= nil); MetState.TargetRefInst = nil
-                    if MetState.TargetKillInst then
-                        for _, data in ipairs(mobs) do if data.inst ~= MetState.TargetKillInst then MetState.TargetRefInst = data.inst; break end end
-                    end
-                -- ===============================================
-                -- [NUEVO] LÓGICA DE TORRE (Reseteo Automático)
-                -- ===============================================
-                elseif Config.MetralletaModo == "TORRE" then
-                    if MetCaza.TorreResetting then continue end 
-                    
-                    if MetCaza.SoloName == "" then MetCaza.SoloName = mobs[1].name end
-                    local soloInst, refInst = nil, nil
-                    for _, data in ipairs(mobs) do
-                        if data.name == MetCaza.SoloName and not soloInst then soloInst = data.inst
-                        elseif data.name ~= MetCaza.SoloName and not refInst then refInst = data.inst end
-                    end
-                    MetState.TargetKillInst = soloInst; MetState.TargetRefInst = refInst
-
-                    if MetCaza.WasTorreMobAlive and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
-                        MetCaza.TorreResetting = true
-                        MetState.TargetKillInst = nil
-                        MetState.TargetRefInst = nil
-                        MetCaza.WasTorreMobAlive = false
-                        
-                        task.spawn(function()
-                            if LblStatusMet then LblStatusMet.Text = "Mob eliminado. Iniciando Reset Torre..." end
-                            local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-                            
-                            -- 1. Mueve al mapa 1
-                            pcall(function() Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50001}) end)
-                            
-                            -- 2. Espera 25 segundos + 1 segundo (26s total)
-                            task.wait(26)
-                            
-                            -- 3. Ejecuta Mi Torre
-                            if _G.EjecutarMiTorre then _G.EjecutarMiTorre() end
-                            
-                            -- 4. Tiempo extra para asegurar la carga
-                            task.wait(6)
-                            
-                            MetCaza.TorreResetting = false
-                            MetCaza.SoloName = "" -- Se reinicia para auto-detectar el mob nuevamente
-                        end)
-                        continue
-                    end
-                    MetCaza.WasTorreMobAlive = (MetState.TargetKillInst ~= nil)
-                end
-            end
-        end
-
-        -- ====================================================================
-        -- [ NUEVO ]: Reasignación de Target de Referencia si muere prematuramente
-        -- ====================================================================
-        if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-            if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
-                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local fld = Utils.GetEnemyFolder()
-                if myRoot and fld then
-                    local newRef = nil
-                    local bestDist = math.huge
-                    
-                    for _, enemy in pairs(fld:GetChildren()) do
-                        -- Buscamos el mob válido más cercano que NO sea el target a matar
-                        if enemy ~= MetState.TargetKillInst and Utils.EsMobValido(enemy, myRoot, MetState.Limites) then
-                            local dist = (enemy.HumanoidRootPart.Position - myRoot.Position).Magnitude
-                            if dist < bestDist then
-                                bestDist = dist
-                                newRef = enemy
-                            end
-                        end
-                    end
-                    
-                    MetState.TargetRefInst = newRef
+                    MetState.TargetKillInst = bossInst; MetCaza.WasBossAlive = (MetState.TargetKillInst ~= nil)
                 end
             end
         end
     end
 end)
 
-local metHbConn = RunService.Heartbeat:Connect(function()
-    if not HubRunning then 
-        RestaurarMetralleta()
-        if FocusHighlight then FocusHighlight:Destroy() end
-        return 
-    end
-    
-    btnMetToggle.Text = MetState.Activo and "DETENER SECUENCIA" or "INICIAR SECUENCIA"
-    btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
-
-    if not MetState.Activo then 
-        LblStatusMet.Text = MetState.TargetKillInst and ("Enfoque: " .. MetState.TargetKillInst.Name) or "Estado: En reposo"
-        if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-            FocusHighlight.Adornee = MetState.TargetKillInst
+-- ==========================================
+-- 2. CEREBRO INTERMITENTE
+-- ==========================================
+task.spawn(function()
+    while HubRunning do
+        if MetState.Activo and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+            MetState.InternalPulse = true
+            task.wait(MetState.TIEMPO_ENCENDIDO)
+            MetState.InternalPulse = false
+            MetState.CurrentRandomTarget = nil 
+            task.wait(MetState.TIEMPO_APAGADO)
         else
+            task.wait(0.1)
+        end
+    end
+end)
+
+local function GetRandomMob(excludeTarget)
+    local fld = Utils.GetEnemyFolder()
+    if not fld then return nil end
+    local mobs = {}
+    for _, enemy in pairs(fld:GetChildren()) do
+        if enemy ~= excludeTarget and enemy:FindFirstChild("HumanoidRootPart") and not Utils.EstaMuerto(enemy) then
+            table.insert(mobs, enemy)
+        end
+    end
+    if #mobs > 0 then return mobs[math.random(1, #mobs)] end
+    return nil
+end
+
+-- ==========================================
+-- 3. LA CORREA INTELIGENTE (Físicas Mixtas)
+-- ==========================================
+local metHbConn = RunService.Heartbeat:Connect(function()
+    if not HubRunning then RestaurarFisicas(); return end
+
+    if MetState.Activo and MetState.TargetKillInst then
+        local target = MetState.TargetKillInst
+        if Utils.EstaMuerto(target) then
             FocusHighlight.Adornee = nil
+            RestaurarFisicas()
+            return
         end
-        return 
-    end
-
-    LblStatusMet.Text = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and ("Atacando: " .. MetState.TargetKillInst.Name) or "Escaneando zona..."
-
-    if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-        FocusHighlight.Adornee = MetState.TargetKillInst
-    else
-        FocusHighlight.Adornee = nil
-    end
-
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    for mob, originalCF in pairs(MetCFrames) do
-        if mob ~= MetState.TargetRefInst and typeof(mob) == "Instance" and mob.Parent and mob:FindFirstChild("HumanoidRootPart") then 
-            mob.HumanoidRootPart.CFrame = originalCF; MetCFrames[mob] = nil 
-        end
-    end
-
-    if myRoot and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-        local targetPos, targetCFrame = MetState.TargetKillInst.HumanoidRootPart.Position, MetState.TargetKillInst.HumanoidRootPart.CFrame
         
-        myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
-        myRoot.AssemblyLinearVelocity = Vector3.zero
+        FocusHighlight.Adornee = target
+        LblStatusMet.Text = "Masacrando: " .. target.Name
         
-        if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and MetState.TargetRefInst:FindFirstChild("HumanoidRootPart") then
-            local refRoot = MetState.TargetRefInst.HumanoidRootPart
-            if not MetCFrames[MetState.TargetRefInst] then 
-                MetCFrames[MetState.TargetRefInst] = refRoot.CFrame 
-            end
+        local targetRoot = target:FindFirstChild("HumanoidRootPart")
+        if targetRoot then
+            local targetPos = targetRoot.Position
             
-            refRoot.CFrame = myRoot.CFrame * CFrame.new(0, 25, 20)
-            refRoot.AssemblyLinearVelocity = Vector3.zero
-        end
-        
-        
-        local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-        if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
-            for _, pet in pairs(heroesFolder["Hero_" .. tostring(LocalPlayer.UserId)]:GetChildren()) do
-                local hum = pet:FindFirstChildOfClass("Humanoid")
-                if hum then hum.WalkSpeed = 16 end 
-                local petRoot = pet:FindFirstChild("HumanoidRootPart")
-                if petRoot and (petRoot.Position - targetPos).Magnitude > 25 then 
-                    petRoot.CFrame = CFrame.new(targetPos + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)), targetPos)
-                    petRoot.AssemblyLinearVelocity = Vector3.zero 
+            -- Correa del Jugador
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if myRoot then
+                if MetState.MovimientoLibre then
+                    myRoot.Anchored = false
+                else
+                    myRoot.Anchored = true
+                    if (myRoot.Position - targetPos).Magnitude > 20 then
+                        myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, 12), targetPos)
+                        myRoot.AssemblyLinearVelocity = Vector3.zero
+                    end
+                end
+            end
+
+            -- Correa de Héroes: DESANCLADOS pero limitados a 15 studs
+            local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+            local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+            if myHeroes then
+                local heroList = myHeroes:GetChildren()
+                for _, hero in ipairs(heroList) do
+                    local hRoot = hero:FindFirstChild("HumanoidRootPart")
+                    if hRoot then
+                        hRoot.Anchored = false 
+                        if (hRoot.Position - targetPos).Magnitude > 15 then
+                            local heroPos = targetPos + Vector3.new(math.random(-8, 8), 0, math.random(-8, 8))
+                            hRoot.CFrame = CFrame.new(heroPos, targetPos)
+                            hRoot.AssemblyLinearVelocity = Vector3.zero
+                        end
+                    end
                 end
             end
         end
+    else
+        FocusHighlight.Adornee = nil
+        RestaurarFisicas()
     end
 end)
 table.insert(Hub.Connections, metHbConn)
 
+-- ==========================================
+-- 4. BUCLE DE ATAQUE (Red / Envío de Remotes)
+-- ==========================================
 task.spawn(function()
-    local frames = 0
-    while HubRunning do
-        task.wait(MetState.Vel)
-        if MetState.Activo then
-            frames = frames + 1
-            local rGuid = (MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst)) and Utils.GetGUID(MetState.TargetRefInst) or nil
-            local kGuid = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and Utils.GetGUID(MetState.TargetKillInst) or nil
+    local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if not Remotes then return end
+    
+    local ClickEnemy = Remotes:FindFirstChild("ClickEnemy")
+    local PlayerSkill = Remotes:FindFirstChild("PlayerClickAttackSkill")
+    local HeroPos = Remotes:FindFirstChild("HeroReachedAttackPos")
+    local HeroSkill = Remotes:FindFirstChild("HeroUseSkill")
+
+    while true do
+        if not HubRunning then break end
+        task.wait(MetState.WAIT_TIME)
+        
+        if not MetState.Activo or not MetState.InternalPulse then continue end
+
+        local target = MetState.TargetKillInst
+        if not target or Utils.EstaMuerto(target) then continue end
+
+        -- 4.1 FASE DESYNC (Engaño al servidor)
+        if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
+            MetState.CurrentRandomTarget = GetRandomMob(target)
+        end
+
+        if MetState.CurrentRandomTarget then
+            local rGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
+            if rGuid then
+                if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.CurrentRandomTarget }) end) end) end
+                if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = rGuid }) end) end
+            end
+        end
+
+        -- 4.2 FASE NUKER (Ataque real al Boss)
+        local tGuid = Utils.GetGUID(target)
+        local targetRoot = target:FindFirstChild("HumanoidRootPart")
+        
+        if tGuid and targetRoot then
+            -- El doble ClickEnemy vital
+            if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
             
-            if kGuid then
-                -- Bucle multiplicador que satura tanto el Daño como la IA de las Sombras
-                for i = 1, (MetState.Reqs or 1) do
-                    
-                    -- 1. Sobrecarga de Pathfinding a la Referencia (Activa el glitch de movimiento)
-                    if rGuid and frames % 2 == 0 then
-                        task.spawn(function() pcall(function()
-                            -- Spam concurrente de ClickEnemy: Inunda la cola de acciones de las sombras
-                            if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.TargetRefInst }) end
-                            
-                            if PAttackRem then 
-                                PAttackRem:FireServer({ ["attackEnemyGUID"] = rGuid })
-                                PAttackRem:FireServer({ ["autoClickEnemyGUID"] = rGuid }) -- Furia del jugador
-                            end
-                            if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = rGuid }) end
-                        end) end)
+            if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = tGuid }) end) end
+
+            local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+            local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+            
+            if myHeroes then
+                for _, hero in pairs(myHeroes:GetChildren()) do
+                    local hGuid = Utils.GetGUID(hero)
+                    if hGuid then
+                        if HeroPos then pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end) end
+                        if HeroSkill then pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end) end
                     end
-                    
-                    -- 2. Sobrecarga de Ataque al Objetivo (Fuerza la ejecución del Ultimate)
-                    task.spawn(function() pcall(function()
-                        -- Resetea el objetivo masivamente, forzando a las sombras a detonar sus ataques especiales
-                        if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = kGuid, ["enemyCharacter"] = MetState.TargetKillInst }) end
-                        
-                        if PAttackRem then 
-                            PAttackRem:FireServer({ ["attackEnemyGUID"] = kGuid })
-                            PAttackRem:FireServer({ ["autoClickEnemyGUID"] = kGuid }) -- Furia del jugador
-                        end
-                        if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = kGuid }) end
-                    end) end)
-                    
                 end
             end
         end
@@ -2617,30 +1662,6 @@ local RemotesDataTorre = ReplicatedStorage:WaitForChild("Remotes", 10)
 
 TabTorre:CreateLabel("Viajes de Torre Rápidos")
 local LblTorreStatus = TabTorre:CreateLabel("Estado: Listo para viajar")
-
--- [NUEVO] Extraemos EjecutarMiTorre para usarlo también en Metralleta
-_G.EjecutarMiTorre = function()
-    task.spawn(function()
-        if LblTorreStatus then LblTorreStatus.Text = "Viajando a Mapa Base..." end
-        local map2Id = 50002 
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = map2Id}) end)
-        task.wait(3.5) 
-        
-        if LblTorreStatus then LblTorreStatus.Text = "Entrando a MI TORRE..." end
-        local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} 
-        
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
-        pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
-        pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
-        
-        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
-        
-        if LblTorreStatus then LblTorreStatus.Text = "Llegaste a MI TORRE" end
-        task.wait(2)
-        if LblTorreStatus then LblTorreStatus.Text = "Listo para viajar" end
-    end)
-end
 
 TabTorre:CreateDropdown("Jugador a Visitar",
     function()
@@ -2669,17 +1690,19 @@ local function IniciarViaje(targetId, nombreDestino)
     
     task.spawn(function()
         LblTorreStatus.Text = "Viajando a Mapa Base..."
+        -- 1. Salto de limpieza al Mapa 2
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
         task.wait(3.5)
         
         LblTorreStatus.Text = "Viajando a: " .. nombreDestino
         local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
         
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
         
+        -- NUEVO: Se envían los argumentos
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
         
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
@@ -2689,7 +1712,27 @@ local function IniciarViaje(targetId, nombreDestino)
 end
 
 TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
-    _G.EjecutarMiTorre()
+    task.spawn(function()
+        LblTorreStatus.Text = "Viajando a Mapa Base..."
+        local map2Id = 50002 
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = map2Id}) end)
+        task.wait(3.5) 
+        
+        LblTorreStatus.Text = "Entrando a MI TORRE..."
+        local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
+        pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
+        pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
+        
+        -- NUEVO: Se envían los argumentos
+        pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
+        
+        LblTorreStatus.Text = "Llegaste a MI TORRE"
+        task.wait(2)
+        LblTorreStatus.Text = "Listo para viajar"
+    end)
 end, "IR A VISITA", Theme.Primary, function()
     if TorreState.TargetId then
         IniciarViaje(TorreState.TargetId, TorreState.TargetName)
@@ -3153,9 +2196,11 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
 end)
 
 -- ==============================================================================
--- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - SIN COMBATE)
+-- [7] PESTAÑA: AUTO RAID & TP (MOTOR LOGÍSTICO OPTIMIZADO - CON FOCUS BOSS)
 -- ==============================================================================
 local TabAutoRaid = Hub:CreateTab("Incursiones")
+
+Config.RaidSettings.AutoReequip = Config.RaidSettings.AutoReequip or false
 
 local RaidState = {
     IsProcessing = false,
@@ -3170,7 +2215,8 @@ local RaidState = {
     ExitTriggered = false,
     ExitTime = 0,
     ClaimPosition = nil,
-    CurrentBossMap = nil
+    CurrentBossMap = nil,
+    BossInst = nil -- Instancia del Boss actual
 }
 
 local LblRaidStatus = TabAutoRaid:CreateLabel("Estado: Esperando órdenes...")
@@ -3189,6 +2235,9 @@ local BtnAutoTP = TabAutoRaid:CreateLargeToggle(
     Config.RaidSettings.AutoTP, 
     function(state) Config.RaidSettings.AutoTP = state end
 )
+
+-- Integración Toggle Reequipado de Héroes
+TabAutoRaid:CreateSideToggle("REEQUIPAR HÉROES EN RAID", Config.RaidSettings.AutoReequip, function(state) Config.RaidSettings.AutoReequip = state; SaveConfig() end)
 
 TabAutoRaid:CreateLabel("Lógica de Búsqueda")
 TabAutoRaid:CreateRadioButtons("Priorizar por:", {"MAP", "GRADE"}, Config.RaidSettings.Priority == "MAP" and 1 or 2, function(opt)
@@ -3216,7 +2265,7 @@ TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", v
 end)
 
 -- Generador de Tablas para Grid
-local mapOpts = {} for i=1, 20 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
+local mapOpts = {} for i=1, 21 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
 local normOpts = {} for _, v in ipairs({"D", "B", "S", "SS", "G", "N", "M+", "M++", "XM", "ULT"}) do table.insert(normOpts, {Label = v}) end
 local ascOpts = {} for _, v in ipairs({"E", "D", "C", "B", "A", "S", "SS", "G", "N", "M"}) do table.insert(ascOpts, {Label = v}) end
 
@@ -3229,20 +2278,22 @@ local HardRaidsList = {
     "N-14-M+", "N-14-M++", "N-15-M+", "N-15-M++", "N-16-M+", "N-16-M++", "N-17-M+", "N-17-M++", 
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
     "N-20-B", "N-20-S", "N-20-G", "N-20-N", "N-20-M+", "N-20-M++",
+    "N-21-D", "N-21-B", "N-21-S", "N-21-G", "N-21-N", "N-21-M+", "N-21-M++",
     "A-11-C", "A-11-S", "A-11-G", "A-11-N", "A-11-M", "A-12-C", "A-12-S", "A-12-G", "A-12-N", "A-12-M",
     "A-13-C", "A-13-S", "A-13-G", "A-13-N", "A-13-M", "A-14-C", "A-14-S", "A-14-G", "A-14-N", "A-14-M",
     "A-15-C", "A-15-S", "A-15-G", "A-15-N", "A-15-M", "A-16-C", "A-16-S", "A-16-G", "A-16-N", "A-16-M",
     "A-17-E", "A-17-D", "A-17-C", "A-17-S", "A-17-G", "A-17-N", "A-17-M",
     "A-18-E", "A-18-D", "A-18-C", "A-18-S", "A-18-G", "A-18-N", "A-18-M",
     "A-19-E", "A-19-D", "A-19-C", "A-19-S", "A-19-G", "A-19-N", "A-19-M",
-    "A-20-E", "A-20-D", "A-20-C", "A-20-S", "A-20-G", "A-20-N", "A-20-M"
+    "A-20-E", "A-20-D", "A-20-C", "A-20-S", "A-20-G", "A-20-N", "A-20-M",
+    "A-21-E", "A-21-D", "A-21-C", "A-21-S", "A-21-G", "A-21-N", "A-21-M"
 }
 local blackOpts = {} for _, v in ipairs(HardRaidsList) do table.insert(blackOpts, {Label = v, Key = v}) end
 TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSettings.Blacklist)
 
--- Runas UI (Compacto)
+-- Runas UI
 TabAutoRaid:CreateLabel("Uso de Runas")
-local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 
 local function CreateRuneCycler(prefix, rankKey)
     local Frame = Instance.new("Frame", TabAutoRaid.Page)
@@ -3287,6 +2338,55 @@ for _, r in ipairs({"D", "B", "S", "G", "N", "M+", "M++"}) do CreateRuneCycler("
 for _, r in ipairs({"E", "D", "C", "A", "S", "G", "N"}) do CreateRuneCycler("ASC", "ASC_" .. r) end
 
 -- ==========================================
+-- MOTOR DE REFRESH DE EQUIPO Y HEROES
+-- ==========================================
+local LastRefreshTime = 0
+local function RefreshTeam()
+    if tick() - LastRefreshTime < 2 then return end
+    LastRefreshTime = tick()
+    task.spawn(function()
+        local remotes = ReplicatedStorage:WaitForChild("Remotes")
+        local unequip = remotes:FindFirstChild("UnequipAllHero") or remotes:FindFirstChild("UnequipAll")
+        local equip = remotes:FindFirstChild("AutoEquipBestHero") or remotes:FindFirstChild("EquipBest")
+        pcall(function() if unequip then unequip:FireServer() end end)
+        task.wait(0.6)
+        pcall(function() if equip then equip:FireServer() end end)
+    end)
+end
+
+-- ==========================================
+-- TAREA DEDICADA: FOCUS BOSS ATTACK
+-- ==========================================
+task.spawn(function()
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local CEnemyRem = Remotes:FindFirstChild("ClickEnemy")
+    local PAttackRem = Remotes:FindFirstChild("PlayerClickAttackSkill")
+    local PAttackBase = Remotes:FindFirstChild("PlayerClickAttack")
+
+    while HubRunning do
+        task.wait(0.1)
+        if Config.RaidSettings.AutoRaid and RaidState.IsInInstance and RaidState.BossInst and not Utils.EstaMuerto(RaidState.BossInst) then
+            local eGuid = Utils.GetGUID(RaidState.BossInst)
+            local bossRoot = RaidState.BossInst:FindFirstChild("HumanoidRootPart")
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if eGuid and bossRoot and myRoot then
+                -- Teleport continuo a la espalda del boss
+                myRoot.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 5)
+                myRoot.AssemblyLinearVelocity = Vector3.zero
+
+                -- Spam de ataques al boss
+                pcall(function()
+                    if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = RaidState.BossInst }) end
+                    if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                    if PAttackBase then PAttackBase:FireServer({ ["attackEnemyGUID"] = eGuid }) end
+                end)
+            end
+        end
+    end
+end)
+
+-- ==========================================
 -- MOTOR DE PUNTUACIÓN Y TP
 -- ==========================================
 local function GetBestGlobalRaid()
@@ -3297,7 +2397,6 @@ local function GetBestGlobalRaid()
         
         local mapIdx = mapId > 50000 and (mapId - 50000) or mapId
         
-        -- FIX 1: Lógica blindada igual a ParseRaidID (evita que lvlRaw sea 0 o negativo)
         local isAsc = false; local lvlRaw = 1
         if info.raidId and info.raidId >= 935000 then 
             isAsc = true; lvlRaw = info.raidId - 935000 - (mapIdx * 100)
@@ -3310,26 +2409,22 @@ local function GetBestGlobalRaid()
         local modeStr = isAsc and "A" or "N"
         local raidKey = modeStr .. "-" .. tostring(mapIdx) .. "-" .. rankStr
         
-        -- FIX 2: Chequeo de mapas dual. Soporta la lectura del config como String y como Int (JSON safety)
         if not Config.RaidSettings.AllowedMaps[mapIdx] and not Config.RaidSettings.AllowedMaps[tostring(mapIdx)] then continue end
         
-        -- Validadores de Grado y Modalidad
         if isAsc and not Config.RaidSettings.AllowedGradesASC[rankStr] then continue end
         if not isAsc and not Config.RaidSettings.AllowedGradesNormal[rankStr] then continue end
         if isAsc and not Config.RaidSettings.AllowedModes.ASC then continue end
         if not isAsc and not Config.RaidSettings.AllowedModes.Normal then continue end
         if Config.RaidSettings.Blacklist[raidKey] then continue end
 
-        -- Evaluadores Especiales
         local isVip, vipRank = false, 0
         local runeKey = isAsc and ("ASC_" .. rankStr) or rankStr
         local isRuneTarget = Config.RaidSettings.Runes[runeKey] and (Config.RaidSettings.Runes[runeKey] > 0)
         for idx, vKey in ipairs(Config.RaidSettings.VipList) do if raidKey == vKey then isVip = true; vipRank = idx; break end end
 
-        -- Sistema de Scoring
         local score = 0
-        if isAsc and mapIdx == 16 and (rankStr == "A" or rankStr == "C") then
-            score = 200000000 -- Prioridad Absoluta (A-16)
+        if isAsc and mapIdx == 18 and (rankStr == "M+" or rankStr == "M++") then
+            score = 200000000 
         elseif isVip then 
             score = 100000000 - (vipRank * 10000)
         elseif isRuneTarget then
@@ -3388,7 +2483,6 @@ local BossPorMapaASC = {
 }
 local CurrentRaidIsASC = false
 
--- [INTEGRACIÓN NUEVA] Manejador Avanzado de Pantallas de Raid (Basado en tu código)
 local function HandleRaidRewardUI()
     local pGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not pGui then return false end
@@ -3398,7 +2492,6 @@ local function HandleRaidRewardUI()
         local settlement = raidPanel:FindFirstChild("SettlementFrame")
         local defeatFrame = raidPanel:FindFirstChild("Defeat")
         
-        -- Refuerzo del cobro por si el trigger principal falló
         pcall(function() ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GainRaidsRewards"):InvokeServer({1}) end)
         
         if settlement and settlement.Visible then
@@ -3452,14 +2545,15 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     local enLobby = false
     if root then enLobby = Utils.EstaEnLobby(root) end
 
-    -- [CORRECCIÓN COOLDOWN] Detección de regreso al lobby
+    -- ==========================================
+    -- [CORRECCIÓN COOLDOWN] Detección de Lobby y Reset Seguro
+    -- ==========================================
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
-            -- Calculamos cuánto tiempo pasó desde que creamos/entramos a la raid
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
 
-            -- Limpiamos todo el estado de la raid
+            -- Reset All State
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
             RaidState.ForceExit = false
@@ -3470,12 +2564,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.ClaimPosition = nil
             LastBossPos = nil
             RaidState.IsProcessing = false
-            RaidState.EntryTime = 0
-            
+            RaidState.BossInst = nil
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
             
-            -- INICIAMOS EL COOLDOWN SOLO SI AÚN QUEDAN SEGUNDOS PENDIENTES
+            -- [NUEVO] Cambiamos radicalmente el EntryTime para que cualquier task.spawn viejo se cancele.
+            RaidState.EntryTime = now + 99999 
+            
             if cdRestante > 0 then
                 LblRaidStatus.Text = "❄️ CD del Servidor (" .. math.ceil(cdRestante) .. "s)"
                 HandleRaidCooldown(cdRestante)
@@ -3495,7 +2590,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = bestRaid.info.mapId}) end)
                 _G.LastSelectedMap = bestRaid.mapIdx
                 
-                -- [NUEVO] Tiempo extendido para cargar mapa y desanclaje físico
                 task.delay(4.5, function()
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -3505,7 +2599,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end)
             end
         else
-            LblRaidStatus.Text = string.format("📡 Buscando raids... (%d activas)", totalActive or 0)
+            LblRaidStatus.Text = string.format("💤 Raids en Descanso. Esperando...", totalActive or 0)
         end
     end
 
@@ -3515,7 +2609,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         
         local bestRaid, totalActive = GetBestGlobalRaid()
         if totalActive == 0 then
-            LblRaidStatus.Text = "💤 Raids Cerradas. Esperando apertura..."
+            LblRaidStatus.Text = "💤 Raids en Descanso. Esperando..."
             return 
         end
         
@@ -3576,16 +2670,16 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
 
-                -- [NUEVO] Validación dinámica por magnitud (Distancia)
                 LblRaidStatus.Text = "🎲 VALIDANDO ACCESO..." 
-                local waitTime, tpSuccess = 0, false
-                while waitTime < 8 do 
+                local checkStart = tick()
+                local tpSuccess = false
+                
+                while (tick() - checkStart) < 3.0 do 
                     task.wait(0.2)
                     if not HubRunning then return end
-                    waitTime = waitTime + 0.2
                     local currentChar = LocalPlayer.Character
                     if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                        if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 50 then 
+                        if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 3000 then 
                             tpSuccess = true
                             break 
                         end
@@ -3595,17 +2689,20 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 if tpSuccess then
                     LblRaidStatus.Text = "✅ ¡En Instancia! Esperando Jefe..."
                     RaidState.IsInInstance = true
-                    RaidState.EntryTime = tick() 
+                    RaidState.EntryTime = tick() -- ESTABLECEMOS LA NUEVA SESIÓN
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.ExitTriggered = false
                     RaidState.ExitTime = 0
                     RaidState.NoBossTimer = nil
                     LastBossPos = nil
+                    RaidState.BossInst = nil
                     RaidState.SawBossAlive = false
                     
-                    task.delay(1.5, function()
+                    task.spawn(function()
+                        task.wait(1.5)
                         if HubRunning and RaidState.IsInInstance then
+                            if Config.RaidSettings.AutoReequip then RefreshTeam() end
                             pcall(function()
                                 local count = 0
                                 for _, obj in pairs(Workspace:GetDescendants()) do 
@@ -3625,7 +2722,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     end)
                 else
                     LblRaidStatus.Text = "⚠️ Falla al entrar."
-                    HandleRaidCooldown(5) -- Aumentado a 5s para prevenir spam al servidor
+                    HandleRaidCooldown(5)
                 end
                 
                 RaidState.IsProcessing = false
@@ -3638,6 +2735,8 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         
         HandleRaidRewardUI()
         
+        local currentSession = RaidState.EntryTime -- Asegurar que trabajamos sobre esta sesión
+        
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
             
@@ -3646,43 +2745,68 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
 
+            local function EsJefeMuerto(mob)
+                if not mob or not mob.Parent or not mob:FindFirstChild("HumanoidRootPart") then return true end
+                local hum = mob:FindFirstChild("Humanoid")
+                if hum and hum.Health <= 0 then return true end
+                
+                local gui = mob.HumanoidRootPart:FindFirstChild("EnemyNameGui")
+                if gui and gui:FindFirstChild("Progress") and gui.Progress:FindFirstChild("HealthNum") then
+                    local txt = gui.Progress.HealthNum.Text
+                    if txt == "" or txt == "0" or txt:match("^0%s*/") then return true end
+                end
+                
+                return false
+            end
+
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob and mob.Name and string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true) then
-                        bossFound = true
-                        if not Utils.EstaMuerto(mob) then 
-                            bossAlive = true 
-                            local bossRoot = mob:FindFirstChild("HumanoidRootPart")
-                            if bossRoot then LastBossPos = bossRoot.CFrame end
-                            break -- [MODIFICADO] Solo se detiene si lo encuentra VIVO. Si está muerto, sigue buscando.
+                    if expectedBoss and mob and mob.Name then
+                        local isMatch = (mob.Name == expectedBoss)
+                        if not isMatch then
+                            isMatch = string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true)
+                        end
+
+                        if isMatch then
+                            bossFound = true
+                            if not EsJefeMuerto(mob) then 
+                                bossAlive = true 
+                                RaidState.BossInst = mob 
+                                local bossRoot = mob:FindFirstChild("HumanoidRootPart")
+                                if bossRoot then LastBossPos = bossRoot.CFrame end
+                                break 
+                            end
                         end
                     elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
-                        if not Utils.EstaMuerto(mob) then
+                        if not EsJefeMuerto(mob) then
                             bossAlive = true
-                            LastBossPos = mob.HumanoidRootPart.CFrame
-                            break -- [MODIFICADO]
+                            RaidState.BossInst = mob
+                            local rootFallback = mob:FindFirstChild("HumanoidRootPart")
+                            if rootFallback then LastBossPos = rootFallback.CFrame end
+                            break
                         end
                     end
                 end
             end
 
-            -- [MODIFICADO] Lógica estricta de validación
+            -- Lógica de validación de Estados a prueba de fallos
             if bossAlive then
-                RaidState.SawBossAlive = true -- Registramos que el nuevo jefe ya apareció
+                RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
                 LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
-            elseif bossFound and not bossAlive then
-                -- Hay un cuerpo, pero debemos verificar si es el jefe nuevo o el de la raid anterior
+            else
                 if RaidState.SawBossAlive then
-                    -- Si lo vimos vivo en esta misma raid, entonces sí es el jefe que acabamos de derrotar
                     RaidState.NoBossTimer = nil 
                     if not RaidState.BossDeathTime then 
-                        RaidState.BossDeathTime = tick() 
-                        LblRaidStatus.Text = "💀 Jefe Derrotado. Esperando 1.5s..."
+                        RaidState.BossDeathTime = tick()
+                        RaidState.BossInst = nil 
+                        LblRaidStatus.Text = "💀 Jefe Derrotado o Desaparecido. Cobrando..."
                         
                         task.spawn(function()
                             task.wait(1.5)
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            
                             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                             if myRoot and LastBossPos then
                                 myRoot.CFrame = LastBossPos
@@ -3693,89 +2817,89 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
                             
                             task.wait(1.5)
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            
                             if RaidState.IsInInstance and not RaidState.ExitTriggered then
-                                LblRaidStatus.Text = "Recompensa no hallada. Forzando salida..."
+                                LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
                                 RaidState.ForceExit = true
                             end
                         end)
                     end
                 else
-                    -- Nunca lo vimos vivo. Es un cuerpo viejo o levantado como sombra, lo ignoramos.
                     if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
                     local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
-                    LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior. Esperando spawn (" .. segundosPasados .. "s)..."
                     
-                    if segundosPasados >= 20 then
-                        LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
-                        RaidState.ForceExit = true
-                        RaidState.NoBossTimer = nil
+                    if bossFound then
+                        LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior (" .. segundosPasados .. "s)..."
+                    else
+                        LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
                     end
-                end
-            elseif not bossFound and not RaidState.BossDeathTime then
-                if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
-                local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
-                LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
-                
-                if segundosPasados >= 20 then
-                    LblRaidStatus.Text = "⚠️ RAID BUGEADA: Forzando salida..."
-                    RaidState.ForceExit = true
-                    RaidState.NoBossTimer = nil
+                    
+                    if segundosPasados >= 30 then
+                        LblRaidStatus.Text = "⚠️ TIEMPO AGOTADO (30s): Cobrando y saliendo..."
+                        task.spawn(function()
+                            pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
+                            task.wait(1.0)
+                            if RaidState.EntryTime == currentSession then 
+                                RaidState.ForceExit = true
+                                RaidState.NoBossTimer = nil
+                            end
+                        end)
+                    end
                 end
             end
         end 
 
-        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA (Validación de Coordenadas)
+        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA
         if RaidState.ForceExit and not RaidState.ExitTriggered then
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
             RaidState.IsProcessing = true
             
-            -- Definimos el mapa de retorno exacto antes de que el script pierda el contexto
             local safeMapIdx = _G.MapaOrigenAntesRuna or _G.LastSelectedMap or 1
             local mapTarget = 50000 + safeMapIdx
-            _G.MapaOrigenAntesRuna = nil -- Limpiamos para no repetir
+            _G.MapaOrigenAntesRuna = nil
             
             LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
-                -- 1. Intentos de salida con reintento ante lag
                 local intentos = 0
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
+                    if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                    
                     intentos = intentos + 1
-                    local success, err = pcall(function() 
-                        -- Solo usamos QuitRaidsMap, garantizando el mapTarget correcto
+                    local success = pcall(function() 
                         ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
                     end)
                     if success then break end
                     task.wait(1.5)
                 end
                 
-                -- 2. Espera de seguridad (Damos tiempo a que el servidor procese el cambio)
-                task.wait(3.0)
+                -- Permitimos que el juego nos haga TP al Lobby
+                task.wait(4.0)
+                if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
                 
-                -- 3. Limpieza física: ¡CRÍTICO para evitar quedar trabado en el piso!
+                -- Limpieza física antibug
                 local char = LocalPlayer.Character
                 if char then
                     local root = char:FindFirstChild("HumanoidRootPart")
                     local hum = char:FindFirstChild("Humanoid")
                     if root then
                         root.Anchored = false
-                        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        root.AssemblyLinearVelocity = Vector3.zero
                     end
-                    if hum then
-                        hum.PlatformStand = false -- Esto evita que el personaje quede "tumbado"
-                    end
+                    if hum then hum.PlatformStand = false end
                 end
                 
-                -- 4. Reset del motor de estado
-                RaidState.IsInInstance = false
-                RaidState.BossDeathTime = nil
-                RaidState.ForceExit = false
-                RaidState.IsProcessing = false
-                RaidState.ExitTriggered = false
-                
-                LblRaidStatus.Text = "🏠 Extraído exitosamente."
-                task.wait(1)
+                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
+                if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
+                    RaidState.IsInInstance = false
+                    RaidState.BossDeathTime = nil
+                    RaidState.ForceExit = false
+                    RaidState.IsProcessing = false
+                    RaidState.ExitTriggered = false
+                    LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
+                end
             end)
         end
     end
