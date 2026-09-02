@@ -1286,7 +1286,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + RATIO MATEMÁTICO PERFECTO)
+-- [4] PESTAÑA: METRALLETA (NUKER AUTOMÁTICO + RATIO EXACTO)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1298,9 +1298,8 @@ local MetState = {
     ScannedMobsCache = {},
     MovimientoLibre = false, 
     
-    -- Variables de Botones UI
-    RandomAttackActive = false,
-    TargetAttackActive = false,
+    -- Variables de Flujo Automático
+    NukerReady = false, -- Controla el retraso interno entre Desync y Nuker
     
     -- Cerebro y Tiempos 
     InternalPulse = false,
@@ -1409,6 +1408,14 @@ TabMetralleta:CreateDropdown("Objetivo Manual",
 local btnMetToggle = TabMetralleta:CreateButton("▶ INICIAR METRALLETA", Theme.Primary, function()
     MetState.Activo = not MetState.Activo
     if MetState.Activo then
+        MetState.NukerReady = false
+        
+        -- Automatización del flujo: Espera 0.5s con Desync antes de soltar a los héroes
+        task.spawn(function()
+            task.wait(0.5)
+            if MetState.Activo then MetState.NukerReady = true end
+        end)
+        
         if not MetState.ModoManual then 
             MetState.TargetKillInst = nil
             MetCaza.SoloName = ""
@@ -1417,6 +1424,7 @@ local btnMetToggle = TabMetralleta:CreateButton("▶ INICIAR METRALLETA", Theme.
             MetCaza.WasBossAlive = false
         end
     else
+        MetState.NukerReady = false
         RestaurarFisicas()
         FocusHighlight.Adornee = nil
         LblStatusMet.Text = "Estado: En reposo"
@@ -1428,17 +1436,6 @@ end)
 local modoMap = { ["SOLO"]=1, ["SEC"]=2, ["BOSS"]=3 }
 TabMetralleta:CreateRadioButtons("Modo de Caza Automático", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
     Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
-end)
-
-TabMetralleta:CreateLabel("Controles de Flujo de Ataque")
-TabMetralleta:CreateDualButtons("1. ALEATORIO (DESYNC)", Theme.Secondary, function(btn)
-    MetState.RandomAttackActive = not MetState.RandomAttackActive
-    btn.Text = MetState.RandomAttackActive and "1. DESYNC [ON]" or "1. ALEATORIO (DESYNC)"
-    btn.BackgroundColor3 = MetState.RandomAttackActive and Theme.Primary or Theme.Secondary
-end, "2. NUKER HÉROES", Theme.Secondary, function(btn)
-    MetState.TargetAttackActive = not MetState.TargetAttackActive
-    btn.Text = MetState.TargetAttackActive and "2. NUKER [ON]" or "2. NUKER HÉROES"
-    btn.BackgroundColor3 = MetState.TargetAttackActive and Theme.Success or Theme.Secondary
 end)
 
 TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function(state)
@@ -1639,8 +1636,8 @@ task.spawn(function()
         local currentTargetGuid = tGuid
         local currentTargetInst = target
 
-        if MetState.RandomAttackActive and loopCounter % 3 == 0 then
-            -- Cada 3 frames, engañamos apuntando a un aleatorio
+        -- Alternar objetivo para engañar al servidor
+        if loopCounter % 3 == 0 then
             if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
                 MetState.CurrentRandomTarget = GetRandomMob(target)
             end
@@ -1649,30 +1646,29 @@ task.spawn(function()
                 currentTargetInst = MetState.CurrentRandomTarget
             end
         else
-            -- Para que la IA de los Héroes NO SE VAYA corriendo:
-            -- Reafirmamos al Jefe como objetivo prioritario
+            -- Forzar al Jefe para liberar IA de los héroes
             if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
         end
 
-        -- Ataque del jugador al objetivo en curso
+        -- Ataque del jugador
         if ClickEnemy and currentTargetGuid ~= tGuid then 
             task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = currentTargetGuid, ["enemyCharacter"] = currentTargetInst }) end) end) 
         end
         if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = currentTargetGuid }) end) end
 
         -- 4.2. FASE NUKER HÉROES (Round-Robin Matemático)
-        if MetState.TargetAttackActive then
+        -- Solo se ejecuta si ya pasó el pequeño retraso inicial (NukerReady)
+        if MetState.NukerReady then
             local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
             local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
             
             if myHeroes then
                 local heroList = myHeroes:GetChildren()
                 if #heroList > 0 then
-                    -- Reset de índices para evitar errores si quitas/pones héroes
                     if heroIdxSkill > #heroList then heroIdxSkill = 1 end
                     if heroIdxPos > #heroList then heroIdxPos = 1 end
                     
-                    -- HeroUseSkill: Se dispara cada 2 frames (Aprox la mitad de peticiones que el Player, Ratio 1:2)
+                    -- HeroUseSkill: Ratio 1:2
                     if loopCounter % 2 == 0 then
                         local hero = heroList[heroIdxSkill]
                         local hGuid = Utils.GetGUID(hero)
@@ -1682,7 +1678,7 @@ task.spawn(function()
                         heroIdxSkill = (heroIdxSkill % #heroList) + 1
                     end
                     
-                    -- HeroReachedAttackPos: Se dispara cada 7 frames (Aprox un séptimo que el Player, Ratio 1:7)
+                    -- HeroReachedAttackPos: Ratio 1:7
                     if loopCounter % 7 == 0 then
                         local hero = heroList[heroIdxPos]
                         local hGuid = Utils.GetGUID(hero)
@@ -1695,7 +1691,6 @@ task.spawn(function()
             end
         end
         
-        -- Reinicio del reloj interno para evitar saturación de memoria
         if loopCounter >= 10000 then loopCounter = 0 end
     end
 end)
