@@ -1286,7 +1286,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + CORREA + IA LIBRE)
+-- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + RATIO MATEMÁTICO PERFECTO)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1296,9 +1296,13 @@ local MetState = {
     TargetKillInst = nil, 
     Limites = LimitesMobsBase,
     ScannedMobsCache = {},
-    MovimientoLibre = false, -- Control de anclaje del jugador
+    MovimientoLibre = false, 
     
-    -- Cerebro y Tiempos (Controlables por UI)
+    -- Variables de Botones UI
+    RandomAttackActive = false,
+    TargetAttackActive = false,
+    
+    -- Cerebro y Tiempos 
     InternalPulse = false,
     CurrentRandomTarget = nil,
     TIEMPO_ENCENDIDO = 0.25,
@@ -1402,7 +1406,7 @@ TabMetralleta:CreateDropdown("Objetivo Manual",
     end
 )
 
-local btnMetToggle = TabMetralleta:CreateButton("INICIAR SECUENCIA NUKER", Theme.Primary, function()
+local btnMetToggle = TabMetralleta:CreateButton("▶ INICIAR METRALLETA", Theme.Primary, function()
     MetState.Activo = not MetState.Activo
     if MetState.Activo then
         if not MetState.ModoManual then 
@@ -1417,13 +1421,24 @@ local btnMetToggle = TabMetralleta:CreateButton("INICIAR SECUENCIA NUKER", Theme
         FocusHighlight.Adornee = nil
         LblStatusMet.Text = "Estado: En reposo"
     end
-    btnMetToggle.Text = MetState.Activo and "DETENER SECUENCIA" or "INICIAR SECUENCIA NUKER"
+    btnMetToggle.Text = MetState.Activo and "🛑 DETENER METRALLETA" or "▶ INICIAR METRALLETA"
     btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
 end)
 
 local modoMap = { ["SOLO"]=1, ["SEC"]=2, ["BOSS"]=3 }
 TabMetralleta:CreateRadioButtons("Modo de Caza Automático", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
     Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
+end)
+
+TabMetralleta:CreateLabel("Controles de Flujo de Ataque")
+TabMetralleta:CreateDualButtons("1. ALEATORIO (DESYNC)", Theme.Secondary, function(btn)
+    MetState.RandomAttackActive = not MetState.RandomAttackActive
+    btn.Text = MetState.RandomAttackActive and "1. DESYNC [ON]" or "1. ALEATORIO (DESYNC)"
+    btn.BackgroundColor3 = MetState.RandomAttackActive and Theme.Primary or Theme.Secondary
+end, "2. NUKER HÉROES", Theme.Secondary, function(btn)
+    MetState.TargetAttackActive = not MetState.TargetAttackActive
+    btn.Text = MetState.TargetAttackActive and "2. NUKER [ON]" or "2. NUKER HÉROES"
+    btn.BackgroundColor3 = MetState.TargetAttackActive and Theme.Success or Theme.Secondary
 end)
 
 TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function(state)
@@ -1434,7 +1449,7 @@ TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function
     end
 end)
 
-TabMetralleta:CreateLabel("Ajustes de Velocidad (Recomendado: 0.05)")
+TabMetralleta:CreateLabel("Ajustes de Velocidad y Red")
 TabMetralleta:CreateSlider("Velocidad Bucle Red (5 = 0.05s)", 1, 10, 5, function(v) MetState.WAIT_TIME = v / 100 end, true)
 TabMetralleta:CreateSlider("Cerebro: Tiempo Ataque (25 = 0.25s)", 10, 100, 25, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
 TabMetralleta:CreateSlider("Cerebro: Tiempo Apagón (25 = 0.25s)", 5, 100, 25, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
@@ -1532,7 +1547,7 @@ local function GetRandomMob(excludeTarget)
 end
 
 -- ==========================================
--- 3. LA CORREA INTELIGENTE (Físicas Mixtas)
+-- 3. LA CORREA INTELIGENTE (Estabilidad)
 -- ==========================================
 local metHbConn = RunService.Heartbeat:Connect(function()
     if not HubRunning then RestaurarFisicas(); return end
@@ -1540,9 +1555,7 @@ local metHbConn = RunService.Heartbeat:Connect(function()
     if MetState.Activo and MetState.TargetKillInst then
         local target = MetState.TargetKillInst
         if Utils.EstaMuerto(target) then
-            FocusHighlight.Adornee = nil
-            RestaurarFisicas()
-            return
+            FocusHighlight.Adornee = nil; RestaurarFisicas(); return
         end
         
         FocusHighlight.Adornee = target
@@ -1566,7 +1579,7 @@ local metHbConn = RunService.Heartbeat:Connect(function()
                 end
             end
 
-            -- Correa de Héroes: DESANCLADOS pero limitados a 15 studs
+            -- Correa de Héroes: Libres pero restringidos
             local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
             local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
             if myHeroes then
@@ -1592,7 +1605,7 @@ end)
 table.insert(Hub.Connections, metHbConn)
 
 -- ==========================================
--- 4. BUCLE DE ATAQUE (Red / Envío de Remotes)
+-- 4. BUCLE DE ATAQUE (RATIO MATEMÁTICO EXACTO)
 -- ==========================================
 task.spawn(function()
     local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -1603,6 +1616,10 @@ task.spawn(function()
     local HeroPos = Remotes:FindFirstChild("HeroReachedAttackPos")
     local HeroSkill = Remotes:FindFirstChild("HeroUseSkill")
 
+    local loopCounter = 0
+    local heroIdxSkill = 1
+    local heroIdxPos = 1
+
     while true do
         if not HubRunning then break end
         task.wait(MetState.WAIT_TIME)
@@ -1612,42 +1629,74 @@ task.spawn(function()
         local target = MetState.TargetKillInst
         if not target or Utils.EstaMuerto(target) then continue end
 
-        -- 4.1 FASE DESYNC (Engaño al servidor)
-        if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
-            MetState.CurrentRandomTarget = GetRandomMob(target)
-        end
-
-        if MetState.CurrentRandomTarget then
-            local rGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
-            if rGuid then
-                if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.CurrentRandomTarget }) end) end) end
-                if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = rGuid }) end) end
-            end
-        end
-
-        -- 4.2 FASE NUKER (Ataque real al Boss + Activación de IA)
         local tGuid = Utils.GetGUID(target)
         local targetRoot = target:FindFirstChild("HumanoidRootPart")
-        
-        if tGuid and targetRoot then
-            -- El doble ClickEnemy vital para liberar la IA de los Héroes hacia el Boss
-            if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
-            
-            if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = tGuid }) end) end
+        if not tGuid or not targetRoot then continue end
 
+        loopCounter = loopCounter + 1
+
+        -- 4.1. FASE DESYNC Y JUGADOR (Ratio 1:1)
+        local currentTargetGuid = tGuid
+        local currentTargetInst = target
+
+        if MetState.RandomAttackActive and loopCounter % 3 == 0 then
+            -- Cada 3 frames, engañamos apuntando a un aleatorio
+            if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
+                MetState.CurrentRandomTarget = GetRandomMob(target)
+            end
+            if MetState.CurrentRandomTarget then
+                currentTargetGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
+                currentTargetInst = MetState.CurrentRandomTarget
+            end
+        else
+            -- Para que la IA de los Héroes NO SE VAYA corriendo:
+            -- Reafirmamos al Jefe como objetivo prioritario
+            if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
+        end
+
+        -- Ataque del jugador al objetivo en curso
+        if ClickEnemy and currentTargetGuid ~= tGuid then 
+            task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = currentTargetGuid, ["enemyCharacter"] = currentTargetInst }) end) end) 
+        end
+        if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = currentTargetGuid }) end) end
+
+        -- 4.2. FASE NUKER HÉROES (Round-Robin Matemático)
+        if MetState.TargetAttackActive then
             local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
             local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
             
             if myHeroes then
-                for _, hero in pairs(myHeroes:GetChildren()) do
-                    local hGuid = Utils.GetGUID(hero)
-                    if hGuid then
-                        if HeroPos then pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end) end
-                        if HeroSkill then pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end) end
+                local heroList = myHeroes:GetChildren()
+                if #heroList > 0 then
+                    -- Reset de índices para evitar errores si quitas/pones héroes
+                    if heroIdxSkill > #heroList then heroIdxSkill = 1 end
+                    if heroIdxPos > #heroList then heroIdxPos = 1 end
+                    
+                    -- HeroUseSkill: Se dispara cada 2 frames (Aprox la mitad de peticiones que el Player, Ratio 1:2)
+                    if loopCounter % 2 == 0 then
+                        local hero = heroList[heroIdxSkill]
+                        local hGuid = Utils.GetGUID(hero)
+                        if hGuid and HeroSkill then
+                            pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end)
+                        end
+                        heroIdxSkill = (heroIdxSkill % #heroList) + 1
+                    end
+                    
+                    -- HeroReachedAttackPos: Se dispara cada 7 frames (Aprox un séptimo que el Player, Ratio 1:7)
+                    if loopCounter % 7 == 0 then
+                        local hero = heroList[heroIdxPos]
+                        local hGuid = Utils.GetGUID(hero)
+                        if hGuid and HeroPos then
+                            pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end)
+                        end
+                        heroIdxPos = (heroIdxPos % #heroList) + 1
                     end
                 end
             end
         end
+        
+        -- Reinicio del reloj interno para evitar saturación de memoria
+        if loopCounter >= 10000 then loopCounter = 0 end
     end
 end)
 
