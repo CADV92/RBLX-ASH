@@ -1286,7 +1286,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (NUKER AUTOMÁTICO + RATIO EXACTO)
+-- [4] PESTAÑA: METRALLETA (NUKER MASIVO + ESTÁTICO)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1298,8 +1298,9 @@ local MetState = {
     ScannedMobsCache = {},
     MovimientoLibre = false, 
     
-    -- Variables de Flujo Automático
-    NukerReady = false, -- Controla el retraso interno entre Desync y Nuker
+    -- Variables de Flujo
+    RandomAttackActive = false,
+    TargetAttackActive = false,
     
     -- Cerebro y Tiempos 
     InternalPulse = false,
@@ -1405,17 +1406,9 @@ TabMetralleta:CreateDropdown("Objetivo Manual",
     end
 )
 
-local btnMetToggle = TabMetralleta:CreateButton("▶ INICIAR METRALLETA", Theme.Primary, function()
+local btnMetToggle = TabMetralleta:CreateButton("▶ ACTIVAR SISTEMA DE ASIGNACIÓN", Theme.Primary, function()
     MetState.Activo = not MetState.Activo
     if MetState.Activo then
-        MetState.NukerReady = false
-        
-        -- Automatización del flujo: Espera 0.5s con Desync antes de soltar a los héroes
-        task.spawn(function()
-            task.wait(0.5)
-            if MetState.Activo then MetState.NukerReady = true end
-        end)
-        
         if not MetState.ModoManual then 
             MetState.TargetKillInst = nil
             MetCaza.SoloName = ""
@@ -1424,18 +1417,31 @@ local btnMetToggle = TabMetralleta:CreateButton("▶ INICIAR METRALLETA", Theme.
             MetCaza.WasBossAlive = false
         end
     else
-        MetState.NukerReady = false
+        MetState.RandomAttackActive = false
+        MetState.TargetAttackActive = false
         RestaurarFisicas()
         FocusHighlight.Adornee = nil
         LblStatusMet.Text = "Estado: En reposo"
     end
-    btnMetToggle.Text = MetState.Activo and "🛑 DETENER METRALLETA" or "▶ INICIAR METRALLETA"
+    btnMetToggle.Text = MetState.Activo and "🛑 DESACTIVAR SISTEMA" or "▶ ACTIVAR SISTEMA DE ASIGNACIÓN"
     btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
 end)
 
 local modoMap = { ["SOLO"]=1, ["SEC"]=2, ["BOSS"]=3 }
 TabMetralleta:CreateRadioButtons("Modo de Caza Automático", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
     Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
+end)
+
+TabMetralleta:CreateLabel("Secuencia de Fuego (Manual)")
+TabMetralleta:CreateDualButtons("1. ALEATORIO (DESYNC)", Theme.Secondary, function(btn)
+    MetState.RandomAttackActive = not MetState.RandomAttackActive
+    btn.Text = MetState.RandomAttackActive and "1. DESYNC [ON]" or "1. ALEATORIO (DESYNC)"
+    btn.BackgroundColor3 = MetState.RandomAttackActive and Theme.Primary or Theme.Secondary
+end, "2. NUKER HÉROES", Theme.Secondary, function(btn)
+    MetState.TargetAttackActive = not MetState.TargetAttackActive
+    btn.Text = MetState.TargetAttackActive and "2. NUKER [ON]" or "2. NUKER HÉROES"
+    btn.BackgroundColor3 = MetState.TargetAttackActive and Theme.Success or Theme.Secondary
+    if not MetState.TargetAttackActive then RestaurarFisicas() end
 end)
 
 TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function(state)
@@ -1446,7 +1452,7 @@ TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function
     end
 end)
 
-TabMetralleta:CreateLabel("Ajustes de Velocidad y Red")
+TabMetralleta:CreateLabel("Ajustes de Velocidad")
 TabMetralleta:CreateSlider("Velocidad Bucle Red (5 = 0.05s)", 1, 10, 5, function(v) MetState.WAIT_TIME = v / 100 end, true)
 TabMetralleta:CreateSlider("Cerebro: Tiempo Ataque (25 = 0.25s)", 10, 100, 25, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
 TabMetralleta:CreateSlider("Cerebro: Tiempo Apagón (25 = 0.25s)", 5, 100, 25, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
@@ -1544,12 +1550,12 @@ local function GetRandomMob(excludeTarget)
 end
 
 -- ==========================================
--- 3. LA CORREA INTELIGENTE (Estabilidad)
+-- 3. LA CORREA INTELIGENTE (100% ESTÁTICA)
 -- ==========================================
 local metHbConn = RunService.Heartbeat:Connect(function()
     if not HubRunning then RestaurarFisicas(); return end
 
-    if MetState.Activo and MetState.TargetKillInst then
+    if MetState.TargetAttackActive and MetState.TargetKillInst then
         local target = MetState.TargetKillInst
         if Utils.EstaMuerto(target) then
             FocusHighlight.Adornee = nil; RestaurarFisicas(); return
@@ -1576,20 +1582,26 @@ local metHbConn = RunService.Heartbeat:Connect(function()
                 end
             end
 
-            -- Correa de Héroes: Libres pero restringidos
+            -- Correa de Héroes: ESTRICTAMENTE ANCLADOS en un círculo para que no se muevan en absoluto
             local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
             local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
             if myHeroes then
                 local heroList = myHeroes:GetChildren()
+                local idx = 1
                 for _, hero in ipairs(heroList) do
                     local hRoot = hero:FindFirstChild("HumanoidRootPart")
                     if hRoot then
-                        hRoot.Anchored = false 
+                        hRoot.Anchored = true 
                         if (hRoot.Position - targetPos).Magnitude > 15 then
-                            local heroPos = targetPos + Vector3.new(math.random(-8, 8), 0, math.random(-8, 8))
+                            local angle = (idx / #heroList) * math.pi * 2
+                            local offsetX = math.cos(angle) * 8
+                            local offsetZ = math.sin(angle) * 8
+                            
+                            local heroPos = targetPos + Vector3.new(offsetX, 0, offsetZ)
                             hRoot.CFrame = CFrame.new(heroPos, targetPos)
                             hRoot.AssemblyLinearVelocity = Vector3.zero
                         end
+                        idx = idx + 1
                     end
                 end
             end
@@ -1602,7 +1614,7 @@ end)
 table.insert(Hub.Connections, metHbConn)
 
 -- ==========================================
--- 4. BUCLE DE ATAQUE (RATIO MATEMÁTICO EXACTO)
+-- 4. BUCLE DE ATAQUE (MASIVO Y RESTAURADO)
 -- ==========================================
 task.spawn(function()
     local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -1613,85 +1625,56 @@ task.spawn(function()
     local HeroPos = Remotes:FindFirstChild("HeroReachedAttackPos")
     local HeroSkill = Remotes:FindFirstChild("HeroUseSkill")
 
-    local loopCounter = 0
-    local heroIdxSkill = 1
-    local heroIdxPos = 1
-
     while true do
         if not HubRunning then break end
         task.wait(MetState.WAIT_TIME)
         
+        -- Solo ataca si el cerebro intermitente está en ON
         if not MetState.Activo or not MetState.InternalPulse then continue end
 
         local target = MetState.TargetKillInst
         if not target or Utils.EstaMuerto(target) then continue end
 
-        local tGuid = Utils.GetGUID(target)
-        local targetRoot = target:FindFirstChild("HumanoidRootPart")
-        if not tGuid or not targetRoot then continue end
-
-        loopCounter = loopCounter + 1
-
-        -- 4.1. FASE DESYNC Y JUGADOR (Ratio 1:1)
-        local currentTargetGuid = tGuid
-        local currentTargetInst = target
-
-        -- Alternar objetivo para engañar al servidor
-        if loopCounter % 3 == 0 then
+        -- 4.1 FASE DESYNC
+        if MetState.RandomAttackActive then
             if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
                 MetState.CurrentRandomTarget = GetRandomMob(target)
             end
+
             if MetState.CurrentRandomTarget then
-                currentTargetGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
-                currentTargetInst = MetState.CurrentRandomTarget
+                local rGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
+                if rGuid then
+                    if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.CurrentRandomTarget }) end) end) end
+                    if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = rGuid }) end) end
+                end
             end
-        else
-            -- Forzar al Jefe para liberar IA de los héroes
-            if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
         end
 
-        -- Ataque del jugador
-        if ClickEnemy and currentTargetGuid ~= tGuid then 
-            task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = currentTargetGuid, ["enemyCharacter"] = currentTargetInst }) end) end) 
-        end
-        if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = currentTargetGuid }) end) end
-
-        -- 4.2. FASE NUKER HÉROES (Round-Robin Matemático)
-        -- Solo se ejecuta si ya pasó el pequeño retraso inicial (NukerReady)
-        if MetState.NukerReady then
-            local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-            local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+        -- 4.2 FASE NUKER (Todos los héroes a la vez)
+        if MetState.TargetAttackActive then
+            local tGuid = Utils.GetGUID(target)
+            local targetRoot = target:FindFirstChild("HumanoidRootPart")
             
-            if myHeroes then
-                local heroList = myHeroes:GetChildren()
-                if #heroList > 0 then
-                    if heroIdxSkill > #heroList then heroIdxSkill = 1 end
-                    if heroIdxPos > #heroList then heroIdxPos = 1 end
-                    
-                    -- HeroUseSkill: Ratio 1:2
-                    if loopCounter % 2 == 0 then
-                        local hero = heroList[heroIdxSkill]
+            if tGuid and targetRoot then
+                -- Doble ClickEnemy para asegurar el objetivo
+                if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
+                if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = tGuid }) end) end
+
+                local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+                local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+                
+                if myHeroes then
+                    -- Bucle iterando a TODOS los héroes por frame (Esto causa el x8800 en Cobalt)
+                    for _, hero in pairs(myHeroes:GetChildren()) do
                         local hGuid = Utils.GetGUID(hero)
-                        if hGuid and HeroSkill then
-                            pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end)
+                        if hGuid then
+                            if HeroPos then pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end) end
+                            if HeroSkill then pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end) end
                         end
-                        heroIdxSkill = (heroIdxSkill % #heroList) + 1
-                    end
-                    
-                    -- HeroReachedAttackPos: Ratio 1:7
-                    if loopCounter % 7 == 0 then
-                        local hero = heroList[heroIdxPos]
-                        local hGuid = Utils.GetGUID(hero)
-                        if hGuid and HeroPos then
-                            pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end)
-                        end
-                        heroIdxPos = (heroIdxPos % #heroList) + 1
                     end
                 end
             end
         end
-        
-        if loopCounter >= 10000 then loopCounter = 0 end
     end
 end)
 
