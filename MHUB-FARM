@@ -1286,7 +1286,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + CORREA + DESYNC)
+-- [4] PESTAÑA: METRALLETA (NUKER ESTABLE + CORREA + IA LIBRE)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1625,12 +1625,12 @@ task.spawn(function()
             end
         end
 
-        -- 4.2 FASE NUKER (Ataque real al Boss)
+        -- 4.2 FASE NUKER (Ataque real al Boss + Activación de IA)
         local tGuid = Utils.GetGUID(target)
         local targetRoot = target:FindFirstChild("HumanoidRootPart")
         
         if tGuid and targetRoot then
-            -- El doble ClickEnemy vital
+            -- El doble ClickEnemy vital para liberar la IA de los Héroes hacia el Boss
             if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
             
             if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = tGuid }) end) end
