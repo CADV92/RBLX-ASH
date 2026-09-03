@@ -273,7 +273,7 @@ Instance.new("UICorner", LockTargetBtn).CornerRadius = UDim.new(0, 4)
 
 LockTargetBtn.MouseButton1Click:Connect(function()
     TargetLocked = not TargetLocked
-    LockTargetBtn.Text = TargetLocked and "🔒" or "🔓"
+    LockTargetBtn.Text = TargetLocked and "L" or "U"
     LockTargetBtn.BackgroundColor3 = TargetLocked and Theme.Primary or Theme.Secondary
 end)
 
