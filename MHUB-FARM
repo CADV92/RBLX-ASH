@@ -319,20 +319,33 @@ local AutoDropThreshold = 2.5e72
 
 ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
-local damageConn = Workspace:WaitForChild("Enemys").DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-        task.delay(0.05, function()
-            if descendant.Parent and descendant.Text ~= "" then
-                local damageVal = Utils.ParseDamageText(descendant.Text)
-                if damageVal > 0 then
-                    TotalDamageDealt = TotalDamageDealt + damageVal
-                    DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
+local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+
+if RemoteDamage then
+    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+        -- 1. Validamos que el paquete sea una tabla y que TÚ seas el atacante
+        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+            
+            -- 2. Obtenemos el ID del enemigo que estás enfocando actualmente en el monitor
+            local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+            
+            -- 3. Solo sumamos si el daño es hacia tu objetivo actual
+            if currentGuid and data.enemyGuid == currentGuid then
+                -- Usamos data.attack como nos mostraste en tu captura de Cobalt
+                local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
+                
+                if dmg > 0 then
+                    TotalDamageDealt = TotalDamageDealt + dmg
+                    if DamageLabel then
+                        DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
+                    end
                 end
             end
-        end)
-    end
-end)
-table.insert(Hub.Connections, damageConn)
+            
+        end
+    end)
+    table.insert(Hub.Connections, damageConn)
+end
 
 local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
 local LastGoldPotionS = 0
@@ -1286,28 +1299,19 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (NUKER MASIVO + ESTÁTICO)
+-- [4] PESTAÑA: METRALLETA (CEREBRO INTERMITENTE CORREGIDO)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
 local MetState = {
-    Activo = false, 
-    ModoManual = false, 
-    TargetKillInst = nil, 
+    Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
     ScannedMobsCache = {},
-    MovimientoLibre = false, 
-    
-    -- Variables de Flujo
-    RandomAttackActive = false,
-    TargetAttackActive = false,
-    
-    -- Cerebro y Tiempos 
-    InternalPulse = false,
-    CurrentRandomTarget = nil,
-    TIEMPO_ENCENDIDO = 0.25,
-    TIEMPO_APAGADO = 0.25,
-    WAIT_TIME = 0.05
+    -- Lógica Standalone: Cerebro Intermitente
+    InternalAttackActive = false,
+    LastClickedGUID = nil,
+    TIEMPO_ENCENDIDO = 0.30, -- Tiempo de ataque
+    TIEMPO_APAGADO = 0.30    -- Tiempo de apagón/reset
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1319,6 +1323,7 @@ local MetCaza = {
         "Absolute", "Broly", "Goku[Super4]" 
     }
 }
+local MetCFrames = {}
 
 local FocusHighlight = Instance.new("Highlight")
 FocusHighlight.Name = "MetralletaFocus"
@@ -1329,18 +1334,13 @@ FocusHighlight.OutlineTransparency = 0.1
 pcall(function() FocusHighlight.Parent = CoreGui end)
 if not FocusHighlight.Parent then FocusHighlight.Parent = TargetGui end
 
-local function RestaurarFisicas()
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if myRoot then myRoot.Anchored = false end
-    
-    local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-    local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
-    if myHeroes then
-        for _, hero in pairs(myHeroes:GetChildren()) do
-            local hRoot = hero:FindFirstChild("HumanoidRootPart")
-            if hRoot then hRoot.Anchored = false end
+local function RestaurarMetralleta()
+    for mob, cframe in pairs(MetCFrames) do
+        if typeof(mob) == "Instance" and mob.Parent and mob:FindFirstChild("HumanoidRootPart") then 
+            mob.HumanoidRootPart.CFrame = cframe 
         end
     end
+    MetCFrames = {}
 end
 
 local LblStatusMet = TabMetralleta:CreateLabel("Estado: En reposo")
@@ -1371,6 +1371,7 @@ end)
 TabMetralleta:CreateDropdown("Objetivo Manual", 
     function()
         local lista = {{Name = "AUTO (Más Cercano)", Data = nil}}
+        
         if MetState.Activo then
             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if myRoot then
@@ -1406,59 +1407,51 @@ TabMetralleta:CreateDropdown("Objetivo Manual",
     end
 )
 
-local btnMetToggle = TabMetralleta:CreateButton("▶ ACTIVAR SISTEMA DE ASIGNACIÓN", Theme.Primary, function()
+local function ToggleMetralleta()
     MetState.Activo = not MetState.Activo
     if MetState.Activo then
         if not MetState.ModoManual then 
             MetState.TargetKillInst = nil
+            MetState.TargetRefInst = nil 
             MetCaza.SoloName = ""
             MetCaza.SecName = ""
             MetCaza.BossEspera = false
             MetCaza.WasBossAlive = false
         end
     else
-        MetState.RandomAttackActive = false
-        MetState.TargetAttackActive = false
-        RestaurarFisicas()
-        FocusHighlight.Adornee = nil
-        LblStatusMet.Text = "Estado: En reposo"
+        RestaurarMetralleta()
     end
-    btnMetToggle.Text = MetState.Activo and "🛑 DESACTIVAR SISTEMA" or "▶ ACTIVAR SISTEMA DE ASIGNACIÓN"
-    btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
+end
+
+local btnMetToggle = TabMetralleta:CreateButton("INICIAR SECUENCIA", Theme.Primary, ToggleMetralleta)
+
+local metKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.K then
+        ToggleMetralleta()
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = MetState.Activo and "Activada" or "Desactivada", Duration = 2 }) end)
+    end
+end)
+table.insert(Hub.Connections, metKeyConn)
+
+local metSpeedMap = {0.1, 0.05, 0.03, 0.01}
+MetState.Vel = metSpeedMap[Config.MetralletaVel] or 0.05
+
+TabMetralleta:CreateRadioButtons("Velocidad de Red", {"x1", "x2", "x3", "x4"}, Config.MetralletaVel, function(opt, idx)
+    Config.MetralletaVel = idx
+    MetState.Vel = metSpeedMap[idx] or 0.05
 end)
 
 local modoMap = { ["SOLO"]=1, ["SEC"]=2, ["BOSS"]=3 }
-TabMetralleta:CreateRadioButtons("Modo de Caza Automático", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
+TabMetralleta:CreateRadioButtons("Modo de Caza", {"SOLO", "SEC", "BOSS"}, modoMap[Config.MetralletaModo] or 1, function(opt)
     Config.MetralletaModo = opt; MetCaza.SoloName = ""; MetCaza.SecName = ""
 end)
 
-TabMetralleta:CreateLabel("Secuencia de Fuego (Manual)")
-TabMetralleta:CreateDualButtons("1. ALEATORIO (DESYNC)", Theme.Secondary, function(btn)
-    MetState.RandomAttackActive = not MetState.RandomAttackActive
-    btn.Text = MetState.RandomAttackActive and "1. DESYNC [ON]" or "1. ALEATORIO (DESYNC)"
-    btn.BackgroundColor3 = MetState.RandomAttackActive and Theme.Primary or Theme.Secondary
-end, "2. NUKER HÉROES", Theme.Secondary, function(btn)
-    MetState.TargetAttackActive = not MetState.TargetAttackActive
-    btn.Text = MetState.TargetAttackActive and "2. NUKER [ON]" or "2. NUKER HÉROES"
-    btn.BackgroundColor3 = MetState.TargetAttackActive and Theme.Success or Theme.Secondary
-    if not MetState.TargetAttackActive then RestaurarFisicas() end
-end)
-
-TabMetralleta:CreateSideToggle("Movimiento Libre (Sin Anclaje)", false, function(state)
-    MetState.MovimientoLibre = state
-    if state then
-        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if myRoot then myRoot.Anchored = false end
-    end
-end)
-
-TabMetralleta:CreateLabel("Ajustes de Velocidad")
-TabMetralleta:CreateSlider("Velocidad Bucle Red (5 = 0.05s)", 1, 10, 5, function(v) MetState.WAIT_TIME = v / 100 end, true)
-TabMetralleta:CreateSlider("Cerebro: Tiempo Ataque (25 = 0.25s)", 10, 100, 25, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
-TabMetralleta:CreateSlider("Cerebro: Tiempo Apagón (25 = 0.25s)", 5, 100, 25, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
+TabMetralleta:CreateLabel("Ajuste de Animation Canceling")
+TabMetralleta:CreateSlider("Tiempo Ataque (ON) (30 = 0.3s)", 10, 100, 30, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
+TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
 
 -- ==========================================
--- 1. LÓGICA DE ASIGNACIÓN (Target Automático)
+-- LÓGICA DE ASIGNACIÓN PRINCIPAL (TargetKILL)
 -- ==========================================
 task.spawn(function()
     while task.wait(0.5) do
@@ -1470,8 +1463,7 @@ task.spawn(function()
         end
         
         if MetCaza.BossEspera then 
-            LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."
-            continue 
+            LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."; continue 
         end
 
         if not MetState.ModoManual and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
@@ -1502,7 +1494,9 @@ task.spawn(function()
                     if MetCaza.SecName == "" then MetCaza.SecName = mobs[1].name end
                     local seqInst = nil
                     for _, data in ipairs(mobs) do if data.name == MetCaza.SecName then seqInst = data.inst; break end end
-                    if seqInst then MetState.TargetKillInst = seqInst else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
+                    
+                    if seqInst then MetState.TargetKillInst = seqInst
+                    else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
 
                 elseif Config.MetralletaModo == "BOSS" then
                     if MetCaza.WasBossAlive and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
@@ -1510,6 +1504,7 @@ task.spawn(function()
                         task.spawn(function() task.wait(1.2); MetCaza.BossEspera = false end)
                         continue
                     end
+
                     local bossInst = nil
                     for _, data in ipairs(mobs) do if table.find(MetCaza.BossList, data.name) then bossInst = data.inst; break end end
                     MetState.TargetKillInst = bossInst; MetCaza.WasBossAlive = (MetState.TargetKillInst ~= nil)
@@ -1520,159 +1515,183 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- 2. CEREBRO INTERMITENTE
--- ==========================================
-task.spawn(function()
-    while HubRunning do
-        if MetState.Activo and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
-            MetState.InternalPulse = true
-            task.wait(MetState.TIEMPO_ENCENDIDO)
-            MetState.InternalPulse = false
-            MetState.CurrentRandomTarget = nil 
-            task.wait(MetState.TIEMPO_APAGADO)
-        else
-            task.wait(0.1)
-        end
-    end
-end)
-
-local function GetRandomMob(excludeTarget)
-    local fld = Utils.GetEnemyFolder()
-    if not fld then return nil end
-    local mobs = {}
-    for _, enemy in pairs(fld:GetChildren()) do
-        if enemy ~= excludeTarget and enemy:FindFirstChild("HumanoidRootPart") and not Utils.EstaMuerto(enemy) then
-            table.insert(mobs, enemy)
-        end
-    end
-    if #mobs > 0 then return mobs[math.random(1, #mobs)] end
-    return nil
-end
-
--- ==========================================
--- 3. LA CORREA INTELIGENTE (100% ESTÁTICA)
+-- BUCLE: POSICIONAMIENTO FÍSICO
 -- ==========================================
 local metHbConn = RunService.Heartbeat:Connect(function()
-    if not HubRunning then RestaurarFisicas(); return end
+    if not HubRunning then 
+        RestaurarMetralleta()
+        if FocusHighlight then FocusHighlight:Destroy() end
+        return 
+    end
+    
+    btnMetToggle.Text = MetState.Activo and "DETENER SECUENCIA" or "INICIAR SECUENCIA"
+    btnMetToggle.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Primary
 
-    if MetState.TargetAttackActive and MetState.TargetKillInst then
-        local target = MetState.TargetKillInst
-        if Utils.EstaMuerto(target) then
-            FocusHighlight.Adornee = nil; RestaurarFisicas(); return
+    if not MetState.Activo then 
+        LblStatusMet.Text = MetState.TargetKillInst and ("Enfoque: " .. MetState.TargetKillInst.Name) or "Estado: En reposo"
+        if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then FocusHighlight.Adornee = MetState.TargetKillInst else FocusHighlight.Adornee = nil end
+        
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.Anchored = false end
+        return 
+    end
+
+    LblStatusMet.Text = (MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst)) and ("Atacando: " .. MetState.TargetKillInst.Name) or "Escaneando zona..."
+
+    if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+        FocusHighlight.Adornee = MetState.TargetKillInst
+    else
+        FocusHighlight.Adornee = nil
+    end
+
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    for mob, originalCF in pairs(MetCFrames) do
+        if mob ~= MetState.TargetRefInst and typeof(mob) == "Instance" and mob.Parent and mob:FindFirstChild("HumanoidRootPart") then 
+            mob.HumanoidRootPart.CFrame = originalCF; MetCFrames[mob] = nil 
+        end
+    end
+
+    if myRoot and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+        local targetPos = MetState.TargetKillInst.HumanoidRootPart.Position
+        
+        -- Estabilizar al jugador apuntando al objetivo KILL
+        myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
+        myRoot.AssemblyLinearVelocity = Vector3.zero
+        myRoot.Anchored = true
+        
+        -- Alejar al objetivo REF (Opcional, de tu script original)
+        if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and MetState.TargetRefInst:FindFirstChild("HumanoidRootPart") then
+            local refRoot = MetState.TargetRefInst.HumanoidRootPart
+            if not MetCFrames[MetState.TargetRefInst] then 
+                MetCFrames[MetState.TargetRefInst] = refRoot.CFrame 
+            end
+            refRoot.CFrame = myRoot.CFrame * CFrame.new(0, 25, 20)
+            refRoot.AssemblyLinearVelocity = Vector3.zero
         end
         
-        FocusHighlight.Adornee = target
-        LblStatusMet.Text = "Masacrando: " .. target.Name
-        
-        local targetRoot = target:FindFirstChild("HumanoidRootPart")
-        if targetRoot then
-            local targetPos = targetRoot.Position
-            
-            -- Correa del Jugador
-            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if myRoot then
-                if MetState.MovimientoLibre then
-                    myRoot.Anchored = false
-                else
-                    myRoot.Anchored = true
-                    if (myRoot.Position - targetPos).Magnitude > 20 then
-                        myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, 12), targetPos)
-                        myRoot.AssemblyLinearVelocity = Vector3.zero
-                    end
-                end
-            end
-
-            -- Correa de Héroes: ESTRICTAMENTE ANCLADOS en un círculo para que no se muevan en absoluto
-            local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-            local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
-            if myHeroes then
-                local heroList = myHeroes:GetChildren()
-                local idx = 1
-                for _, hero in ipairs(heroList) do
-                    local hRoot = hero:FindFirstChild("HumanoidRootPart")
-                    if hRoot then
-                        hRoot.Anchored = true 
-                        if (hRoot.Position - targetPos).Magnitude > 15 then
-                            local angle = (idx / #heroList) * math.pi * 2
-                            local offsetX = math.cos(angle) * 8
-                            local offsetZ = math.sin(angle) * 8
-                            
-                            local heroPos = targetPos + Vector3.new(offsetX, 0, offsetZ)
-                            hRoot.CFrame = CFrame.new(heroPos, targetPos)
-                            hRoot.AssemblyLinearVelocity = Vector3.zero
-                        end
-                        idx = idx + 1
-                    end
+        -- Héroes asisten al objetivo KILL
+        local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
+        if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
+            for _, pet in pairs(heroesFolder["Hero_" .. tostring(LocalPlayer.UserId)]:GetChildren()) do
+                local petRoot = pet:FindFirstChild("HumanoidRootPart")
+                if petRoot and (petRoot.Position - targetPos).Magnitude > 25 then 
+                    petRoot.CFrame = CFrame.new(targetPos + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)), targetPos)
+                    petRoot.AssemblyLinearVelocity = Vector3.zero 
                 end
             end
         end
     else
-        FocusHighlight.Adornee = nil
-        RestaurarFisicas()
+        if myRoot then myRoot.Anchored = false end
     end
 end)
 table.insert(Hub.Connections, metHbConn)
 
 -- ==========================================
--- 4. BUCLE DE ATAQUE (MASIVO Y RESTAURADO)
+-- FUNCIÓN DE ATAQUE SILENCIOSO
 -- ==========================================
-task.spawn(function()
+local function FireAttack(enemyInst, isTargetKill)
+    local eGuid = Utils.GetGUID(enemyInst)
+    if not eGuid then return end
     local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if not Remotes then return end
-    
-    local ClickEnemy = Remotes:FindFirstChild("ClickEnemy")
-    local PlayerSkill = Remotes:FindFirstChild("PlayerClickAttackSkill")
-    local HeroPos = Remotes:FindFirstChild("HeroReachedAttackPos")
-    local HeroSkill = Remotes:FindFirstChild("HeroUseSkill")
 
-    while true do
-        if not HubRunning then break end
-        task.wait(MetState.WAIT_TIME)
-        
-        -- Solo ataca si el cerebro intermitente está en ON
-        if not MetState.Activo or not MetState.InternalPulse then continue end
-
-        local target = MetState.TargetKillInst
-        if not target or Utils.EstaMuerto(target) then continue end
-
-        -- 4.1 FASE DESYNC
-        if MetState.RandomAttackActive then
-            if not MetState.CurrentRandomTarget or Utils.EstaMuerto(MetState.CurrentRandomTarget) then
-                MetState.CurrentRandomTarget = GetRandomMob(target)
-            end
-
-            if MetState.CurrentRandomTarget then
-                local rGuid = Utils.GetGUID(MetState.CurrentRandomTarget)
-                if rGuid then
-                    if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = rGuid, ["enemyCharacter"] = MetState.CurrentRandomTarget }) end) end) end
-                    if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = rGuid }) end) end
+    task.spawn(function()
+        pcall(function()
+            -- El ClickEnemy se usa para generar la desincronización
+            if MetState.LastClickedGUID ~= eGuid then
+                MetState.LastClickedGUID = eGuid
+                if Remotes:FindFirstChild("ClickEnemy") then 
+                    Remotes.ClickEnemy:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = enemyInst }) 
                 end
             end
-        end
-
-        -- 4.2 FASE NUKER (Todos los héroes a la vez)
-        if MetState.TargetAttackActive then
-            local tGuid = Utils.GetGUID(target)
-            local targetRoot = target:FindFirstChild("HumanoidRootPart")
             
-            if tGuid and targetRoot then
-                -- Doble ClickEnemy para asegurar el objetivo
-                if ClickEnemy then task.spawn(function() pcall(function() ClickEnemy:InvokeServer({ ["enemyGuid"] = tGuid, ["enemyCharacter"] = target }) end) end) end
-                if PlayerSkill then pcall(function() PlayerSkill:FireServer({ ["attackEnemyGUID"] = tGuid }) end) end
+            -- Habilidades de tu personaje (Disparadas al objetivo actual)
+            if Remotes:FindFirstChild("PlayerClickAttackSkill") then 
+                Remotes.PlayerClickAttackSkill:FireServer({ ["attackEnemyGUID"] = eGuid })
+                Remotes.PlayerClickAttackSkill:FireServer({ ["autoClickEnemyGUID"] = eGuid })
+            end
+            if Remotes:FindFirstChild("PlayerClickAttack") then 
+                Remotes.PlayerClickAttack:FireServer({ ["attackEnemyGUID"] = eGuid }) 
+            end
 
+            -- Habilidades de los Héroes (SOLO disparan al objetivo KILL para no alejarse)
+            if isTargetKill then
                 local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-                local myHeroes = heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
-                
-                if myHeroes then
-                    -- Bucle iterando a TODOS los héroes por frame (Esto causa el x8800 en Cobalt)
-                    for _, hero in pairs(myHeroes:GetChildren()) do
-                        local hGuid = Utils.GetGUID(hero)
-                        if hGuid then
-                            if HeroPos then pcall(function() HeroPos:FireServer({ ["masterId"] = LocalPlayer.UserId, ["cframe"] = targetRoot.CFrame, ["guid"] = hGuid }) end) end
-                            if HeroSkill then pcall(function() HeroSkill:FireServer({{ ["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = tGuid }}) end) end
+                if heroesFolder then
+                    local myHeroes = heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId))
+                    if myHeroes then
+                        for _, hero in pairs(myHeroes:GetChildren()) do
+                            local hGuid = Utils.GetGUID(hero)
+                            if hGuid and Remotes:FindFirstChild("HeroUseSkill") then
+                                Remotes.HeroUseSkill:FireServer({
+                                    {
+                                        ["heroGuid"] = hGuid,
+                                        ["attackType"] = math.random(1, 3),
+                                        ["userId"] = LocalPlayer.UserId,
+                                        ["enemyGuid"] = eGuid
+                                    }
+                                })
+                            end
                         end
                     end
                 end
+            end
+        end)
+    end)
+end
+
+-- ==========================================
+-- CEREBRO INTERMITENTE (LA MAGIA DEL CANCEL)
+-- ==========================================
+task.spawn(function()
+    while HubRunning do
+        if MetState.Activo then
+            -- FASE 1: ENCENDIDO
+            MetState.InternalAttackActive = true
+            task.wait(MetState.TIEMPO_ENCENDIDO)
+            
+            -- FASE 2: APAGÓN Y RESET DE MEMORIA
+            MetState.InternalAttackActive = false
+            MetState.TargetRefInst = nil     -- AQUÍ ESTÁ EL TRUCO: Forzamos a buscar un nuevo referente aleatorio
+            MetState.LastClickedGUID = nil   -- Borramos el target para que el ClickEnemy se vuelva a enviar
+            task.wait(MetState.TIEMPO_APAGADO)
+        else
+            MetState.InternalAttackActive = false
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- ==========================================
+-- DISPARADOR DE ATAQUES ASÍNCRONOS (SPAMMER)
+-- ==========================================
+task.spawn(function()
+    while HubRunning do
+        task.wait(MetState.Vel)
+        
+        if MetState.Activo and MetState.InternalAttackActive then
+            -- 1. Buscar un objetivo Aleatorio de Referencia (Si el cerebro lo borró en el apagón)
+            if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
+                local fld = Utils.GetEnemyFolder()
+                if fld then
+                    for _, mob in pairs(fld:GetChildren()) do
+                        if not Utils.EstaMuerto(mob) and mob ~= MetState.TargetKillInst and mob:FindFirstChild("HumanoidRootPart") then
+                            MetState.TargetRefInst = mob
+                            break
+                        end
+                    end
+                end
+            end
+            
+            -- 2. Disparar al objetivo Aleatorio (Referencia para confundir al servidor)
+            if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) then
+                FireAttack(MetState.TargetRefInst, false)
+            end
+            
+            -- 3. Disparar al objetivo Principal (KILL) para asestar el daño
+            if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
+                FireAttack(MetState.TargetKillInst, true)
             end
         end
     end
@@ -2235,6 +2254,7 @@ local RaidState = {
     CooldownActive = false,
     BossDeathTime = nil,
     ForceExit = false,
+    IsExtracting = false,
     Target = nil,
     NoBossTimer = nil,
     LastScan = 0,
@@ -2594,6 +2614,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.BossInst = nil
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
+            RaidState.IsExtracting = false
             
             -- [NUEVO] Cambiamos radicalmente el EntryTime para que cualquier task.spawn viejo se cancele.
             RaidState.EntryTime = now + 99999 
@@ -2700,8 +2721,9 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 LblRaidStatus.Text = "🎲 VALIDANDO ACCESO..." 
                 local checkStart = tick()
                 local tpSuccess = false
-                
-                while (tick() - checkStart) < 3.0 do 
+
+                -- Aumentamos el margen a 8.0s por la carga de Runas
+                while (tick() - checkStart) < 4.0 do 
                     task.wait(0.2)
                     if not HubRunning then return end
                     local currentChar = LocalPlayer.Character
@@ -2709,6 +2731,19 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 3000 then 
                             tpSuccess = true
                             break 
+                        end
+                    end
+                end
+
+                -- FAILSAFE: Si el TP por distancia falló, comprobamos si el Jefe ya está en el mapa
+                if not tpSuccess then
+                    local fld = Utils.GetEnemyFolder()
+                    if fld then
+                        for _, mob in pairs(fld:GetChildren()) do
+                            if mob:FindFirstChild("HumanoidRootPart") then
+                                tpSuccess = true
+                                break
+                            end
                         end
                     end
                 end
@@ -2767,118 +2802,44 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
             
-            local mapIdx = RaidState.CurrentBossMap or _G.LastSelectedMap or 1
-            local expectedBoss = CurrentRaidIsASC and BossPorMapaASC[mapIdx] or BossPorMapa[mapIdx]
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
 
-            local function EsJefeMuerto(mob)
-                if not mob or not mob.Parent or not mob:FindFirstChild("HumanoidRootPart") then return true end
-                local hum = mob:FindFirstChild("Humanoid")
-                if hum and hum.Health <= 0 then return true end
-                
-                local gui = mob.HumanoidRootPart:FindFirstChild("EnemyNameGui")
-                if gui and gui:FindFirstChild("Progress") and gui.Progress:FindFirstChild("HealthNum") then
-                    local txt = gui.Progress.HealthNum.Text
-                    if txt == "" or txt == "0" or txt:match("^0%s*/") then return true end
-                end
-                
-                return false
-            end
-
+            -- Validación Estricta: El único mob que importa es el que exista
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
-                    if expectedBoss and mob and mob.Name then
-                        local isMatch = (mob.Name == expectedBoss)
-                        if not isMatch then
-                            isMatch = string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true)
-                        end
-
-                        if isMatch then
-                            bossFound = true
-                            if not EsJefeMuerto(mob) then 
-                                bossAlive = true 
-                                RaidState.BossInst = mob 
-                                local bossRoot = mob:FindFirstChild("HumanoidRootPart")
-                                if bossRoot then LastBossPos = bossRoot.CFrame end
-                                break 
-                            end
-                        end
-                    elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
+                    if mob:FindFirstChild("HumanoidRootPart") then
                         bossFound = true
-                        if not EsJefeMuerto(mob) then
-                            bossAlive = true
-                            RaidState.BossInst = mob
-                            local rootFallback = mob:FindFirstChild("HumanoidRootPart")
-                            if rootFallback then LastBossPos = rootFallback.CFrame end
-                            break
+                        if not Utils.EstaMuerto(mob) then 
+                            bossAlive = true 
+                            RaidState.BossInst = mob 
+                            LastBossPos = mob.HumanoidRootPart.CFrame
+                            break 
                         end
                     end
                 end
             end
 
-            -- Lógica de validación de Estados a prueba de fallos
             if bossAlive then
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
-                LblRaidStatus.Text = "⚔️ Jefe activo: " .. (expectedBoss or "Desconocido")
+                LblRaidStatus.Text = "⚔️ Jefe activo, atacando..."
             else
-                if RaidState.SawBossAlive then
-                    RaidState.NoBossTimer = nil 
-                    if not RaidState.BossDeathTime then 
-                        RaidState.BossDeathTime = tick()
-                        RaidState.BossInst = nil 
-                        LblRaidStatus.Text = "💀 Jefe Derrotado o Desaparecido. Cobrando..."
-                        
-                        task.spawn(function()
-                            task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
-                            
-                            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                            if myRoot and LastBossPos then
-                                myRoot.CFrame = LastBossPos
-                                myRoot.AssemblyLinearVelocity = Vector3.zero
-                                RaidState.ClaimPosition = myRoot.Position 
-                            end
-                            
-                            pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
-                            
-                            task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
-                            
-                            if RaidState.IsInInstance and not RaidState.ExitTriggered then
-                                LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
-                                RaidState.ForceExit = true
-                            end
-                        end)
-                    end
-                else
-                    if not RaidState.NoBossTimer then RaidState.NoBossTimer = tick() end
-                    local segundosPasados = math.floor(tick() - RaidState.NoBossTimer)
-                    
-                    if bossFound then
-                        LblRaidStatus.Text = "🧹 Ignorando cuerpo anterior (" .. segundosPasados .. "s)..."
-                    else
-                        LblRaidStatus.Text = "🔎 Esperando Jefe (" .. segundosPasados .. "s)..."
-                    end
-                    
-                    if segundosPasados >= 30 then
-                        LblRaidStatus.Text = "⚠️ TIEMPO AGOTADO (30s): Cobrando y saliendo..."
-                        task.spawn(function()
-                            pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
-                            task.wait(1.0)
-                            if RaidState.EntryTime == currentSession then 
-                                RaidState.ForceExit = true
-                                RaidState.NoBossTimer = nil
-                            end
-                        end)
-                    end
+                -- Si no hay jefe vivo, intentamos cobrar y luego salimos.
+                HandleRaidRewardUI()
+                
+                if not RaidState.BossDeathTime then RaidState.BossDeathTime = tick() end
+                
+                -- Si pasaron 2 segundos sin jefe ni recompensa visible, forzamos salida
+                if tick() - RaidState.BossDeathTime > 2.0 then
+                    RaidState.ForceExit = true
                 end
             end
         end 
 
-        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA
-        if RaidState.ForceExit and not RaidState.ExitTriggered then
+        -- 4. GESTIÓN DE SALIDA CON DEBOUNCE
+        if RaidState.ForceExit and not RaidState.IsExtracting then
+            RaidState.IsExtracting = true -- Debounce activo
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
             RaidState.IsProcessing = true
@@ -2918,13 +2879,14 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if hum then hum.PlatformStand = false end
                 end
                 
-                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
+                -- Si a pesar del tiempo el Lobby Detector NO nos procesó, forzamos manualmente (Failsafe)
                 if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
                     RaidState.IsInInstance = false
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.IsProcessing = false
                     RaidState.ExitTriggered = false
+                    RaidState.IsExtracting = false -- Reiniciamos el debounce
                     LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
                 end
             end)
