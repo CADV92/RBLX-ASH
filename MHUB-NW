@@ -260,23 +260,6 @@ ResetDmgBtn.Font = Enum.Font.GothamBold
 ResetDmgBtn.TextSize = 11
 Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
 
-local TargetLocked = false
-local LockTargetBtn = Instance.new("TextButton", MonitorFrame)
-LockTargetBtn.Size = UDim2.new(0, 20, 0, 20)
-LockTargetBtn.Position = UDim2.new(1, -50, 0, 62)
-LockTargetBtn.BackgroundColor3 = Theme.Secondary
-LockTargetBtn.Text = "🔓"
-LockTargetBtn.TextColor3 = Theme.TextHighlight
-LockTargetBtn.Font = Enum.Font.GothamBold
-LockTargetBtn.TextSize = 10
-Instance.new("UICorner", LockTargetBtn).CornerRadius = UDim.new(0, 4)
-
-LockTargetBtn.MouseButton1Click:Connect(function()
-    TargetLocked = not TargetLocked
-    LockTargetBtn.Text = TargetLocked and "🔒" or "🔓"
-    LockTargetBtn.BackgroundColor3 = TargetLocked and Theme.Primary or Theme.Secondary
-end)
-
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
 ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
 ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
@@ -340,34 +323,12 @@ local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("S
 
 if RemoteDamage then
     local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+        -- Filtro ESTRICTO: Validamos que el paquete sea tuyo usando tu UserId
         if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+            -- Obtenemos el daño de la red que capturaste con Cobalt
             local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
             
             if dmg > 0 then
-                local hitGuid = data.enemyGuid
-                local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
-                
-                -- Ignoramos el clon de la metralleta si está activo
-                if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then
-                    return 
-                end
-                
-                -- Si le pegamos a algo nuevo...
-                if hitGuid ~= currentGuid then
-                    if TargetLocked and currentGuid ~= nil then return end -- Bloqueo de candado
-                    
-                    local fld = Utils.GetEnemyFolder()
-                    if fld then
-                        for _, mob in pairs(fld:GetChildren()) do
-                            if Utils.GetGUID(mob) == hitGuid then
-                                CurrentTarget = mob
-                                TotalDamageDealt = 0 -- Reseteamos daño al cambiar de mob
-                                break
-                            end
-                        end
-                    end
-                end
-
                 TotalDamageDealt = TotalDamageDealt + dmg
                 if DamageLabel then
                     DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
@@ -537,33 +498,41 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-local enemiesFolder = Workspace:FindFirstChild("Enemys")
+    local enemiesFolder = Workspace:FindFirstChild("Enemys")
+    local activeAttackedTarget = nil
     local closestEnemy = nil
     local bestDist = SearchRadius 
 
-    -- Fallback: Si no hay objetivo activo, buscamos al más cercano
-    if not CurrentTarget and enemiesFolder then
+    if enemiesFolder then
         for _, obj in pairs(enemiesFolder:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
                 local dist = (obj.HumanoidRootPart.Position - myRoot.Position).Magnitude
                 if dist <= SearchRadius then
                     local hp = Utils.GetCurrentRealHealth(obj)
+                    local lastHp = enemyHPTracker[obj]
+
+                    if lastHp and hp < lastHp and hp > DeadHpThreshold then
+                        activeAttackedTarget = obj
+                    end
+                    enemyHPTracker[obj] = hp 
+
                     if dist < bestDist and hp > DeadHpThreshold then
                         bestDist = dist
                         closestEnemy = obj 
                     end
+                else
+                    enemyHPTracker[obj] = nil 
                 end
             end
         end
     end
 
-    if not CurrentTarget and closestEnemy then 
-        CurrentTarget = closestEnemy 
-    end
+    if activeAttackedTarget then CurrentTarget = activeAttackedTarget
+    elseif not CurrentTarget and closestEnemy then CurrentTarget = closestEnemy end
 
     if CurrentTarget and CurrentTarget ~= PreviousTarget then
         TotalDamageDealt = 0
-        if DamageLabel then DamageLabel.Text = "DMG: 0" end
+        if DamageLabel then DamageLabel.Text = "⚔️ DMG: 0" end
         PreviousTarget = CurrentTarget
     end
 
@@ -1701,7 +1670,6 @@ task.spawn(function()
                     for _, mob in pairs(fld:GetChildren()) do
                         if not Utils.EstaMuerto(mob) and mob ~= MetState.TargetKillInst and mob:FindFirstChild("HumanoidRootPart") then
                             MetState.TargetRefInst = mob
-                            _G.MetralletaRefGuid = Utils.GetGUID(mob)
                             break
                         end
                     end
