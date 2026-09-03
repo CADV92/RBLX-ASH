@@ -260,23 +260,6 @@ ResetDmgBtn.Font = Enum.Font.GothamBold
 ResetDmgBtn.TextSize = 11
 Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
 
-local TargetLocked = false
-local LockTargetBtn = Instance.new("TextButton", MonitorFrame)
-LockTargetBtn.Size = UDim2.new(0, 20, 0, 20)
-LockTargetBtn.Position = UDim2.new(1, -50, 0, 62)
-LockTargetBtn.BackgroundColor3 = Theme.Secondary
-LockTargetBtn.Text = "U"
-LockTargetBtn.TextColor3 = Theme.TextHighlight
-LockTargetBtn.Font = Enum.Font.GothamBold
-LockTargetBtn.TextSize = 10
-Instance.new("UICorner", LockTargetBtn).CornerRadius = UDim.new(0, 4)
-
-LockTargetBtn.MouseButton1Click:Connect(function()
-    TargetLocked = not TargetLocked
-    LockTargetBtn.Text = TargetLocked and "L" or "U"
-    LockTargetBtn.BackgroundColor3 = TargetLocked and Theme.Primary or Theme.Secondary
-end)
-
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
 ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
 ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
