@@ -326,19 +326,13 @@ if RemoteDamage then
         -- 1. Validamos que el paquete sea una tabla y que TÚ seas el atacante
         if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
             
-            -- 2. Obtenemos el ID del enemigo que estás enfocando actualmente en el monitor
-            local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+            -- 2. Sumamos todo tu daño absoluto, sin importar a qué mob le pegues (ideal para daño en área y cambios rápidos)
+            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
             
-            -- 3. Solo sumamos si el daño es hacia tu objetivo actual
-            if currentGuid and data.enemyGuid == currentGuid then
-                -- Usamos data.attack como nos mostraste en tu captura de Cobalt
-                local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
-                
-                if dmg > 0 then
-                    TotalDamageDealt = TotalDamageDealt + dmg
-                    if DamageLabel then
-                        DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
-                    end
+            if dmg > 0 then
+                TotalDamageDealt = TotalDamageDealt + dmg
+                if DamageLabel then
+                    DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
                 end
             end
             
