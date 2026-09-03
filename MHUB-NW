@@ -319,20 +319,40 @@ local AutoDropThreshold = 2.5e72
 
 ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
-local damageConn = Workspace:WaitForChild("Enemys").DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-        task.delay(0.05, function()
-            if descendant.Parent and descendant.Text ~= "" then
-                local damageVal = Utils.ParseDamageText(descendant.Text)
-                if damageVal > 0 then
-                    TotalDamageDealt = TotalDamageDealt + damageVal
+local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+
+if RemoteDamage then
+    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
+            
+            if dmg > 0 then
+                local hitGuid = data.enemyGuid
+                local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+                
+                -- Si golpeaste a un enemigo nuevo, actualizamos el objetivo y reseteamos el daño
+                if hitGuid ~= currentGuid then
+                    local fld = Utils.GetEnemyFolder()
+                    if fld then
+                        for _, mob in pairs(fld:GetChildren()) do
+                            if Utils.GetGUID(mob) == hitGuid then
+                                CurrentTarget = mob
+                                TotalDamageDealt = 0
+                                break
+                            end
+                        end
+                    end
+                end
+
+                TotalDamageDealt = TotalDamageDealt + dmg
+                if DamageLabel then
                     DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
                 end
             end
-        end)
-    end
-end)
-table.insert(Hub.Connections, damageConn)
+        end
+    end)
+    table.insert(Hub.Connections, damageConn)
+end
 
 local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
 local LastGoldPotionS = 0
@@ -493,41 +513,33 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-    local enemiesFolder = Workspace:FindFirstChild("Enemys")
-    local activeAttackedTarget = nil
+local enemiesFolder = Workspace:FindFirstChild("Enemys")
     local closestEnemy = nil
     local bestDist = SearchRadius 
 
-    if enemiesFolder then
+    -- Solo buscamos al más cercano como fallback de emergencia si no hay un objetivo activo
+    if not CurrentTarget and enemiesFolder then
         for _, obj in pairs(enemiesFolder:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
                 local dist = (obj.HumanoidRootPart.Position - myRoot.Position).Magnitude
                 if dist <= SearchRadius then
                     local hp = Utils.GetCurrentRealHealth(obj)
-                    local lastHp = enemyHPTracker[obj]
-
-                    if lastHp and hp < lastHp and hp > DeadHpThreshold then
-                        activeAttackedTarget = obj
-                    end
-                    enemyHPTracker[obj] = hp 
-
                     if dist < bestDist and hp > DeadHpThreshold then
                         bestDist = dist
                         closestEnemy = obj 
                     end
-                else
-                    enemyHPTracker[obj] = nil 
                 end
             end
         end
     end
 
-    if activeAttackedTarget then CurrentTarget = activeAttackedTarget
-    elseif not CurrentTarget and closestEnemy then CurrentTarget = closestEnemy end
+    if not CurrentTarget and closestEnemy then 
+        CurrentTarget = closestEnemy 
+    end
 
     if CurrentTarget and CurrentTarget ~= PreviousTarget then
         TotalDamageDealt = 0
-        if DamageLabel then DamageLabel.Text = "⚔️ DMG: 0" end
+        if DamageLabel then DamageLabel.Text = "DMG: 0" end
         PreviousTarget = CurrentTarget
     end
 
