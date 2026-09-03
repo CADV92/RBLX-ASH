@@ -155,7 +155,17 @@ end)
 -- ==============================================================================
 -- CARGA DE LA LIBRERÍA MODULAR DE INTERFAZ 
 -- ==============================================================================
-local NanoHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/CADV92/RBLX-ASH/refs/heads/main/NanoHub"))()
+local rawScript = game:HttpGet("https://raw.githubusercontent.com/CADV92/RBLX-ASH/refs/heads/main/NanoHub")
+local loadUI = loadstring(rawScript)
+
+if type(loadUI) ~= "function" then
+    warn("ERROR CRÍTICO: No se pudo cargar la interfaz NanoHub. GitHub bloqueó la petición o el ejecutor falló.")
+    warn("Respuesta recibida: ", tostring(rawScript))
+    return -- Detiene el script de forma segura sin lanzar error en pantalla
+end
+
+local NanoHub = loadUI()
+
 local Theme = NanoHub.Theme
 local TargetGui = NanoHub.TargetGui
 
