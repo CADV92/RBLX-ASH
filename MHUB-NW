@@ -319,20 +319,25 @@ local AutoDropThreshold = 2.5e72
 
 ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
-local damageConn = Workspace:WaitForChild("Enemys").DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-        task.delay(0.05, function()
-            if descendant.Parent and descendant.Text ~= "" then
-                local damageVal = Utils.ParseDamageText(descendant.Text)
-                if damageVal > 0 then
-                    TotalDamageDealt = TotalDamageDealt + damageVal
+local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+
+if RemoteDamage then
+    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+        -- Filtro ESTRICTO: Validamos que el paquete sea tuyo usando tu UserId
+        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+            -- Obtenemos el daño de la red que capturaste con Cobalt
+            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
+            
+            if dmg > 0 then
+                TotalDamageDealt = TotalDamageDealt + dmg
+                if DamageLabel then
                     DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
                 end
             end
-        end)
-    end
-end)
-table.insert(Hub.Connections, damageConn)
+        end
+    end)
+    table.insert(Hub.Connections, damageConn)
+end
 
 local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
 local LastGoldPotionS = 0
