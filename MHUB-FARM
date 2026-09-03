@@ -2796,19 +2796,36 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
             
+local mapIdx = RaidState.CurrentBossMap or _G.LastSelectedMap or 1
+            local expectedBoss = CurrentRaidIsASC and BossPorMapaASC[mapIdx] or BossPorMapa[mapIdx]
+            
             local fld = Utils.GetEnemyFolder()
             local bossFound, bossAlive = false, false
 
-            -- Validación Estricta: El único mob que importa es el que exista
+            -- Validación Estricta por Lista de Nombres (Ignora minions o dummies)
             if fld then
                 for _, mob in pairs(fld:GetChildren()) do
                     if mob:FindFirstChild("HumanoidRootPart") then
-                        bossFound = true
-                        if not Utils.EstaMuerto(mob) then 
-                            bossAlive = true 
-                            RaidState.BossInst = mob 
-                            LastBossPos = mob.HumanoidRootPart.CFrame
-                            break 
+                        local esElJefe = false
+                        
+                        -- Comprobamos si el mob coincide con nuestra lista estricta
+                        if expectedBoss then
+                            if mob.Name == expectedBoss or string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedBoss)), 1, true) then
+                                esElJefe = true
+                            end
+                        else
+                            -- Fallback de emergencia solo si el mapa no está en nuestra lista
+                            esElJefe = true
+                        end
+
+                        if esElJefe then
+                            bossFound = true
+                            if not Utils.EstaMuerto(mob) then 
+                                bossAlive = true 
+                                RaidState.BossInst = mob 
+                                LastBossPos = mob.HumanoidRootPart.CFrame
+                                break 
+                            end
                         end
                     end
                 end
