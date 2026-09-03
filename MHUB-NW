@@ -260,6 +260,24 @@ ResetDmgBtn.Font = Enum.Font.GothamBold
 ResetDmgBtn.TextSize = 11
 Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
 
+local TargetLocked = false
+
+local LockTargetBtn = Instance.new("TextButton", MonitorFrame)
+LockTargetBtn.Size = UDim2.new(0, 20, 0, 20)
+LockTargetBtn.Position = UDim2.new(1, -50, 0, 62)
+LockTargetBtn.BackgroundColor3 = Theme.Secondary
+LockTargetBtn.Text = "🔓"
+LockTargetBtn.TextColor3 = Theme.TextHighlight
+LockTargetBtn.Font = Enum.Font.GothamBold
+LockTargetBtn.TextSize = 10
+Instance.new("UICorner", LockTargetBtn).CornerRadius = UDim.new(0, 4)
+
+LockTargetBtn.MouseButton1Click:Connect(function()
+    TargetLocked = not TargetLocked
+    LockTargetBtn.Text = TargetLocked and "🔒" or "🔓"
+    LockTargetBtn.BackgroundColor3 = TargetLocked and Theme.Primary or Theme.Secondary
+end)
+
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
 ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
 ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
@@ -330,8 +348,18 @@ if RemoteDamage then
                 local hitGuid = data.enemyGuid
                 local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
                 
-                -- Si golpeaste a un enemigo nuevo, actualizamos el objetivo y reseteamos el daño
+                -- Ignoramos el objetivo de referencia de la metralleta usando una variable global
+                if hitGuid == _G.MetralletaRefGuid then
+                    return 
+                end
+                
+                -- Si golpeaste a un enemigo nuevo...
                 if hitGuid ~= currentGuid then
+                    -- Si el candado está cerrado, ignoramos el cambio de objetivo
+                    if TargetLocked and currentGuid ~= nil then
+                        return
+                    end
+                    
                     local fld = Utils.GetEnemyFolder()
                     if fld then
                         for _, mob in pairs(fld:GetChildren()) do
@@ -513,11 +541,11 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-local enemiesFolder = Workspace:FindFirstChild("Enemys")
+    local enemiesFolder = Workspace:FindFirstChild("Enemys")
     local closestEnemy = nil
     local bestDist = SearchRadius 
 
-    -- Solo buscamos al más cercano como fallback de emergencia si no hay un objetivo activo
+    -- Solo buscamos al más cercano como fallback si no hay un objetivo activo
     if not CurrentTarget and enemiesFolder then
         for _, obj in pairs(enemiesFolder:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
@@ -1677,6 +1705,7 @@ task.spawn(function()
                     for _, mob in pairs(fld:GetChildren()) do
                         if not Utils.EstaMuerto(mob) and mob ~= MetState.TargetKillInst and mob:FindFirstChild("HumanoidRootPart") then
                             MetState.TargetRefInst = mob
+                            _G.MetralletaRefGuid = Utils.GetGUID(mob)
                             break
                         end
                     end
