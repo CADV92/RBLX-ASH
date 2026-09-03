@@ -15,7 +15,6 @@ local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 local HubRunning = true 
 _G.MapaOrigenAntesRuna = nil
-_G.MetralletaRefGuid = nil
 
 -- ==============================================================================
 -- DATOS ESTÁTICOS
@@ -102,7 +101,7 @@ local function SaveConfig()
 end
 
 -- ==============================================================================
--- UTILS Y FUNCIONES DE JUEGO
+-- UTILS Y FUNCIONES DE JUEGO (Se mantienen iguales)
 -- ==============================================================================
 local Utils = {}
 function Utils.GetEnemyFolder() return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs") end
@@ -164,7 +163,7 @@ local Hub = NanoHub.new("MIRROR HUB")
 Hub.OnClose = function() HubRunning = false end
 
 -- =========================================================
--- AQUÍ COMIENZA LA PESTAÑA: PLAYER
+-- AQUÍ COMIENZA LA PESTAÑA: PLAYER (Y el resto de tu código intacto)
 -- =========================================================
 local TabPlayer = Hub:CreateTab("Player")
 
@@ -261,71 +260,6 @@ ResetDmgBtn.Font = Enum.Font.GothamBold
 ResetDmgBtn.TextSize = 11
 Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
 
--- ================== COMIENZO DE LA MEJORA DEL MONITOR ==================
-local TargetLocked = false
-local LockTargetBtn = Instance.new("TextButton", MonitorFrame)
-LockTargetBtn.Size = UDim2.new(0, 20, 0, 20)
-LockTargetBtn.Position = UDim2.new(1, -50, 0, 62)
-LockTargetBtn.BackgroundColor3 = Theme.Secondary
-LockTargetBtn.Text = "U"
-LockTargetBtn.TextColor3 = Theme.TextHighlight
-LockTargetBtn.Font = Enum.Font.GothamBold
-LockTargetBtn.TextSize = 10
-Instance.new("UICorner", LockTargetBtn).CornerRadius = UDim.new(0, 4)
-
-LockTargetBtn.MouseButton1Click:Connect(function()
-    TargetLocked = not TargetLocked
-    LockTargetBtn.Text = TargetLocked and "L" or "U"
-    LockTargetBtn.BackgroundColor3 = TargetLocked and Theme.Primary or Theme.Secondary
-end)
-
-local TotalDamageDealt = 0
-local CurrentTarget = nil
-local PreviousTarget = nil 
-local DeadHpThreshold = 100 
-local SearchRadius = 30 
-local lastTick = 0
-local TiempoInicioEspecial = 0 
-local TiempoRegresoAtaque = 40
-local AutoDropThreshold = 2.5e72
-
-ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
-
-local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
-if RemoteDamage then
-    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
-        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
-            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
-            
-            if dmg > 0 then
-                local hitGuid = data.enemyGuid
-                local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
-                
-                if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then return end
-                
-                if hitGuid ~= currentGuid then
-                    if TargetLocked and currentGuid ~= nil then return end 
-                    local fld = Utils.GetEnemyFolder()
-                    if fld then
-                        for _, mob in pairs(fld:GetChildren()) do
-                            if Utils.GetGUID(mob) == hitGuid then
-                                CurrentTarget = mob
-                                TotalDamageDealt = 0 
-                                break
-                            end
-                        end
-                    end
-                end
-
-                TotalDamageDealt = TotalDamageDealt + dmg
-                if DamageLabel then DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt) end
-            end
-        end
-    end)
-    table.insert(Hub.Connections, damageConn)
-end
--- ================== FIN DE LA MEJORA DEL MONITOR ==================
-
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
 ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
 ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
@@ -371,6 +305,60 @@ ToggleAutoPots.MouseButton1Click:Connect(function()
     ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
     ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
 end)
+
+local TotalDamageDealt = 0
+local CurrentTarget = nil
+local PreviousTarget = nil 
+local DeadHpThreshold = 100 
+local SearchRadius = 30 
+local lastTick = 0
+local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
+local TiempoInicioEspecial = 0 
+local TiempoRegresoAtaque = 40
+local AutoDropThreshold = 2.5e72
+
+ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
+
+local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+
+if RemoteDamage then
+    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+        -- Filtro ESTRICTO: Solo contamos el daño si tú eres el atacante
+        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
+            
+            if dmg > 0 then
+                local hitGuid = data.enemyGuid
+                local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+                
+                -- Ignoramos el daño al clon de la metralleta
+                if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then
+                    return 
+                end
+                
+                -- Cambio de objetivo automático al pegar a alguien nuevo
+                if hitGuid ~= currentGuid then
+                    local fld = Utils.GetEnemyFolder()
+                    if fld then
+                        for _, mob in pairs(fld:GetChildren()) do
+                            if Utils.GetGUID(mob) == hitGuid then
+                                CurrentTarget = mob
+                                TotalDamageDealt = 0 -- Reseteamos el daño
+                                break
+                            end
+                        end
+                    end
+                end
+
+                TotalDamageDealt = TotalDamageDealt + dmg
+                if DamageLabel then
+                    DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
+                end
+            end
+        end
+    end)
+    table.insert(Hub.Connections, damageConn)
+end
 
 local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
 local LastGoldPotionS = 0
@@ -490,7 +478,6 @@ local function CambiarModoAutoEquip(nombre)
     pcall(function() StarterGui:SetCore("SendNotification", { Title = "AutoEquip", Text = "¡" .. nombre .. " equipado!", Duration = 3 }) end)
 end
 
--- ================== COMIENZO DE LA MEJORA DEL HEARTBEAT ==================
 local monitorConn = RunService.Heartbeat:Connect(function()
     local now = tick()
     if now - lastTick < 0.1 then return end 
@@ -514,6 +501,7 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
+        -- Si el jefe muere, nos equipamos las cosas de Drop/Oro sin usar variables viejas
         if isDestroyed or currentHP <= DeadHpThreshold then
             if Config.AutoOroEnabled then
                 if EquipModeSelected ~= "ORO" then
@@ -534,6 +522,7 @@ local monitorConn = RunService.Heartbeat:Connect(function()
     local closestEnemy = nil
     local bestDist = SearchRadius 
 
+    -- Fallback: Si no hay objetivo activo por daño, buscamos el más cercano
     if not CurrentTarget and enemiesFolder then
         for _, obj in pairs(enemiesFolder:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
@@ -572,7 +561,6 @@ local monitorConn = RunService.Heartbeat:Connect(function()
     end
 end)
 table.insert(Hub.Connections, monitorConn)
--- ================== FIN DE LA MEJORA DEL HEARTBEAT ==================
 
 TabPlayer:CreateLabel("Modos de Combate (AutoEquip)")
 TabPlayer:CreateDualButtons(
@@ -652,10 +640,12 @@ local function CreateGemRow(title, settingKey)
 
     local function CreateGemBtn(slotKey, posX)
         local Btn = Instance.new("TextButton", Frame)
+        -- Reducimos el ancho a 0.23 para que quepan 4 botones
         Btn.Size = UDim2.new(0.23, 0, 1, 0)
         Btn.Position = UDim2.new(posX, 0, 0, 0)
         Btn.BackgroundColor3 = Theme.PanelLight
         
+        -- Bypass de seguridad por si el JSON antiguo no tiene S4 guardado
         if Config.GemSettings[settingKey][slotKey] == nil then
             Config.GemSettings[settingKey][slotKey] = "AUTO"
         end
@@ -677,6 +667,7 @@ local function CreateGemRow(title, settingKey)
         end)
     end
     
+    -- Distribuimos las posiciones: 0, 25%, 50%, 75%
     CreateGemBtn("S1", 0)
     CreateGemBtn("S2", 0.25)
     CreateGemBtn("S3", 0.50)
@@ -725,6 +716,7 @@ TabPlayer:CreateButton("⚙️ EDITAR GEAR Y GEMAS", Theme.PrimaryDark, function
     AdvancedGearPanel.Visible = true
 end)
 
+-- Continuación de Player: Runtime (Movimiento/Recolecta)
 local playerConn = RunService.Stepped:Connect(function()
     if not HubRunning then return end
     local char = LocalPlayer.Character
@@ -994,7 +986,7 @@ TabAuto:CreateButton("ABRIR PANEL DE MAPAS (Tecla: M)", Theme.Primary, function(
 end)
 
 -- =========================================================
--- PANEL FLOTANTE DE MAPAS ESTRECHO
+-- PANEL FLOTANTE DE MAPAS ESTRECHO (M 01, M 02...)
 -- =========================================================
 local MapPanel = Instance.new("Frame", Hub.ScreenGui)
 MapPanel.Name = "MapTeleportPanel"
@@ -1047,6 +1039,7 @@ for i = 1, 21 do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     btn.MouseButton1Click:Connect(function()
+        -- [NUEVO] Antibloqueo: Evitar TP si ya estamos en el mapa
         if _G.LastSelectedMap == i then
             pcall(function() StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ya estás en el Mapa M" .. string.format("%02d", i), Duration = 2 }) end)
             return
@@ -1056,9 +1049,10 @@ for i = 1, 21 do
         task.spawn(function()
             local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
             if remotes then
-                _G.LastSelectedMap = i
+                _G.LastSelectedMap = i -- Registramos el cambio
                 pcall(function() remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + i}) end)
                 
+                -- [NUEVO] Seguro de desanclaje forzado tras pantalla de carga
                 task.delay(1.5, function()
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -1079,6 +1073,9 @@ local mapKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, mapKeyConn)
 
+-- =========================================================
+-- BOTÓN EN PESTAÑA AUTO (Monitor de Raids)
+-- =========================================================
 TabAuto:CreateButton("ABRIR MONITOR DE RAIDS (Tecla: P)", Theme.PrimaryDark, function()
     local panel = TargetGui:FindFirstChild("NanoHub_UI") and TargetGui.NanoHub_UI:FindFirstChild("RaidMonitorPanel")
     if panel then panel.Visible = not panel.Visible end
@@ -1306,7 +1303,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA 
+-- [4] PESTAÑA: METRALLETA (CEREBRO INTERMITENTE CORREGIDO)
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1314,10 +1311,11 @@ local MetState = {
     Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
     ScannedMobsCache = {},
+    -- Lógica Standalone: Cerebro Intermitente
     InternalAttackActive = false,
     LastClickedGUID = nil,
-    TIEMPO_ENCENDIDO = 0.30, 
-    TIEMPO_APAGADO = 0.30    
+    TIEMPO_ENCENDIDO = 0.30, -- Tiempo de ataque
+    TIEMPO_APAGADO = 0.30    -- Tiempo de apagón/reset
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1677,7 +1675,7 @@ task.spawn(function()
         task.wait(MetState.Vel)
         
         if MetState.Activo and MetState.InternalAttackActive then
-            -- 1. Buscar un objetivo Aleatorio de Referencia
+            -- 1. Buscar un objetivo Aleatorio de Referencia (Si el cerebro lo borró en el apagón)
             if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
                 local fld = Utils.GetEnemyFolder()
                 if fld then
@@ -1749,12 +1747,13 @@ local function IniciarViaje(targetId, nombreDestino)
         
         LblTorreStatus.Text = "Viajando a: " .. nombreDestino
         local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} 
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
         
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
         
+        -- NUEVO: Se envían los argumentos
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
         
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
@@ -1772,12 +1771,13 @@ TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
         
         LblTorreStatus.Text = "Entrando a MI TORRE..."
         local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} 
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
         
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
         
+        -- NUEVO: Se envían los argumentos
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
         
         LblTorreStatus.Text = "Llegaste a MI TORRE"
@@ -1987,6 +1987,7 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     _G.AutoRollActivo = false; local tiradasCount = 0
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollUI"; ScreenGui.ResetOnSpawn = false
+    -- Ajuste de altura del MainFrame a 300 para acomodar las dos filas de botones
     local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 240, 0, 300); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
     MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180)
 
@@ -2007,6 +2008,7 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
 
     local SubTitle = Instance.new("TextLabel", MainFrame); SubTitle.Size = UDim2.new(0.9, 0, 0, 15); SubTitle.Position = UDim2.new(0.05, 0, 0, 65); SubTitle.Text = "1. Grados a buscar:"; SubTitle.Font = Enum.Font.GothamMedium; SubTitle.TextSize = 10; SubTitle.TextColor3 = Theme.Text; SubTitle.BackgroundTransparency = 1; SubTitle.TextXAlignment = Enum.TextXAlignment.Left
     
+    -- Ajuste del SelectorFrame para 6 botones en 2 filas
     local SelectorFrame = Instance.new("Frame", MainFrame); SelectorFrame.Size = UDim2.new(0.9, 0, 0, 50); SelectorFrame.Position = UDim2.new(0.05, 0, 0, 85); SelectorFrame.BackgroundTransparency = 1; 
     local layout = Instance.new("UIGridLayout", SelectorFrame); layout.CellSize = UDim2.new(0.31, 0, 0.45, 0); layout.CellPadding = UDim2.new(0.03, 0, 0.1, 0)
     for _, gradeText in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
@@ -2016,6 +2018,7 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
         btn.MouseButton1Click:Connect(function() ActiveStopTexts[gradeText] = not ActiveStopTexts[gradeText]; UpdateBtnVisual() end)
     end
 
+    -- Ajuste de posiciones Y del resto de la interfaz (desplazadas hacia abajo)
     local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 145); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
     local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 165); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
