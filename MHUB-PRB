@@ -85,6 +85,7 @@ Config.RaidSettings = Config.RaidSettings or {}
 Config.RaidSettings.Blacklist = Config.RaidSettings.Blacklist or {}
 Config.RaidSettings.VipList = Config.RaidSettings.VipList or { "N-18-S", "N-17-G", "N-16-G", "N-14-M+" }
 Config.RaidSettings.Runes = Config.RaidSettings.Runes or {}
+Config.RaidSettings.RunesSec = Config.RaidSettings.RunesSec or {}
 Config.RaidSettings.AllowedMaps = Config.RaidSettings.AllowedMaps or {}
 Config.RaidSettings.AllowedGradesNormal = Config.RaidSettings.AllowedGradesNormal or {}
 Config.RaidSettings.AllowedGradesASC = Config.RaidSettings.AllowedGradesASC or {}
@@ -2346,6 +2347,8 @@ TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSett
 TabAutoRaid:CreateLabel("Uso de Runas")
 local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 
+local SecRuneOpts = { {val=0, txt="NADA"}, {val=10270, txt="UP"}, {val=10271, txt="DOWN"} }
+
 local function CreateRuneCycler(prefix, rankKey)
     local Frame = Instance.new("Frame", TabAutoRaid.Page)
     Frame.LayoutOrder = TabAutoRaid:NextOrder()
@@ -2353,7 +2356,7 @@ local function CreateRuneCycler(prefix, rankKey)
     Frame.BackgroundTransparency = 1
 
     local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(0.5, 0, 1, 0)
+    Lbl.Size = UDim2.new(0.33, 0, 1, 0)
     Lbl.BackgroundTransparency = 1
     Lbl.Text = prefix .. " " .. rankKey
     Lbl.TextColor3 = Theme.Text
@@ -2361,26 +2364,54 @@ local function CreateRuneCycler(prefix, rankKey)
     Lbl.TextSize = 11
     Lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local Btn = Instance.new("TextButton", Frame)
-    Btn.Size = UDim2.new(0.5, 0, 1, 0)
-    Btn.Position = UDim2.new(0.5, 0, 0, 0)
+    -- BOTÓN 1: Runa de Mapa
+    local Btn1 = Instance.new("TextButton", Frame)
+    Btn1.Size = UDim2.new(0.32, 0, 1, 0)
+    Btn1.Position = UDim2.new(0.34, 0, 0, 0)
     
     local currentVal = Config.RaidSettings.Runes[rankKey] or 0
-    Btn.BackgroundColor3 = currentVal > 0 and Theme.Primary or Theme.Secondary
-    Btn.Text = currentVal > 0 and ("MAPA " .. currentVal) or "NINGUNA"
-    Btn.TextColor3 = Theme.TextHighlight
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 10
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
+    Btn1.BackgroundColor3 = currentVal > 0 and Theme.Primary or Theme.Secondary
+    Btn1.Text = currentVal > 0 and ("MAPA " .. currentVal) or "NADA"
+    Btn1.TextColor3 = Theme.TextHighlight
+    Btn1.Font = Enum.Font.GothamBold
+    Btn1.TextSize = 10
+    Instance.new("UICorner", Btn1).CornerRadius = UDim.new(0, 4)
 
-    Btn.MouseButton1Click:Connect(function()
+    Btn1.MouseButton1Click:Connect(function()
         local val = Config.RaidSettings.Runes[rankKey] or 0
         local nextIdx = 1
         for i, m in ipairs(AvailableRuneMaps) do if m == val then nextIdx = (i % #AvailableRuneMaps) + 1 break end end
         local newVal = AvailableRuneMaps[nextIdx]
         Config.RaidSettings.Runes[rankKey] = newVal
-        Btn.Text = newVal > 0 and ("MAPA " .. newVal) or "NINGUNA"
-        Btn.BackgroundColor3 = newVal > 0 and Theme.Primary or Theme.Secondary
+        Btn1.Text = newVal > 0 and ("MAPA " .. newVal) or "NADA"
+        Btn1.BackgroundColor3 = newVal > 0 and Theme.Primary or Theme.Secondary
+        SaveConfig()
+    end)
+
+    -- BOTÓN 2: Runa Secundaria (UP / DOWN)
+    local Btn2 = Instance.new("TextButton", Frame)
+    Btn2.Size = UDim2.new(0.32, 0, 1, 0)
+    Btn2.Position = UDim2.new(0.68, 0, 0, 0)
+    
+    local currentSec = Config.RaidSettings.RunesSec[rankKey] or 0
+    local secText = "NADA"
+    for _, opt in ipairs(SecRuneOpts) do if opt.val == currentSec then secText = opt.txt break end end
+    
+    Btn2.BackgroundColor3 = currentSec > 0 and Theme.PrimaryDark or Theme.Secondary
+    Btn2.Text = secText
+    Btn2.TextColor3 = Theme.TextHighlight
+    Btn2.Font = Enum.Font.GothamBold
+    Btn2.TextSize = 10
+    Instance.new("UICorner", Btn2).CornerRadius = UDim.new(0, 4)
+
+    Btn2.MouseButton1Click:Connect(function()
+        local val = Config.RaidSettings.RunesSec[rankKey] or 0
+        local nextIdx = 1
+        for i, opt in ipairs(SecRuneOpts) do if opt.val == val then nextIdx = (i % #SecRuneOpts) + 1 break end end
+        local newOpt = SecRuneOpts[nextIdx]
+        Config.RaidSettings.RunesSec[rankKey] = newOpt.val
+        Btn2.Text = newOpt.txt
+        Btn2.BackgroundColor3 = newOpt.val > 0 and Theme.PrimaryDark or Theme.Secondary
         SaveConfig()
     end)
 end
@@ -2704,25 +2735,41 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
+                local targetRuneSec = Config.RaidSettings.RunesSec[rKey] or 0
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
                     RaidState.CurrentBossMap = targetRuneMap
                     local runeCode = 10348 + targetRuneMap
-                    LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
+                    LblRaidStatus.Text = "🔮 Inyectando Runas M" .. targetRuneMap
                     
-                    pcall(function() remotes.UseRaidItem:FireServer({{ slotIndex = 1, itemId = runeCode }}) end)
+                    -- 1. INYECCIÓN RUNA DE MAPA (Slot 1)
+                    pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 1, itemId = runeCode }) end)
                     task.wait(0.3)
+                    
+                    -- 2. INYECCIÓN RUNA SECUNDARIA UP/DOWN (Slot 2)
+                    if targetRuneSec > 0 then
+                        pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 2, itemId = targetRuneSec }) end)
+                        task.wait(0.3)
+                    end
                     
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                     task.wait(0.3)
                     
-                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({{ slotIndex = 1, hostId = LocalPlayer.UserId, mapId = 50302, raidId = raidID }}) end)
+                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ slotIndex = 1, hostId = LocalPlayer.UserId, mapId = 50302, raidId = raidID }) end)
                     task.wait(0.6) 
                     
-                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({{ slotIndex = 1, mapId = 50302 }}) end)
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = 50302 }) end)
                 else
                     RaidState.CurrentBossMap = mapIdx 
+                    
+                    -- INYECCIÓN AISLADA (Si no usa mapa, pero SÍ usa UP/DOWN, va en el Slot 1)
+                    if targetRuneSec > 0 then
+                        LblRaidStatus.Text = "🔮 Inyectando Runa UP/DOWN"
+                        pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 1, itemId = targetRuneSec }) end)
+                        task.wait(0.3)
+                    end
+                    
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
 
