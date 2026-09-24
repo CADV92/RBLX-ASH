@@ -3550,3 +3550,81 @@ local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gp
 end)
 
 table.insert(Hub.Connections, customHotkeysConn)
+
+-- ==============================================================================
+-- BOTÓN FLOTANTE INDEPENDIENTE (MÓVILES)
+-- ==============================================================================
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+    local UIS = game:GetService("UserInputService")
+    
+    local MobileGui = Instance.new("ScreenGui")
+    MobileGui.Name = "MobileToggleGui"
+    MobileGui.ResetOnSpawn = false
+    
+    -- Failsafe para la interfaz: Intenta CoreGui, sino va a PlayerGui
+    local success = pcall(function() MobileGui.Parent = CoreGui end)
+    if not success or not MobileGui.Parent then 
+        MobileGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") 
+    end
+
+    local ToggleBtn = Instance.new("TextButton", MobileGui)
+    ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+    ToggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40) -- Gris oscuro (independiente del Theme)
+    ToggleBtn.Text = "👁" 
+    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleBtn.Font = Enum.Font.GothamBlack
+    ToggleBtn.TextSize = 20
+    
+    local ToggleCorner = Instance.new("UICorner", ToggleBtn)
+    ToggleCorner.CornerRadius = UDim.new(1, 0) 
+    local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
+    ToggleStroke.Color = Color3.fromRGB(0, 170, 255)
+    ToggleStroke.Thickness = 2
+
+    local dragging = false
+    local dragInput, dragStart, startPos
+    local dragStartTime = 0
+
+    ToggleBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = ToggleBtn.Position
+            dragStartTime = os.clock()
+            
+            local inputEndConn
+            inputEndConn = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    inputEndConn:Disconnect()
+                    
+                    local dragDistance = (input.Position - dragStart).Magnitude
+                    local dragDuration = os.clock() - dragStartTime
+                    
+                    -- Detecta toque vs arrastre
+                    if dragDistance < 10 and dragDuration < 0.5 then
+                        if Hub and Hub.MainFrame then
+                            Hub.MainFrame.Visible = not Hub.MainFrame.Visible
+                            ToggleBtn.BackgroundColor3 = Hub.MainFrame.Visible and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(35, 35, 40)
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+
+    ToggleBtn.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            ToggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end)
