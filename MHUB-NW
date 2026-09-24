@@ -396,6 +396,29 @@ end)
 table.insert(Hub.Connections, monitorKeyConn)
 
 -- ==========================================
+-- CANDIES
+-- ==========================================
+TabPlayer:CreateLabel("Eventos")
+TabPlayer:CreateButton("RECLAMAR CANDIES", Theme.Primary, function()
+    task.spawn(function()
+        pcall(function()
+            local argsSpin = {
+                {
+                    level = 5,
+                    needCount = 1,
+                    itemId = 10493
+                }
+            }
+            ReplicatedStorage.Remotes.StartChristmasSpin:InvokeServer(unpack(argsSpin))
+            
+            local argsClaim = { 5 }
+            ReplicatedStorage.Remotes.ClaimActivitySpinChristmasReward:InvokeServer(unpack(argsClaim))
+            
+            StarterGui:SetCore("SendNotification", { Title = "Event", Text = "Candies reclamados", Duration = 2 })
+        end)
+    end)
+end)
+-- ==========================================
 -- INTEGRACIÓN: AUTOEQUIP 
 -- ==========================================
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
