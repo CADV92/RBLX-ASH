@@ -85,7 +85,6 @@ Config.RaidSettings = Config.RaidSettings or {}
 Config.RaidSettings.Blacklist = Config.RaidSettings.Blacklist or {}
 Config.RaidSettings.VipList = Config.RaidSettings.VipList or { "N-18-S", "N-17-G", "N-16-G", "N-14-M+" }
 Config.RaidSettings.Runes = Config.RaidSettings.Runes or {}
-Config.RaidSettings.RunesSec = Config.RaidSettings.RunesSec or {}
 Config.RaidSettings.AllowedMaps = Config.RaidSettings.AllowedMaps or {}
 Config.RaidSettings.AllowedGradesNormal = Config.RaidSettings.AllowedGradesNormal or {}
 Config.RaidSettings.AllowedGradesASC = Config.RaidSettings.AllowedGradesASC or {}
@@ -396,6 +395,29 @@ local monitorKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, monitorKeyConn)
 
+-- ==========================================
+-- CANDIES
+-- ==========================================
+TabPlayer:CreateLabel("Eventos")
+TabPlayer:CreateButton("RECLAMAR CANDIES", Theme.Primary, function()
+    task.spawn(function()
+        pcall(function()
+            local argsSpin = {
+                {
+                    level = 5,
+                    needCount = 1,
+                    itemId = 10493
+                }
+            }
+            ReplicatedStorage.Remotes.StartChristmasSpin:InvokeServer(unpack(argsSpin))
+            
+            local argsClaim = { 5 }
+            ReplicatedStorage.Remotes.ClaimActivitySpinChristmasReward:InvokeServer(unpack(argsClaim))
+            
+            StarterGui:SetCore("SendNotification", { Title = "Event", Text = "Candies reclamados", Duration = 2 })
+        end)
+    end)
+end)
 -- ==========================================
 -- INTEGRACIÓN: AUTOEQUIP 
 -- ==========================================
@@ -2253,8 +2275,6 @@ end)
 local TabAutoRaid = Hub:CreateTab("Incursiones")
 
 Config.RaidSettings.AutoReequip = Config.RaidSettings.AutoReequip or false
-Config.RaidSettings.Runes = Config.RaidSettings.Runes or {}
-Config.RaidSettings.RunesSec = Config.RaidSettings.RunesSec or {}
 
 local RaidState = {
     IsProcessing = false,
@@ -2270,11 +2290,12 @@ local RaidState = {
     ExitTime = 0,
     ClaimPosition = nil,
     CurrentBossMap = nil,
-    BossInst = nil
+    BossInst = nil -- Instancia del Boss actual
 }
 
 local LblRaidStatus = TabAutoRaid:CreateLabel("Estado: Esperando órdenes...")
 
+-- Botones Grandes (Sin SaveConfig)
 local BtnAutoRaid = TabAutoRaid:CreateLargeToggle(
     "▶ INICIAR AUTO RAID", "🛑 DETENER AUTO RAID", 
     Theme.Secondary, Theme.Danger, 
@@ -2289,6 +2310,7 @@ local BtnAutoTP = TabAutoRaid:CreateLargeToggle(
     function(state) Config.RaidSettings.AutoTP = state end
 )
 
+-- Integración Toggle Reequipado de Héroes
 TabAutoRaid:CreateSideToggle("REEQUIPAR HÉROES EN RAID", Config.RaidSettings.AutoReequip, function(state) Config.RaidSettings.AutoReequip = state; SaveConfig() end)
 
 TabAutoRaid:CreateLabel("Lógica de Búsqueda")
@@ -2308,13 +2330,15 @@ TabAutoRaid:CreateRadioButtons("Modos permitidos:", {"AMBOS", "SOLO NORM", "SOLO
     end
 )
 
+-- VIP List
 local vipTextStr = type(Config.RaidSettings.VipList) == "table" and table.concat(Config.RaidSettings.VipList, " ") or ""
-TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS)", vipTextStr, function(txt)
+TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", vipTextStr, function(txt)
     local newList = {}
     for entry in string.gmatch(txt, "%S+") do table.insert(newList, entry) end
     Config.RaidSettings.VipList = newList; SaveConfig()
 end)
 
+-- Generador de Tablas para Grid
 local mapOpts = {} for i=1, 21 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
 local normOpts = {} for _, v in ipairs({"D", "B", "S", "SS", "G", "N", "M+", "M++", "XM", "ULT"}) do table.insert(normOpts, {Label = v}) end
 local ascOpts = {} for _, v in ipairs({"E", "D", "C", "B", "A", "S", "SS", "G", "N", "M"}) do table.insert(ascOpts, {Label = v}) end
@@ -2323,6 +2347,7 @@ TabAutoRaid:CreateGridToggles("Filtro de Mapas Permitidos:", mapOpts, Config.Rai
 TabAutoRaid:CreateGridToggles("Grados Normales Permitidos:", normOpts, Config.RaidSettings.AllowedGradesNormal)
 TabAutoRaid:CreateGridToggles("Grados Ascensión Permitidos:", ascOpts, Config.RaidSettings.AllowedGradesASC)
 
+-- Blacklist Generador
 local HardRaidsList = { 
     "N-14-M+", "N-14-M++", "N-15-M+", "N-15-M++", "N-16-M+", "N-16-M++", "N-17-M+", "N-17-M++", 
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
@@ -2340,9 +2365,9 @@ local HardRaidsList = {
 local blackOpts = {} for _, v in ipairs(HardRaidsList) do table.insert(blackOpts, {Label = v, Key = v}) end
 TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSettings.Blacklist)
 
-TabAutoRaid:CreateLabel("Uso de Runas (Mapa | Secundaria)")
+-- Runas UI
+TabAutoRaid:CreateLabel("Uso de Runas")
 local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
-local SecRuneOpts = { {val=0, txt="NADA"}, {val=10270, txt="UP"}, {val=10271, txt="DOWN"} }
 
 local function CreateRuneCycler(prefix, rankKey)
     local Frame = Instance.new("Frame", TabAutoRaid.Page)
@@ -2351,7 +2376,7 @@ local function CreateRuneCycler(prefix, rankKey)
     Frame.BackgroundTransparency = 1
 
     local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(0.33, 0, 1, 0)
+    Lbl.Size = UDim2.new(0.5, 0, 1, 0)
     Lbl.BackgroundTransparency = 1
     Lbl.Text = prefix .. " " .. rankKey
     Lbl.TextColor3 = Theme.Text
@@ -2359,67 +2384,26 @@ local function CreateRuneCycler(prefix, rankKey)
     Lbl.TextSize = 11
     Lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local Btn1 = Instance.new("TextButton", Frame)
-    Btn1.Size = UDim2.new(0.32, 0, 1, 0)
-    Btn1.Position = UDim2.new(0.34, 0, 0, 0)
+    local Btn = Instance.new("TextButton", Frame)
+    Btn.Size = UDim2.new(0.5, 0, 1, 0)
+    Btn.Position = UDim2.new(0.5, 0, 0, 0)
     
     local currentVal = Config.RaidSettings.Runes[rankKey] or 0
-    Btn1.BackgroundColor3 = currentVal > 0 and Theme.Primary or Theme.Secondary
-    Btn1.Text = currentVal > 0 and ("MAPA " .. currentVal) or "NADA"
-    Btn1.TextColor3 = Theme.TextHighlight
-    Btn1.Font = Enum.Font.GothamBold
-    Btn1.TextSize = 10
-    Instance.new("UICorner", Btn1).CornerRadius = UDim.new(0, 4)
+    Btn.BackgroundColor3 = currentVal > 0 and Theme.Primary or Theme.Secondary
+    Btn.Text = currentVal > 0 and ("MAPA " .. currentVal) or "NINGUNA"
+    Btn.TextColor3 = Theme.TextHighlight
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 10
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
 
-    Btn1.MouseButton1Click:Connect(function()
+    Btn.MouseButton1Click:Connect(function()
         local val = Config.RaidSettings.Runes[rankKey] or 0
         local nextIdx = 1
-        for i, m in ipairs(AvailableRuneMaps) do 
-            if m == val then 
-                nextIdx = (i % #AvailableRuneMaps) + 1; 
-                break; 
-            end 
-        end
+        for i, m in ipairs(AvailableRuneMaps) do if m == val then nextIdx = (i % #AvailableRuneMaps) + 1 break end end
         local newVal = AvailableRuneMaps[nextIdx]
         Config.RaidSettings.Runes[rankKey] = newVal
-        Btn1.Text = newVal > 0 and ("MAPA " .. newVal) or "NADA"
-        Btn1.BackgroundColor3 = newVal > 0 and Theme.Primary or Theme.Secondary
-        SaveConfig()
-    end)
-
-    local Btn2 = Instance.new("TextButton", Frame)
-    Btn2.Size = UDim2.new(0.32, 0, 1, 0)
-    Btn2.Position = UDim2.new(0.68, 0, 0, 0)
-    
-    local currentSec = Config.RaidSettings.RunesSec[rankKey] or 0
-    local secText = "NADA"
-    for _, opt in ipairs(SecRuneOpts) do 
-        if opt.val == currentSec then 
-            secText = opt.txt; 
-            break; 
-        end 
-    end
-    
-    Btn2.BackgroundColor3 = currentSec > 0 and Theme.PrimaryDark or Theme.Secondary
-    Btn2.Text = secText
-    Btn2.TextColor3 = Theme.TextHighlight
-    Btn2.Font = Enum.Font.GothamBold
-    Btn2.TextSize = 10
-    Instance.new("UICorner", Btn2).CornerRadius = UDim.new(0, 4)
-
-    Btn2.MouseButton1Click:Connect(function()
-        local val = Config.RaidSettings.RunesSec[rankKey] or 0
-        local nextIdx = 1
-        for i, opt in ipairs(SecRuneOpts) do 
-            if opt.val == val then 
-                nextIdx = (i % #SecRuneOpts) + 1; 
-                break; 
-            end 
-        end
-        local newOpt = SecRuneOpts[nextIdx]
-        Config.RaidSettings.RunesSec[rankKey] = newOpt.val
-        Btn2.Text = newOpt.txt
-        Btn2.BackgroundColor3 = newOpt.val > 0 and Theme.PrimaryDark or Theme.Secondary
+        Btn.Text = newVal > 0 and ("MAPA " .. newVal) or "NINGUNA"
+        Btn.BackgroundColor3 = newVal > 0 and Theme.Primary or Theme.Secondary
         SaveConfig()
     end)
 end
@@ -2427,6 +2411,9 @@ end
 for _, r in ipairs({"D", "B", "S", "G", "N", "M+", "M++"}) do CreateRuneCycler("NORM", r) end
 for _, r in ipairs({"E", "D", "C", "A", "S", "G", "N"}) do CreateRuneCycler("ASC", "ASC_" .. r) end
 
+-- ==========================================
+-- MOTOR DE REFRESH DE EQUIPO Y HEROES
+-- ==========================================
 local LastRefreshTime = 0
 local function RefreshTeam()
     if tick() - LastRefreshTime < 2 then return end
@@ -2441,6 +2428,9 @@ local function RefreshTeam()
     end)
 end
 
+-- ==========================================
+-- TAREA DEDICADA: FOCUS BOSS ATTACK
+-- ==========================================
 task.spawn(function()
     local Remotes = ReplicatedStorage:WaitForChild("Remotes")
     local CEnemyRem = Remotes:FindFirstChild("ClickEnemy")
@@ -2455,9 +2445,11 @@ task.spawn(function()
             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             
             if eGuid and bossRoot and myRoot then
+                -- Teleport continuo a la espalda del boss
                 myRoot.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 5)
                 myRoot.AssemblyLinearVelocity = Vector3.zero
 
+                -- Spam de ataques al boss
                 pcall(function()
                     if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = RaidState.BossInst }) end
                     if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = eGuid }) end
@@ -2468,6 +2460,9 @@ task.spawn(function()
     end
 end)
 
+-- ==========================================
+-- MOTOR DE PUNTUACIÓN Y TP
+-- ==========================================
 local function GetBestGlobalRaid()
     local best, bestScore, count = nil, -1, 0
     for mapId, info in pairs(ActiveRaids) do
@@ -2540,6 +2535,9 @@ local function HandleRaidCooldown(seconds)
     end)
 end
 
+-- ==========================================
+-- LOOP PRINCIPAL DEL MOTOR (LOGÍSTICA Y COFRES)
+-- ==========================================
 local LastEnterAttempt = 0
 local LastRaidTick = 0
 local LastPortalCheck = 0
@@ -2621,11 +2619,15 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     local enLobby = false
     if root then enLobby = Utils.EstaEnLobby(root) end
 
+    -- ==========================================
+    -- [CORRECCIÓN COOLDOWN] Detección de Lobby y Reset Seguro
+    -- ==========================================
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
 
+            -- Reset All State
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
             RaidState.ForceExit = false
@@ -2640,6 +2642,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
             
+            -- [NUEVO] Cambiamos radicalmente el EntryTime para que cualquier task.spawn viejo se cancele.
             RaidState.EntryTime = now + 99999 
             
             if cdRestante > 0 then
@@ -2651,6 +2654,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
+    -- 1. MOTOR DE TELEPORT (Sniper de Mapas)
     if Config.RaidSettings.AutoTP and not RaidState.IsInInstance and not RaidState.IsProcessing and not RaidState.CooldownActive then
         local bestRaid, totalActive = GetBestGlobalRaid()
         if bestRaid then
@@ -2673,6 +2677,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
+    -- 2. MOTOR DE ENTRADA (Lobby a Instancia)
     if Config.RaidSettings.AutoRaid and not RaidState.IsInInstance and not RaidState.CooldownActive and not RaidState.IsProcessing then
         if (now - LastEnterAttempt) < 3 then return end
         
@@ -2722,38 +2727,20 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
                 local rKey = isAsc and ("ASC_" .. rankStr) or rankStr
                 local targetRuneMap = Config.RaidSettings.Runes[rKey] or 0
-                local targetRuneSec = Config.RaidSettings.RunesSec[rKey] or 0
 
                 if targetRuneMap > 0 and targetRuneMap ~= mapIdx then
                     _G.MapaOrigenAntesRuna = mapIdx
                     RaidState.CurrentBossMap = targetRuneMap
                     local runeCode = 10348 + targetRuneMap
-                    LblRaidStatus.Text = "🔮 Inyectando Runas M" .. targetRuneMap
+                    LblRaidStatus.Text = "🔮 Inyectando Runa M" .. targetRuneMap
+                    pcall(function() remotes.UseRaidItem:FireServer(runeCode) end); task.wait(0.3)
+                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end); task.wait(0.3)
+                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ { hostId = LocalPlayer.UserId, mapId = 50100 + targetRuneMap } }) end)
                     
-                    pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 1, itemId = runeCode }) end)
-                    task.wait(0.3)
-                    
-                    if targetRuneSec > 0 then
-                        pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 2, itemId = targetRuneSec }) end)
-                        task.wait(0.3)
-                    end
-                    
-                    pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
-                    task.wait(0.3)
-                    
-                    pcall(function() remotes.StartLocalPlayerTeleport:FireServer({ slotIndex = 1, hostId = LocalPlayer.UserId, mapId = 50302, raidId = raidID }) end)
                     task.wait(0.6) 
-                    
-                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer({ slotIndex = 1, mapId = 50302 }) end)
+                    pcall(function() remotes.LocalPlayerTeleportSuccess:InvokeServer() end)
                 else
                     RaidState.CurrentBossMap = mapIdx 
-                    
-                    if targetRuneSec > 0 then
-                        LblRaidStatus.Text = "🔮 Inyectando Runa UP/DOWN"
-                        pcall(function() remotes.UseRaidItem:FireServer({ slotIndex = 1, itemId = targetRuneSec }) end)
-                        task.wait(0.3)
-                    end
-                    
                     pcall(function() remotes.StartChallengeRaidMap:FireServer() end)
                 end
 
@@ -2773,26 +2760,10 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     end
                 end
 
-                if not tpSuccess then
-                    local mapVal = RaidState.CurrentBossMap or _G.LastSelectedMap or 1
-                    local expectedFailsafeBoss = CurrentRaidIsASC and BossPorMapaASC[mapVal] or BossPorMapa[mapVal]
-                    local fld = Utils.GetEnemyFolder()
-                    
-                    if fld and expectedFailsafeBoss then
-                        for _, mob in pairs(fld:GetChildren()) do
-                            if string.find(string.lower(tostring(mob.Name)), string.lower(tostring(expectedFailsafeBoss)), 1, true) then
-                                tpSuccess = true
-                                LblRaidStatus.Text = "⚠️ Validación secundaria: Boss encontrado."
-                                break
-                            end
-                        end
-                    end
-                end
-
                 if tpSuccess then
                     LblRaidStatus.Text = "✅ ¡En Instancia! Esperando Jefe..."
                     RaidState.IsInInstance = true
-                    RaidState.EntryTime = tick() 
+                    RaidState.EntryTime = tick() -- ESTABLECEMOS LA NUEVA SESIÓN
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.ExitTriggered = false
@@ -2833,11 +2804,12 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
+    -- 3. GESTIÓN DE JEFE Y COFRE (Dentro de la Instancia)
     if RaidState.IsInInstance and not RaidState.IsProcessing then
         
         HandleRaidRewardUI()
         
-        local currentSession = RaidState.EntryTime 
+        local currentSession = RaidState.EntryTime -- Asegurar que trabajamos sobre esta sesión
         
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
@@ -2879,10 +2851,20 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                                 break 
                             end
                         end
+                    elseif not expectedBoss and mob:FindFirstChild("HumanoidRootPart") then
+                        bossFound = true
+                        if not EsJefeMuerto(mob) then
+                            bossAlive = true
+                            RaidState.BossInst = mob
+                            local rootFallback = mob:FindFirstChild("HumanoidRootPart")
+                            if rootFallback then LastBossPos = rootFallback.CFrame end
+                            break
+                        end
                     end
                 end
             end
 
+            -- Lógica de validación de Estados a prueba de fallos
             if bossAlive then
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
@@ -2897,7 +2879,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         
                         task.spawn(function()
                             task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end 
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
                             
                             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                             if myRoot and LastBossPos then
@@ -2909,7 +2891,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
                             
                             task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end 
+                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
                             
                             if RaidState.IsInInstance and not RaidState.ExitTriggered then
                                 LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
@@ -2942,6 +2924,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             end
         end 
 
+        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA
         if RaidState.ForceExit and not RaidState.ExitTriggered then
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
@@ -2956,7 +2939,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             task.spawn(function()
                 local intentos = 0
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
-                    if RaidState.EntryTime ~= currentSession then return end 
+                    if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
                     
                     intentos = intentos + 1
                     local success = pcall(function() 
@@ -2966,9 +2949,11 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     task.wait(1.5)
                 end
                 
+                -- Permitimos que el juego nos haga TP al Lobby
                 task.wait(4.0)
-                if RaidState.EntryTime ~= currentSession then return end 
+                if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
                 
+                -- Limpieza física antibug
                 local char = LocalPlayer.Character
                 if char then
                     local root = char:FindFirstChild("HumanoidRootPart")
@@ -2980,18 +2965,14 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if hum then hum.PlatformStand = false end
                 end
                 
+                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
                 if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
-                    local diffMapIdx = (safeMapIdx % 21) + 1
-                    if diffMapIdx == safeMapIdx then diffMapIdx = diffMapIdx + 1 end
-                    
-                    LblRaidStatus.Text = "⚠️ Atascado. Forzando salto a M" .. diffMapIdx
-                    pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + diffMapIdx}) end)
-                    
                     RaidState.IsInInstance = false
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.IsProcessing = false
                     RaidState.ExitTriggered = false
+                    LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
                 end
             end)
         end
