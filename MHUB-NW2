@@ -211,11 +211,28 @@ local function ToggleBuffGroup(buffGroup, isPaused)
     end
 end
 
+-- =========================================================
+-- VARIABLES EXPUESTAS PARA TU LÓGICA ORIGINAL
+-- (Esto soluciona que el HP y Objetivo se queden en 0)
+-- =========================================================
+local MonitorFrame, TargetLabel, HpLabel, DamageLabel
+local TotalDamageDealt = 0
+local CurrentTarget = nil
+local PreviousTarget = nil 
+local DeadHpThreshold = 100 
+local SearchRadius = 30 
+local lastTick = 0
+local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
+local TiempoInicioEspecial = 0 
+local TiempoRegresoAtaque = 40
+local AutoDropThreshold = 2.5e72
+
 -- ==========================================
 -- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x1.25)
 -- ==========================================
 do
-    local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
+    -- Fíjate que ya no usamos "local" para estas variables principales
+    MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
     MonitorFrame.Size = UDim2.new(0, 238, 0, 156)
     MonitorFrame.Position = UDim2.new(0.5, -119, 0.1, 0)
     MonitorFrame.BackgroundColor3 = Theme.Background
@@ -246,7 +263,7 @@ do
     Instance.new("UICorner", monClose).CornerRadius = UDim.new(0, 5)
     monClose.MouseButton1Click:Connect(function() MonitorFrame.Visible = false end)
 
-    local TargetLabel = Instance.new("TextLabel", MonitorFrame)
+    TargetLabel = Instance.new("TextLabel", MonitorFrame)
     TargetLabel.Size = UDim2.new(0.9, 0, 0, 19)
     TargetLabel.Position = UDim2.new(0.05, 0, 0, 37)
     TargetLabel.Text = "OBJETIVO: NINGUNO"
@@ -256,7 +273,7 @@ do
     TargetLabel.TextXAlignment = Enum.TextXAlignment.Center
     TargetLabel.BackgroundTransparency = 1
 
-    local HpLabel = Instance.new("TextLabel", MonitorFrame)
+    HpLabel = Instance.new("TextLabel", MonitorFrame)
     HpLabel.Size = UDim2.new(0.9, 0, 0, 19)
     HpLabel.Position = UDim2.new(0.05, 0, 0, 56)
     HpLabel.Text = "HP: 0"
@@ -266,7 +283,7 @@ do
     HpLabel.TextXAlignment = Enum.TextXAlignment.Center
     HpLabel.BackgroundTransparency = 1
 
-    local DamageLabel = Instance.new("TextLabel", MonitorFrame)
+    DamageLabel = Instance.new("TextLabel", MonitorFrame)
     DamageLabel.Size = UDim2.new(0.75, 0, 0, 19)
     DamageLabel.Position = UDim2.new(0.05, 0, 0, 81)
     DamageLabel.Text = "DMG: 0"
@@ -332,27 +349,11 @@ do
         ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
     end)
 
-    -- =========================================================
-    -- VARIABLES ORIGINALES RESTAURADAS EXACTAMENTE COMO ESTABAN
-    -- =========================================================
-    local TotalDamageDealt = 0
-    local CurrentTarget = nil
-    local PreviousTarget = nil 
-    local DeadHpThreshold = 100 
-    local SearchRadius = 30 
-    local lastTick = 0
-    local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
-    local TiempoInicioEspecial = 0 
-    local TiempoRegresoAtaque = 40
-    local AutoDropThreshold = 2.5e72
-
     ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
     local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
-
     if RemoteDamage then
         local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
-            -- Filtro ESTRICTO: Solo contamos el daño si tú eres el atacante
             if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
                 local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
                 
@@ -360,19 +361,17 @@ do
                     local hitGuid = data.enemyGuid
                     local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
                     
-                    -- Ignoramos el daño al clon de la metralleta
                     if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then
                         return 
                     end
                     
-                    -- Cambio de objetivo automático al pegar a alguien nuevo
                     if hitGuid ~= currentGuid then
                         local fld = Utils.GetEnemyFolder()
                         if fld then
                             for _, mob in pairs(fld:GetChildren()) do
                                 if Utils.GetGUID(mob) == hitGuid then
                                     CurrentTarget = mob
-                                    TotalDamageDealt = 0 -- Reseteamos el daño
+                                    TotalDamageDealt = 0
                                     break
                                 end
                             end
@@ -390,12 +389,8 @@ do
     end
 
     local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-    local LastGoldPotionS = 0
-    local LastGoldPotionM = 0
-    local LastGoldPotionL = 0
-    local COOLDOWN_S = 600
-    local COOLDOWN_M = 1800
-    local COOLDOWN_L = 2400
+    local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
+    local COOLDOWN_S, COOLDOWN_M, COOLDOWN_L = 600, 1800, 2400
 
     local function AutoUseGoldPotions()
         if not Config.AutoGoldPotions or not UseItemRemote then return end
@@ -416,7 +411,7 @@ do
     end
 
     -- =========================================================
-    -- OBSERVADOR DE AUTO-ORO INDEPENDIENTE (No toca tus funciones)
+    -- OBSERVADOR DE AUTO-ORO INDEPENDIENTE
     -- =========================================================
     local RunService = game:GetService("RunService")
     local enModoOro = false
@@ -424,7 +419,6 @@ do
     local autoOroObserver = RunService.Heartbeat:Connect(function()
         if not Config.AutoOroEnabled then return end
         
-        -- Si el objetivo no existe o murió, volvemos a Ataque
         if not CurrentTarget or not CurrentTarget.Parent then
             if enModoOro then
                 enModoOro = false
@@ -437,7 +431,6 @@ do
             return
         end
 
-        -- Leer la vida real del objetivo
         local hp = 0
         local humanoid = CurrentTarget:FindFirstChild("Humanoid")
         if humanoid then
@@ -446,7 +439,6 @@ do
             hp = CurrentTarget:GetAttribute("Health") or 0
         end
 
-        -- Si la vida baja al límite (antes de morir), cambiar a Oro y Pausar Ataque
         if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
             enModoOro = true
             pcall(function() CambiarModoAutoEquip("ORO") end)
