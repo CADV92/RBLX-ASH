@@ -212,111 +212,105 @@ local function ToggleBuffGroup(buffGroup, isPaused)
 end
 
 -- ==========================================
--- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x2)
+-- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x1.25)
 -- ==========================================
 do
     local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
-    MonitorFrame.Size = UDim2.new(0, 380, 0, 250)
-    MonitorFrame.Position = UDim2.new(0.5, -190, 0.1, 0)
+    -- Escala x1.25 (Original: 190x125 -> Nuevo: 238x156)
+    MonitorFrame.Size = UDim2.new(0, 238, 0, 156)
+    MonitorFrame.Position = UDim2.new(0.5, -119, 0.1, 0)
     MonitorFrame.BackgroundColor3 = Theme.Background
     MonitorFrame.Visible = false
     MonitorFrame.Active = true
     MonitorFrame.Draggable = true
-    Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 10)
     Instance.new("UIStroke", MonitorFrame).Color = Theme.Primary
 
     local monTitle = Instance.new("TextLabel", MonitorFrame)
-    monTitle.Size = UDim2.new(1, -60, 0, 50)
-    monTitle.Position = UDim2.new(0, 20, 0, 5)
+    monTitle.Size = UDim2.new(1, -37, 0, 31)
+    monTitle.Position = UDim2.new(0, 12, 0, 2)
     monTitle.Text = "MONITOR COMBATE"
     monTitle.Font = Enum.Font.GothamBlack
-    monTitle.TextSize = 22
+    monTitle.TextSize = 14
     monTitle.TextColor3 = Theme.TextHighlight
     monTitle.TextXAlignment = Enum.TextXAlignment.Left
     monTitle.BackgroundTransparency = 1
 
     local monClose = Instance.new("TextButton", MonitorFrame)
-    monClose.Size = UDim2.new(0, 40, 0, 40)
-    monClose.Position = UDim2.new(1, -50, 0, 10)
+    monClose.Size = UDim2.new(0, 25, 0, 25)
+    monClose.Position = UDim2.new(1, -31, 0, 5)
     monClose.Text = "X"
     monClose.Font = Enum.Font.GothamBold
-    monClose.TextSize = 18
+    monClose.TextSize = 14
     monClose.TextColor3 = Theme.TextHighlight
     monClose.BackgroundColor3 = Theme.Danger
-    Instance.new("UICorner", monClose).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", monClose).CornerRadius = UDim.new(0, 5)
     monClose.MouseButton1Click:Connect(function() MonitorFrame.Visible = false end)
 
     local TargetLabel = Instance.new("TextLabel", MonitorFrame)
-    TargetLabel.Size = UDim2.new(0.9, 0, 0, 30)
-    TargetLabel.Position = UDim2.new(0.05, 0, 0, 60)
+    TargetLabel.Size = UDim2.new(0.9, 0, 0, 19)
+    TargetLabel.Position = UDim2.new(0.05, 0, 0, 37)
     TargetLabel.Text = "OBJETIVO: NINGUNO"
     TargetLabel.Font = Enum.Font.GothamBold
-    TargetLabel.TextSize = 20
+    TargetLabel.TextSize = 12
     TargetLabel.TextColor3 = Theme.Text
     TargetLabel.TextXAlignment = Enum.TextXAlignment.Center
     TargetLabel.BackgroundTransparency = 1
 
     local HpLabel = Instance.new("TextLabel", MonitorFrame)
-    HpLabel.Size = UDim2.new(0.9, 0, 0, 30)
-    HpLabel.Position = UDim2.new(0.05, 0, 0, 90)
+    HpLabel.Size = UDim2.new(0.9, 0, 0, 19)
+    HpLabel.Position = UDim2.new(0.05, 0, 0, 56)
     HpLabel.Text = "HP: 0"
     HpLabel.Font = Enum.Font.GothamBlack
-    HpLabel.TextSize = 22
+    HpLabel.TextSize = 14
     HpLabel.TextColor3 = Theme.Success
     HpLabel.TextXAlignment = Enum.TextXAlignment.Center
     HpLabel.BackgroundTransparency = 1
 
     local DamageLabel = Instance.new("TextLabel", MonitorFrame)
-    DamageLabel.Size = UDim2.new(0.75, 0, 0, 30)
-    DamageLabel.Position = UDim2.new(0.05, 0, 0, 130)
+    DamageLabel.Size = UDim2.new(0.75, 0, 0, 19)
+    DamageLabel.Position = UDim2.new(0.05, 0, 0, 81)
     DamageLabel.Text = "DMG: 0"
     DamageLabel.Font = Enum.Font.GothamBlack
-    DamageLabel.TextSize = 22
+    DamageLabel.TextSize = 14
     DamageLabel.TextColor3 = Theme.Primary
     DamageLabel.TextXAlignment = Enum.TextXAlignment.Left
     DamageLabel.BackgroundTransparency = 1
 
     local ResetDmgBtn = Instance.new("TextButton", MonitorFrame)
-    ResetDmgBtn.Size = UDim2.new(0, 40, 0, 40)
-    ResetDmgBtn.Position = UDim2.new(1, -50, 0, 125)
+    ResetDmgBtn.Size = UDim2.new(0, 25, 0, 25)
+    ResetDmgBtn.Position = UDim2.new(1, -31, 0, 77)
     ResetDmgBtn.BackgroundColor3 = Theme.Secondary
     ResetDmgBtn.Text = "R"
     ResetDmgBtn.TextColor3 = Theme.TextHighlight
     ResetDmgBtn.Font = Enum.Font.GothamBold
-    ResetDmgBtn.TextSize = 22
-    Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 8)
+    ResetDmgBtn.TextSize = 14
+    Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 5)
 
     local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
-    ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 50)
-    ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 180)
+    ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 31)
+    ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 112)
     ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary
     ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
     ToggleAutoOro.TextColor3 = Theme.TextHighlight
     ToggleAutoOro.Font = Enum.Font.GothamBold
-    ToggleAutoOro.TextSize = 20
-    Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 8)
+    ToggleAutoOro.TextSize = 12
+    Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 5)
     ToggleAutoOro.MouseButton1Click:Connect(function() 
         Config.AutoOroEnabled = not Config.AutoOroEnabled
         ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
         ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary 
-        
-        -- Pausa inteligente de pociones
-        if Config.AutoOroEnabled then
-            ToggleBuffGroup(BuffIDs["ORO"], false) 
-        else
-            ToggleBuffGroup(BuffIDs["ORO"], true)  
-        end
     end)
 
     local ToggleAutoDrop = Instance.new("TextButton", MonitorFrame)
-    ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 50)
-    ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 180)
+    ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 31)
+    ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 112)
     ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary
     ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
     ToggleAutoDrop.TextColor3 = Theme.TextHighlight
     ToggleAutoDrop.Font = Enum.Font.GothamBold
-    ToggleAutoDrop.TextSize = 20
-    Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 8)
+    ToggleAutoDrop.TextSize = 12
+    Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 5)
     ToggleAutoDrop.MouseButton1Click:Connect(function() 
         Config.AutoDropEnabled = not Config.AutoDropEnabled
         ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
@@ -324,15 +318,15 @@ do
     end)
 
     local ToggleAutoPots = Instance.new("TextButton", MonitorFrame)
-    ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 50)
-    ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 180)
+    ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 31)
+    ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 112)
     ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
     ToggleAutoPots.Text = "🧪"
     ToggleAutoPots.TextColor3 = Theme.TextHighlight
     ToggleAutoPots.Font = Enum.Font.GothamBold
-    ToggleAutoPots.TextSize = 24
+    ToggleAutoPots.TextSize = 15
     ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
-    Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 5)
     ToggleAutoPots.MouseButton1Click:Connect(function() 
         Config.AutoGoldPotions = not Config.AutoGoldPotions
         ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
@@ -341,14 +335,10 @@ do
 
     local TotalDamageDealt = 0
     local CurrentTarget = nil
-    local PreviousTarget = nil 
     local DeadHpThreshold = 100 
-    local SearchRadius = 30 
-    local lastTick = 0
-    local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
-    local TiempoInicioEspecial = 0 
-    local TiempoRegresoAtaque = 40
-    local AutoDropThreshold = 2.5e72
+    
+    -- Variables de control para no hacer llamadas repetidas al servidor
+    local enModoOro = false
 
     ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
@@ -371,6 +361,7 @@ do
                                 if Utils.GetGUID(mob) == hitGuid then
                                     CurrentTarget = mob
                                     TotalDamageDealt = 0 
+                                    TargetLabel.Text = "OBJ: " .. (mob.Name or "Enemigo")
                                     break
                                 end
                             end
@@ -387,31 +378,53 @@ do
         table.insert(Hub.Connections, damageConn)
     end
 
-    local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-    local LastGoldPotionS = 0
-    local LastGoldPotionM = 0
-    local LastGoldPotionL = 0
-    local COOLDOWN_S = 600
-    local COOLDOWN_M = 1800
-    local COOLDOWN_L = 2400
+    -- ========================================================
+    -- MOTOR DE AUTO-ORO: Cambio automático de modos y pociones
+    -- ========================================================
+    local RunService = game:GetService("RunService")
+    local autoOroConn = RunService.Heartbeat:Connect(function()
+        if not CurrentTarget or not CurrentTarget.Parent then
+            -- Si el enemigo murió o desapareció, regresamos a modo Ataque
+            if enModoOro then
+                enModoOro = false
+                pcall(function() CambiarModoAutoEquip("ATAQUE") end)
+                
+                -- Gestor de pociones al morir (Condicionado a AutoPots)
+                if Config.AutoGoldPotions then
+                    ToggleBuffGroup(BuffIDs["ORO"], true)      -- Pausar Oro
+                    ToggleBuffGroup(BuffIDs["ATAQUE"], false)  -- Despausar Ataque
+                end
+            end
+            return
+        end
 
-    local function AutoUseGoldPotions()
-        if not Config.AutoGoldPotions or not UseItemRemote then return end
-        local now = os.time()
+        -- Monitoreo de HP
+        local hp = 0
+        local humanoid = CurrentTarget:FindFirstChild("Humanoid")
+        if humanoid then
+            hp = humanoid.Health
+        else
+            hp = CurrentTarget:GetAttribute("Health") or 0
+        end
 
-        if now - LastGoldPotionS >= COOLDOWN_S then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
-            LastGoldPotionS = now
+        HpLabel.Text = "HP: " .. Utils.FormatHealth(math.floor(hp))
+
+        -- Lógica de Ejecución (Auto-Oro)
+        if Config.AutoOroEnabled then
+            if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
+                enModoOro = true
+                pcall(function() CambiarModoAutoEquip("ORO") end)
+                
+                -- Gestor de pociones en ejecución (Condicionado a AutoPots)
+                if Config.AutoGoldPotions then
+                    ToggleBuffGroup(BuffIDs["ATAQUE"], true) -- Pausar Ataque
+                    ToggleBuffGroup(BuffIDs["ORO"], false)   -- Despausar Oro
+                end
+            end
         end
-        if now - LastGoldPotionM >= COOLDOWN_M then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
-            LastGoldPotionM = now
-        end
-        if now - LastGoldPotionL >= COOLDOWN_L then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
-            LastGoldPotionL = now
-        end
-    end
+    end)
+    table.insert(Hub.Connections, autoOroConn)
+    -- ========================================================
 
     TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
 
