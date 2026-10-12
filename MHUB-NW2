@@ -186,18 +186,42 @@ local noclipKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, noclipKeyConn)
 
+-- ==========================================
+-- DICCIONARIO DE BUFFS Y FUNCIÓN DE PAUSA
+-- ==========================================
+local BuffIDs = {
+    ["SUERTE"] = {20001, 20004, 20007},
+    ["ATAQUE"] = {20002, 20005, 20008},
+    ["ORO"]    = {20003, 20006, 20009}
+}
+
+local function ToggleBuffGroup(buffGroup, isPaused)
+    local remote = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("SetBuffPaused")
+    if remote then
+        for _, buffId in ipairs(buffGroup) do
+            task.spawn(function()
+                pcall(function()
+                    remote:InvokeServer({
+                        isPaused = isPaused,
+                        buffId = buffId
+                    })
+                end)
+            end)
+        end
+    end
+end
 
 -- ==========================================
 -- INTEGRACIÓN: MONITOR DE COMBATE
 -- ==========================================
 local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
-MonitorFrame.Size = UDim2.new(0, 190, 0, 125)
-MonitorFrame.Position = UDim2.new(0.5, -95, 0.1, 0)
+MonitorFrame.Size = UDim2.new(0, 380, 0, 250) -- Doble de tamaño
+MonitorFrame.Position = UDim2.new(0.5, -190, 0.1, 0)
 MonitorFrame.BackgroundColor3 = Theme.Background
 MonitorFrame.Visible = false
 MonitorFrame.Active = true
 MonitorFrame.Draggable = true
-Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 12)
 Instance.new("UIStroke", MonitorFrame).Color = Theme.Primary
 
 local monTitle = Instance.new("TextLabel", MonitorFrame)
