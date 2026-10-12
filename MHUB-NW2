@@ -101,7 +101,7 @@ local function SaveConfig()
 end
 
 -- ==============================================================================
--- UTILS Y FUNCIONES DE JUEGO (Se mantienen iguales)
+-- UTILS Y FUNCIONES DE JUEGO
 -- ==============================================================================
 local Utils = {}
 function Utils.GetEnemyFolder() return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs") end
@@ -110,7 +110,34 @@ function Utils.EstaMuerto(model) if not model or typeof(model) ~= "Instance" or 
 function Utils.EsMobValido(enemy, myRoot, limites) if Utils.EstaMuerto(enemy) then return false end local root = enemy:FindFirstChild("HumanoidRootPart") if not root then return false end local yPos = root.Position.Y if yPos < limites.MinHeight then return false end if math.abs(yPos - limites.BuggedHeight) < limites.BugTolerance then return false end return true end
 function Utils.ParseValue(str) if not str or str == "" then return 0 end if str:find("/") then str = str:split("/")[1] end local cleanStr = str:gsub("HP:", ""):gsub("Health:", ""):gsub("hp:", ""):gsub("%s+", ""):gsub(",", "") local valStr, sufStr = cleanStr:match("^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]; if mult then return num * mult end end return num end return 0 end
 function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then return 0 end local cleanStr = string.gsub(str, "<[^>]+>", "") cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "") local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)] if mult then return num * mult end end return num end return 0 end
-function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
+
+function Utils.GetCurrentRealHealth(model) 
+    if not model then return 0 end 
+    local maxVal = 0 
+    for _, lbl in pairs(model:GetDescendants()) do 
+        if lbl:IsA("TextLabel") and lbl.Visible then 
+            local txt = lbl.Text 
+            if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then 
+                local current = Utils.ParseValue(txt) 
+                if current > maxVal then maxVal = current end 
+            end 
+        end 
+    end 
+    
+    -- FALLBACK: Si el TextLabel no se renderizó, lee los atributos o el Humanoid
+    if maxVal == 0 then
+        local attr = model:GetAttribute("Health") or model:GetAttribute("HP")
+        if attr and type(attr) == "number" then
+            maxVal = attr
+        else
+            local hum = model:FindFirstChild("Humanoid")
+            if hum then maxVal = hum.Health end
+        end
+    end
+    
+    return maxVal 
+end
+
 function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
 function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
@@ -163,7 +190,7 @@ local Hub = NanoHub.new("MIRROR HUB")
 Hub.OnClose = function() HubRunning = false end
 
 -- =========================================================
--- AQUÍ COMIENZA LA PESTAÑA: PLAYER (Y el resto de tu código intacto)
+-- AQUÍ COMIENZA LA PESTAÑA: PLAYER
 -- =========================================================
 local TabPlayer = Hub:CreateTab("Player")
 
@@ -212,8 +239,7 @@ local function ToggleBuffGroup(buffGroup, isPaused)
 end
 
 -- =========================================================
--- VARIABLES EXPUESTAS PARA TU LÓGICA ORIGINAL
--- (Esto soluciona que el HP y Objetivo se queden en 0)
+-- VARIABLES EXPUESTAS PARA LA LÓGICA DE MONITOREO Y POCIONES
 -- =========================================================
 local MonitorFrame, TargetLabel, HpLabel, DamageLabel
 local TotalDamageDealt = 0
@@ -227,11 +253,32 @@ local TiempoInicioEspecial = 0
 local TiempoRegresoAtaque = 40
 local AutoDropThreshold = 2.5e72
 
+local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
+local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
+local COOLDOWN_S, COOLDOWN_M, COOLDOWN_L = 600, 1800, 2400
+
+local function AutoUseGoldPotions()
+    if not Config.AutoGoldPotions or not UseItemRemote then return end
+    local now = os.time()
+
+    if now - LastGoldPotionS >= COOLDOWN_S then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
+        LastGoldPotionS = now
+    end
+    if now - LastGoldPotionM >= COOLDOWN_M then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
+        LastGoldPotionM = now
+    end
+    if now - LastGoldPotionL >= COOLDOWN_L then
+        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
+        LastGoldPotionL = now
+    end
+end
+
 -- ==========================================
 -- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x1.25)
 -- ==========================================
 do
-    -- Fíjate que ya no usamos "local" para estas variables principales
     MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
     MonitorFrame.Size = UDim2.new(0, 238, 0, 156)
     MonitorFrame.Position = UDim2.new(0.5, -119, 0.1, 0)
@@ -388,68 +435,6 @@ do
         table.insert(Hub.Connections, damageConn)
     end
 
-    local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-    local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
-    local COOLDOWN_S, COOLDOWN_M, COOLDOWN_L = 600, 1800, 2400
-
-    local function AutoUseGoldPotions()
-        if not Config.AutoGoldPotions or not UseItemRemote then return end
-        local now = os.time()
-
-        if now - LastGoldPotionS >= COOLDOWN_S then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
-            LastGoldPotionS = now
-        end
-        if now - LastGoldPotionM >= COOLDOWN_M then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
-            LastGoldPotionM = now
-        end
-        if now - LastGoldPotionL >= COOLDOWN_L then
-            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
-            LastGoldPotionL = now
-        end
-    end
-
-    -- =========================================================
-    -- OBSERVADOR DE AUTO-ORO INDEPENDIENTE
-    -- =========================================================
-    local RunService = game:GetService("RunService")
-    local enModoOro = false
-
-    local autoOroObserver = RunService.Heartbeat:Connect(function()
-        if not Config.AutoOroEnabled then return end
-        
-        if not CurrentTarget or not CurrentTarget.Parent then
-            if enModoOro then
-                enModoOro = false
-                pcall(function() CambiarModoAutoEquip("ATAQUE") end)
-                if Config.AutoGoldPotions then
-                    ToggleBuffGroup(BuffIDs["ORO"], true)
-                    ToggleBuffGroup(BuffIDs["ATAQUE"], false)
-                end
-            end
-            return
-        end
-
-        local hp = 0
-        local humanoid = CurrentTarget:FindFirstChild("Humanoid")
-        if humanoid then
-            hp = humanoid.Health
-        else
-            hp = CurrentTarget:GetAttribute("Health") or 0
-        end
-
-        if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
-            enModoOro = true
-            pcall(function() CambiarModoAutoEquip("ORO") end)
-            if Config.AutoGoldPotions then
-                ToggleBuffGroup(BuffIDs["ATAQUE"], true)
-                ToggleBuffGroup(BuffIDs["ORO"], false)
-            end
-        end
-    end)
-    table.insert(Hub.Connections, autoOroObserver)
-
     TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
 
     local monitorKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
@@ -503,6 +488,15 @@ local function CambiarModoAutoEquip(nombre)
     local tSet = Config.TreeSettings[nombre]
     if not gear or not tSet then return end
     EquipModeSelected = nombre
+
+    -- LÓGICA MAESTRA DE PAUSADO: Centralizada para evitar bugs
+    if nombre == "ORO" then
+        ToggleBuffGroup(BuffIDs["ATAQUE"], true)  -- Pausar Ataque
+        ToggleBuffGroup(BuffIDs["ORO"], false)    -- Despausar Oro
+    elseif nombre == "ATAQUE" or nombre == "PODER" then
+        ToggleBuffGroup(BuffIDs["ORO"], true)     -- Pausar Oro
+        ToggleBuffGroup(BuffIDs["ATAQUE"], false) -- Despausar Ataque
+    end
 
     local EquipTreeID = TreeIDs[tSet.Equip]
     local BuffTreeID = TreeIDs[tSet.Buff]
@@ -566,6 +560,9 @@ local function CambiarModoAutoEquip(nombre)
     pcall(function() StarterGui:SetCore("SendNotification", { Title = "AutoEquip", Text = "¡" .. nombre .. " equipado!", Duration = 3 }) end)
 end
 
+-- ==========================================
+-- BUCLE MAESTRO: MONITOR Y CEREBRO DE AUTO-ORO
+-- ==========================================
 local monitorConn = RunService.Heartbeat:Connect(function()
     local now = tick()
     if now - lastTick < 0.1 then return end 
@@ -589,7 +586,7 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
-        -- Si el jefe muere, nos equipamos las cosas de Drop/Oro sin usar variables viejas
+        -- Si el jefe muere o baja de vida, nos equipamos las cosas de Oro y llamamos a AutoUseGoldPotions (que ya no falla)
         if isDestroyed or currentHP <= DeadHpThreshold then
             if Config.AutoOroEnabled then
                 if EquipModeSelected ~= "ORO" then
@@ -638,14 +635,15 @@ local monitorConn = RunService.Heartbeat:Connect(function()
 
     if CurrentTarget then
         local hp = Utils.GetCurrentRealHealth(CurrentTarget)
-        TargetLabel.Text = "🎯 " .. CurrentTarget.Name
-        HpLabel.Text = "❤️ " .. Utils.FormatHealth(hp)
+        TargetLabel.Text = "OBJETIVO: " .. string.upper(CurrentTarget.Name)
+        HpLabel.Text = "HP: " .. Utils.FormatHealth(hp)
         
         if Config.AutoDropEnabled and hp <= AutoDropThreshold and hp > DeadHpThreshold then
             if EquipModeSelected ~= "DROP" then CambiarModoAutoEquip("DROP") end
         end
     else
-        TargetLabel.Text = "🎯 NINGUNO"; HpLabel.Text = "❤️ 0"
+        TargetLabel.Text = "OBJETIVO: NINGUNO"
+        HpLabel.Text = "HP: 0"
     end
 end)
 table.insert(Hub.Connections, monitorConn)
@@ -728,12 +726,10 @@ local function CreateGemRow(title, settingKey)
 
     local function CreateGemBtn(slotKey, posX)
         local Btn = Instance.new("TextButton", Frame)
-        -- Reducimos el ancho a 0.23 para que quepan 4 botones
         Btn.Size = UDim2.new(0.23, 0, 1, 0)
         Btn.Position = UDim2.new(posX, 0, 0, 0)
         Btn.BackgroundColor3 = Theme.PanelLight
         
-        -- Bypass de seguridad por si el JSON antiguo no tiene S4 guardado
         if Config.GemSettings[settingKey][slotKey] == nil then
             Config.GemSettings[settingKey][slotKey] = "AUTO"
         end
@@ -755,7 +751,6 @@ local function CreateGemRow(title, settingKey)
         end)
     end
     
-    -- Distribuimos las posiciones: 0, 25%, 50%, 75%
     CreateGemBtn("S1", 0)
     CreateGemBtn("S2", 0.25)
     CreateGemBtn("S3", 0.50)
@@ -804,7 +799,6 @@ TabPlayer:CreateButton("⚙️ EDITAR GEAR Y GEMAS", Theme.PrimaryDark, function
     AdvancedGearPanel.Visible = true
 end)
 
--- Continuación de Player: Runtime (Movimiento/Recolecta)
 local playerConn = RunService.Stepped:Connect(function()
     if not HubRunning then return end
     local char = LocalPlayer.Character
@@ -1127,7 +1121,6 @@ for i = 1, 21 do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     btn.MouseButton1Click:Connect(function()
-        -- [NUEVO] Antibloqueo: Evitar TP si ya estamos en el mapa
         if _G.LastSelectedMap == i then
             pcall(function() StarterGui:SetCore("SendNotification", { Title = "Aviso", Text = "Ya estás en el Mapa M" .. string.format("%02d", i), Duration = 2 }) end)
             return
@@ -1137,10 +1130,9 @@ for i = 1, 21 do
         task.spawn(function()
             local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
             if remotes then
-                _G.LastSelectedMap = i -- Registramos el cambio
+                _G.LastSelectedMap = i
                 pcall(function() remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + i}) end)
                 
-                -- [NUEVO] Seguro de desanclaje forzado tras pantalla de carga
                 task.delay(1.5, function()
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -1161,9 +1153,6 @@ local mapKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, mapKeyConn)
 
--- =========================================================
--- BOTÓN EN PESTAÑA AUTO (Monitor de Raids)
--- =========================================================
 TabAuto:CreateButton("ABRIR MONITOR DE RAIDS (Tecla: P)", Theme.PrimaryDark, function()
     local panel = TargetGui:FindFirstChild("NanoHub_UI") and TargetGui.NanoHub_UI:FindFirstChild("RaidMonitorPanel")
     if panel then panel.Visible = not panel.Visible end
@@ -1391,7 +1380,7 @@ end)
 table.insert(Hub.Connections, raidKeyConn)
 
 -- =========================================================
--- [4] PESTAÑA: METRALLETA (CEREBRO INTERMITENTE CORREGIDO)
+-- [4] PESTAÑA: METRALLETA
 -- =========================================================
 local TabMetralleta = Hub:CreateTab("Metralleta")
 
@@ -1399,11 +1388,10 @@ local MetState = {
     Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
     ScannedMobsCache = {},
-    -- Lógica Standalone: Cerebro Intermitente
     InternalAttackActive = false,
     LastClickedGUID = nil,
-    TIEMPO_ENCENDIDO = 0.30, -- Tiempo de ataque
-    TIEMPO_APAGADO = 0.30    -- Tiempo de apagón/reset
+    TIEMPO_ENCENDIDO = 0.30, 
+    TIEMPO_APAGADO = 0.30    
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1647,12 +1635,10 @@ local metHbConn = RunService.Heartbeat:Connect(function()
     if myRoot and MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
         local targetPos = MetState.TargetKillInst.HumanoidRootPart.Position
         
-        -- Estabilizar al jugador apuntando al objetivo KILL
         myRoot.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, -10), targetPos)
         myRoot.AssemblyLinearVelocity = Vector3.zero
         myRoot.Anchored = true
         
-        -- Alejar al objetivo REF (Opcional, de tu script original)
         if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) and MetState.TargetRefInst:FindFirstChild("HumanoidRootPart") then
             local refRoot = MetState.TargetRefInst.HumanoidRootPart
             if not MetCFrames[MetState.TargetRefInst] then 
@@ -1662,7 +1648,6 @@ local metHbConn = RunService.Heartbeat:Connect(function()
             refRoot.AssemblyLinearVelocity = Vector3.zero
         end
         
-        -- Héroes asisten al objetivo KILL
         local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
         if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
             for _, pet in pairs(heroesFolder["Hero_" .. tostring(LocalPlayer.UserId)]:GetChildren()) do
@@ -1690,7 +1675,6 @@ local function FireAttack(enemyInst, isTargetKill)
 
     task.spawn(function()
         pcall(function()
-            -- El ClickEnemy se usa para generar la desincronización
             if MetState.LastClickedGUID ~= eGuid then
                 MetState.LastClickedGUID = eGuid
                 if Remotes:FindFirstChild("ClickEnemy") then 
@@ -1698,7 +1682,6 @@ local function FireAttack(enemyInst, isTargetKill)
                 end
             end
             
-            -- Habilidades de tu personaje (Disparadas al objetivo actual)
             if Remotes:FindFirstChild("PlayerClickAttackSkill") then 
                 Remotes.PlayerClickAttackSkill:FireServer({ ["attackEnemyGUID"] = eGuid })
                 Remotes.PlayerClickAttackSkill:FireServer({ ["autoClickEnemyGUID"] = eGuid })
@@ -1707,7 +1690,6 @@ local function FireAttack(enemyInst, isTargetKill)
                 Remotes.PlayerClickAttack:FireServer({ ["attackEnemyGUID"] = eGuid }) 
             end
 
-            -- Habilidades de los Héroes (SOLO disparan al objetivo KILL para no alejarse)
             if isTargetKill then
                 local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
                 if heroesFolder then
@@ -1733,20 +1715,15 @@ local function FireAttack(enemyInst, isTargetKill)
     end)
 end
 
--- ==========================================
--- CEREBRO INTERMITENTE (LA MAGIA DEL CANCEL)
--- ==========================================
 task.spawn(function()
     while HubRunning do
         if MetState.Activo then
-            -- FASE 1: ENCENDIDO
             MetState.InternalAttackActive = true
             task.wait(MetState.TIEMPO_ENCENDIDO)
             
-            -- FASE 2: APAGÓN Y RESET DE MEMORIA
             MetState.InternalAttackActive = false
-            MetState.TargetRefInst = nil     -- AQUÍ ESTÁ EL TRUCO: Forzamos a buscar un nuevo referente aleatorio
-            MetState.LastClickedGUID = nil   -- Borramos el target para que el ClickEnemy se vuelva a enviar
+            MetState.TargetRefInst = nil     
+            MetState.LastClickedGUID = nil   
             task.wait(MetState.TIEMPO_APAGADO)
         else
             MetState.InternalAttackActive = false
@@ -1755,15 +1732,11 @@ task.spawn(function()
     end
 end)
 
--- ==========================================
--- DISPARADOR DE ATAQUES ASÍNCRONOS (SPAMMER)
--- ==========================================
 task.spawn(function()
     while HubRunning do
         task.wait(MetState.Vel)
         
         if MetState.Activo and MetState.InternalAttackActive then
-            -- 1. Buscar un objetivo Aleatorio de Referencia (Si el cerebro lo borró en el apagón)
             if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
                 local fld = Utils.GetEnemyFolder()
                 if fld then
@@ -1777,12 +1750,10 @@ task.spawn(function()
                 end
             end
             
-            -- 2. Disparar al objetivo Aleatorio (Referencia para confundir al servidor)
             if MetState.TargetRefInst and not Utils.EstaMuerto(MetState.TargetRefInst) then
                 FireAttack(MetState.TargetRefInst, false)
             end
             
-            -- 3. Disparar al objetivo Principal (KILL) para asestar el daño
             if MetState.TargetKillInst and not Utils.EstaMuerto(MetState.TargetKillInst) then
                 FireAttack(MetState.TargetKillInst, true)
             end
@@ -1829,19 +1800,17 @@ local function IniciarViaje(targetId, nombreDestino)
     
     task.spawn(function()
         LblTorreStatus.Text = "Viajando a Mapa Base..."
-        -- 1. Salto de limpieza al Mapa 2
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer({["mapId"] = 50002}) end)
         task.wait(3.5)
         
         LblTorreStatus.Text = "Viajando a: " .. nombreDestino
         local teleportArgs = {{ mapId = TARGET_MAP_ID, hostId = targetId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }}
         
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.2)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(teleportArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
         
-        -- NUEVO: Se envían los argumentos
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
         
         LblTorreStatus.Text = "Llegaste a: " .. nombreDestino
@@ -1859,13 +1828,12 @@ TabTorre:CreateDualButtons("MI TORRE", Theme.Secondary, function()
         
         LblTorreStatus.Text = "Entrando a MI TORRE..."
         local miTorreArgs = {{ mapId = TARGET_MAP_ID, hostId = LocalPlayer.UserId }}
-        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }} -- NUEVO: Argumentos de éxito
+        local successArgs = {{ slotIndex = 1, mapId = TARGET_MAP_ID }}
         
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.3)
         pcall(function() RemotesDataTorre:WaitForChild("StartLocalPlayerTeleport"):FireServer(unpack(miTorreArgs)) end); task.wait(0.5)
         pcall(function() RemotesDataTorre:WaitForChild("EquipHeroWithData"):FireServer() end); task.wait(1)
         
-        -- NUEVO: Se envían los argumentos
         pcall(function() RemotesDataTorre:WaitForChild("LocalPlayerTeleportSuccess"):InvokeServer(unpack(successArgs)) end)
         
         LblTorreStatus.Text = "Llegaste a MI TORRE"
@@ -2075,7 +2043,6 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     _G.AutoRollActivo = false; local tiradasCount = 0
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollUI"; ScreenGui.ResetOnSpawn = false
-    -- Ajuste de altura del MainFrame a 300 para acomodar las dos filas de botones
     local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 240, 0, 300); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
     MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180)
 
@@ -2096,7 +2063,6 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
 
     local SubTitle = Instance.new("TextLabel", MainFrame); SubTitle.Size = UDim2.new(0.9, 0, 0, 15); SubTitle.Position = UDim2.new(0.05, 0, 0, 65); SubTitle.Text = "1. Grados a buscar:"; SubTitle.Font = Enum.Font.GothamMedium; SubTitle.TextSize = 10; SubTitle.TextColor3 = Theme.Text; SubTitle.BackgroundTransparency = 1; SubTitle.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Ajuste del SelectorFrame para 6 botones en 2 filas
     local SelectorFrame = Instance.new("Frame", MainFrame); SelectorFrame.Size = UDim2.new(0.9, 0, 0, 50); SelectorFrame.Position = UDim2.new(0.05, 0, 0, 85); SelectorFrame.BackgroundTransparency = 1; 
     local layout = Instance.new("UIGridLayout", SelectorFrame); layout.CellSize = UDim2.new(0.31, 0, 0.45, 0); layout.CellPadding = UDim2.new(0.03, 0, 0.1, 0)
     for _, gradeText in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
@@ -2106,7 +2072,6 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
         btn.MouseButton1Click:Connect(function() ActiveStopTexts[gradeText] = not ActiveStopTexts[gradeText]; UpdateBtnVisual() end)
     end
 
-    -- Ajuste de posiciones Y del resto de la interfaz (desplazadas hacia abajo)
     local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 145); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
     local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 165); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
