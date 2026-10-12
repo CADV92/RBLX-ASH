@@ -216,7 +216,6 @@ end
 -- ==========================================
 do
     local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
-    -- Escala x1.25 (Original: 190x125 -> Nuevo: 238x156)
     MonitorFrame.Size = UDim2.new(0, 238, 0, 156)
     MonitorFrame.Position = UDim2.new(0.5, -119, 0.1, 0)
     MonitorFrame.BackgroundColor3 = Theme.Background
@@ -333,18 +332,27 @@ do
         ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
     end)
 
+    -- =========================================================
+    -- VARIABLES ORIGINALES RESTAURADAS EXACTAMENTE COMO ESTABAN
+    -- =========================================================
     local TotalDamageDealt = 0
     local CurrentTarget = nil
+    local PreviousTarget = nil 
     local DeadHpThreshold = 100 
-    
-    -- Variables de control para no hacer llamadas repetidas al servidor
-    local enModoOro = false
+    local SearchRadius = 30 
+    local lastTick = 0
+    local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
+    local TiempoInicioEspecial = 0 
+    local TiempoRegresoAtaque = 40
+    local AutoDropThreshold = 2.5e72
 
     ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
     local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+
     if RemoteDamage then
         local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+            -- Filtro ESTRICTO: Solo contamos el daño si tú eres el atacante
             if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
                 local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
                 
@@ -352,16 +360,19 @@ do
                     local hitGuid = data.enemyGuid
                     local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
                     
-                    if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then return end
+                    -- Ignoramos el daño al clon de la metralleta
+                    if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then
+                        return 
+                    end
                     
+                    -- Cambio de objetivo automático al pegar a alguien nuevo
                     if hitGuid ~= currentGuid then
                         local fld = Utils.GetEnemyFolder()
                         if fld then
                             for _, mob in pairs(fld:GetChildren()) do
                                 if Utils.GetGUID(mob) == hitGuid then
                                     CurrentTarget = mob
-                                    TotalDamageDealt = 0 
-                                    TargetLabel.Text = "OBJ: " .. (mob.Name or "Enemigo")
+                                    TotalDamageDealt = 0 -- Reseteamos el daño
                                     break
                                 end
                             end
@@ -378,27 +389,55 @@ do
         table.insert(Hub.Connections, damageConn)
     end
 
-    -- ========================================================
-    -- MOTOR DE AUTO-ORO: Cambio automático de modos y pociones
-    -- ========================================================
+    local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
+    local LastGoldPotionS = 0
+    local LastGoldPotionM = 0
+    local LastGoldPotionL = 0
+    local COOLDOWN_S = 600
+    local COOLDOWN_M = 1800
+    local COOLDOWN_L = 2400
+
+    local function AutoUseGoldPotions()
+        if not Config.AutoGoldPotions or not UseItemRemote then return end
+        local now = os.time()
+
+        if now - LastGoldPotionS >= COOLDOWN_S then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
+            LastGoldPotionS = now
+        end
+        if now - LastGoldPotionM >= COOLDOWN_M then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
+            LastGoldPotionM = now
+        end
+        if now - LastGoldPotionL >= COOLDOWN_L then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
+            LastGoldPotionL = now
+        end
+    end
+
+    -- =========================================================
+    -- OBSERVADOR DE AUTO-ORO INDEPENDIENTE (No toca tus funciones)
+    -- =========================================================
     local RunService = game:GetService("RunService")
-    local autoOroConn = RunService.Heartbeat:Connect(function()
+    local enModoOro = false
+
+    local autoOroObserver = RunService.Heartbeat:Connect(function()
+        if not Config.AutoOroEnabled then return end
+        
+        -- Si el objetivo no existe o murió, volvemos a Ataque
         if not CurrentTarget or not CurrentTarget.Parent then
-            -- Si el enemigo murió o desapareció, regresamos a modo Ataque
             if enModoOro then
                 enModoOro = false
                 pcall(function() CambiarModoAutoEquip("ATAQUE") end)
-                
-                -- Gestor de pociones al morir (Condicionado a AutoPots)
                 if Config.AutoGoldPotions then
-                    ToggleBuffGroup(BuffIDs["ORO"], true)      -- Pausar Oro
-                    ToggleBuffGroup(BuffIDs["ATAQUE"], false)  -- Despausar Ataque
+                    ToggleBuffGroup(BuffIDs["ORO"], true)
+                    ToggleBuffGroup(BuffIDs["ATAQUE"], false)
                 end
             end
             return
         end
 
-        -- Monitoreo de HP
+        -- Leer la vida real del objetivo
         local hp = 0
         local humanoid = CurrentTarget:FindFirstChild("Humanoid")
         if humanoid then
@@ -407,24 +446,17 @@ do
             hp = CurrentTarget:GetAttribute("Health") or 0
         end
 
-        HpLabel.Text = "HP: " .. Utils.FormatHealth(math.floor(hp))
-
-        -- Lógica de Ejecución (Auto-Oro)
-        if Config.AutoOroEnabled then
-            if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
-                enModoOro = true
-                pcall(function() CambiarModoAutoEquip("ORO") end)
-                
-                -- Gestor de pociones en ejecución (Condicionado a AutoPots)
-                if Config.AutoGoldPotions then
-                    ToggleBuffGroup(BuffIDs["ATAQUE"], true) -- Pausar Ataque
-                    ToggleBuffGroup(BuffIDs["ORO"], false)   -- Despausar Oro
-                end
+        -- Si la vida baja al límite (antes de morir), cambiar a Oro y Pausar Ataque
+        if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
+            enModoOro = true
+            pcall(function() CambiarModoAutoEquip("ORO") end)
+            if Config.AutoGoldPotions then
+                ToggleBuffGroup(BuffIDs["ATAQUE"], true)
+                ToggleBuffGroup(BuffIDs["ORO"], false)
             end
         end
     end)
-    table.insert(Hub.Connections, autoOroConn)
-    -- ========================================================
+    table.insert(Hub.Connections, autoOroObserver)
 
     TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
 
