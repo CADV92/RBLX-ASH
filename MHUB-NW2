@@ -273,41 +273,48 @@ DamageLabel.TextSize = 22 -- Texto x2
 DamageLabel.TextColor3 = Theme.Primary
 DamageLabel.TextXAlignment = Enum.TextXAlignment.Left
 DamageLabel.BackgroundTransparency = 1
-
 local ResetDmgBtn = Instance.new("TextButton", MonitorFrame)
-ResetDmgBtn.Size = UDim2.new(0, 20, 0, 20)
-ResetDmgBtn.Position = UDim2.new(1, -25, 0, 62)
+ResetDmgBtn.Size = UDim2.new(0, 40, 0, 40)
+ResetDmgBtn.Position = UDim2.new(1, -50, 0, 125)
 ResetDmgBtn.BackgroundColor3 = Theme.Secondary
 ResetDmgBtn.Text = "R"
 ResetDmgBtn.TextColor3 = Theme.TextHighlight
 ResetDmgBtn.Font = Enum.Font.GothamBold
-ResetDmgBtn.TextSize = 11
-Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 4)
+ResetDmgBtn.TextSize = 22
+Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 8)
+ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
 local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
-ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 25)
-ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 90)
+ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 50)
+ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 180)
 ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary
 ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
 ToggleAutoOro.TextColor3 = Theme.TextHighlight
 ToggleAutoOro.Font = Enum.Font.GothamBold
-ToggleAutoOro.TextSize = 10
-Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 4)
+ToggleAutoOro.TextSize = 20 -- Texto x2
+Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 8)
 ToggleAutoOro.MouseButton1Click:Connect(function() 
     Config.AutoOroEnabled = not Config.AutoOroEnabled
     ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
     ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary 
+    
+    -- LÓGICA DE PAUSA AUTOMÁTICA
+    if Config.AutoOroEnabled then
+        ToggleBuffGroup(BuffIDs["ORO"], false) -- Despausar Oro
+    else
+        ToggleBuffGroup(BuffIDs["ORO"], true)  -- Pausar Oro (Volviendo a Ataque)
+    end
 end)
 
 local ToggleAutoDrop = Instance.new("TextButton", MonitorFrame)
-ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 25)
-ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 90)
+ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 50)
+ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 180)
 ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary
 ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
 ToggleAutoDrop.TextColor3 = Theme.TextHighlight
 ToggleAutoDrop.Font = Enum.Font.GothamBold
-ToggleAutoDrop.TextSize = 10
-Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 4)
+ToggleAutoDrop.TextSize = 20
+Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 8)
 ToggleAutoDrop.MouseButton1Click:Connect(function() 
     Config.AutoDropEnabled = not Config.AutoDropEnabled
     ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
@@ -315,15 +322,15 @@ ToggleAutoDrop.MouseButton1Click:Connect(function()
 end)
 
 local ToggleAutoPots = Instance.new("TextButton", MonitorFrame)
-ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 25)
-ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 90)
+ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 50)
+ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 180)
 ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
 ToggleAutoPots.Text = "🧪"
 ToggleAutoPots.TextColor3 = Theme.TextHighlight
 ToggleAutoPots.Font = Enum.Font.GothamBold
-ToggleAutoPots.TextSize = 12
+ToggleAutoPots.TextSize = 24
 ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
-Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 4)
+Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 8)
 ToggleAutoPots.MouseButton1Click:Connect(function() 
     Config.AutoGoldPotions = not Config.AutoGoldPotions
     ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
