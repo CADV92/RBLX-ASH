@@ -212,219 +212,216 @@ local function ToggleBuffGroup(buffGroup, isPaused)
 end
 
 -- ==========================================
--- INTEGRACIÓN: MONITOR DE COMBATE
+-- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x2)
 -- ==========================================
-local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
-MonitorFrame.Size = UDim2.new(0, 380, 0, 250) -- Doble de tamaño
-MonitorFrame.Position = UDim2.new(0.5, -190, 0.1, 0)
-MonitorFrame.BackgroundColor3 = Theme.Background
-MonitorFrame.Visible = false
-MonitorFrame.Active = true
-MonitorFrame.Draggable = true
-Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 12)
-Instance.new("UIStroke", MonitorFrame).Color = Theme.Primary
-local monTitle = Instance.new("TextLabel", MonitorFrame)
-monTitle.Size = UDim2.new(1, -60, 0, 50)
-monTitle.Position = UDim2.new(0, 20, 0, 5)
-monTitle.Text = "MONITOR COMBATE"
-monTitle.Font = Enum.Font.GothamBlack
-monTitle.TextSize = 22 -- Texto x2
-monTitle.TextColor3 = Theme.TextHighlight
-monTitle.TextXAlignment = Enum.TextXAlignment.Left
-monTitle.BackgroundTransparency = 1
+do
+    local MonitorFrame = Instance.new("Frame", Hub.ScreenGui)
+    MonitorFrame.Size = UDim2.new(0, 380, 0, 250)
+    MonitorFrame.Position = UDim2.new(0.5, -190, 0.1, 0)
+    MonitorFrame.BackgroundColor3 = Theme.Background
+    MonitorFrame.Visible = false
+    MonitorFrame.Active = true
+    MonitorFrame.Draggable = true
+    Instance.new("UICorner", MonitorFrame).CornerRadius = UDim.new(0, 12)
+    Instance.new("UIStroke", MonitorFrame).Color = Theme.Primary
 
-local monClose = Instance.new("TextButton", MonitorFrame)
-monClose.Size = UDim2.new(0, 40, 0, 40)
-monClose.Position = UDim2.new(1, -50, 0, 10)
-monClose.Text = "X"
-monClose.Font = Enum.Font.GothamBold
-monClose.TextSize = 18
-monClose.TextColor3 = Theme.TextHighlight
-monClose.BackgroundColor3 = Theme.Danger
-Instance.new("UICorner", monClose).CornerRadius = UDim.new(0, 8)
-monClose.MouseButton1Click:Connect(function() MonitorFrame.Visible = false end)
+    local monTitle = Instance.new("TextLabel", MonitorFrame)
+    monTitle.Size = UDim2.new(1, -60, 0, 50)
+    monTitle.Position = UDim2.new(0, 20, 0, 5)
+    monTitle.Text = "MONITOR COMBATE"
+    monTitle.Font = Enum.Font.GothamBlack
+    monTitle.TextSize = 22
+    monTitle.TextColor3 = Theme.TextHighlight
+    monTitle.TextXAlignment = Enum.TextXAlignment.Left
+    monTitle.BackgroundTransparency = 1
 
-local TargetLabel = Instance.new("TextLabel", MonitorFrame)
-TargetLabel.Size = UDim2.new(0.9, 0, 0, 30)
-TargetLabel.Position = UDim2.new(0.05, 0, 0, 60)
-TargetLabel.Text = "OBJETIVO: NINGUNO"
-TargetLabel.Font = Enum.Font.GothamBold
-TargetLabel.TextSize = 20 -- Texto x2
-TargetLabel.TextColor3 = Theme.Text
-TargetLabel.TextXAlignment = Enum.TextXAlignment.Center
-TargetLabel.BackgroundTransparency = 1
+    local monClose = Instance.new("TextButton", MonitorFrame)
+    monClose.Size = UDim2.new(0, 40, 0, 40)
+    monClose.Position = UDim2.new(1, -50, 0, 10)
+    monClose.Text = "X"
+    monClose.Font = Enum.Font.GothamBold
+    monClose.TextSize = 18
+    monClose.TextColor3 = Theme.TextHighlight
+    monClose.BackgroundColor3 = Theme.Danger
+    Instance.new("UICorner", monClose).CornerRadius = UDim.new(0, 8)
+    monClose.MouseButton1Click:Connect(function() MonitorFrame.Visible = false end)
 
-local HpLabel = Instance.new("TextLabel", MonitorFrame)
-HpLabel.Size = UDim2.new(0.9, 0, 0, 30)
-HpLabel.Position = UDim2.new(0.05, 0, 0, 90)
-HpLabel.Text = "HP: 0"
-HpLabel.Font = Enum.Font.GothamBlack
-HpLabel.TextSize = 22 -- Texto x2
-HpLabel.TextColor3 = Theme.Success
-HpLabel.TextXAlignment = Enum.TextXAlignment.Center
-HpLabel.BackgroundTransparency = 1
+    local TargetLabel = Instance.new("TextLabel", MonitorFrame)
+    TargetLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    TargetLabel.Position = UDim2.new(0.05, 0, 0, 60)
+    TargetLabel.Text = "OBJETIVO: NINGUNO"
+    TargetLabel.Font = Enum.Font.GothamBold
+    TargetLabel.TextSize = 20
+    TargetLabel.TextColor3 = Theme.Text
+    TargetLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TargetLabel.BackgroundTransparency = 1
 
-local DamageLabel = Instance.new("TextLabel", MonitorFrame)
-DamageLabel.Size = UDim2.new(0.75, 0, 0, 30)
-DamageLabel.Position = UDim2.new(0.05, 0, 0, 130)
-DamageLabel.Text = "DMG: 0"
-DamageLabel.Font = Enum.Font.GothamBlack
-DamageLabel.TextSize = 22 -- Texto x2
-DamageLabel.TextColor3 = Theme.Primary
-DamageLabel.TextXAlignment = Enum.TextXAlignment.Left
-DamageLabel.BackgroundTransparency = 1
-local ResetDmgBtn = Instance.new("TextButton", MonitorFrame)
-ResetDmgBtn.Size = UDim2.new(0, 40, 0, 40)
-ResetDmgBtn.Position = UDim2.new(1, -50, 0, 125)
-ResetDmgBtn.BackgroundColor3 = Theme.Secondary
-ResetDmgBtn.Text = "R"
-ResetDmgBtn.TextColor3 = Theme.TextHighlight
-ResetDmgBtn.Font = Enum.Font.GothamBold
-ResetDmgBtn.TextSize = 22
-Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 8)
-ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
+    local HpLabel = Instance.new("TextLabel", MonitorFrame)
+    HpLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    HpLabel.Position = UDim2.new(0.05, 0, 0, 90)
+    HpLabel.Text = "HP: 0"
+    HpLabel.Font = Enum.Font.GothamBlack
+    HpLabel.TextSize = 22
+    HpLabel.TextColor3 = Theme.Success
+    HpLabel.TextXAlignment = Enum.TextXAlignment.Center
+    HpLabel.BackgroundTransparency = 1
 
-local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
-ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 50)
-ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 180)
-ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary
-ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
-ToggleAutoOro.TextColor3 = Theme.TextHighlight
-ToggleAutoOro.Font = Enum.Font.GothamBold
-ToggleAutoOro.TextSize = 20 -- Texto x2
-Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 8)
-ToggleAutoOro.MouseButton1Click:Connect(function() 
-    Config.AutoOroEnabled = not Config.AutoOroEnabled
+    local DamageLabel = Instance.new("TextLabel", MonitorFrame)
+    DamageLabel.Size = UDim2.new(0.75, 0, 0, 30)
+    DamageLabel.Position = UDim2.new(0.05, 0, 0, 130)
+    DamageLabel.Text = "DMG: 0"
+    DamageLabel.Font = Enum.Font.GothamBlack
+    DamageLabel.TextSize = 22
+    DamageLabel.TextColor3 = Theme.Primary
+    DamageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DamageLabel.BackgroundTransparency = 1
+
+    local ResetDmgBtn = Instance.new("TextButton", MonitorFrame)
+    ResetDmgBtn.Size = UDim2.new(0, 40, 0, 40)
+    ResetDmgBtn.Position = UDim2.new(1, -50, 0, 125)
+    ResetDmgBtn.BackgroundColor3 = Theme.Secondary
+    ResetDmgBtn.Text = "R"
+    ResetDmgBtn.TextColor3 = Theme.TextHighlight
+    ResetDmgBtn.Font = Enum.Font.GothamBold
+    ResetDmgBtn.TextSize = 22
+    Instance.new("UICorner", ResetDmgBtn).CornerRadius = UDim.new(0, 8)
+
+    local ToggleAutoOro = Instance.new("TextButton", MonitorFrame)
+    ToggleAutoOro.Size = UDim2.new(0.38, 0, 0, 50)
+    ToggleAutoOro.Position = UDim2.new(0.05, 0, 0, 180)
+    ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary
     ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
-    ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary 
-    
-    -- LÓGICA DE PAUSA AUTOMÁTICA
-    if Config.AutoOroEnabled then
-        ToggleBuffGroup(BuffIDs["ORO"], false) -- Despausar Oro
-    else
-        ToggleBuffGroup(BuffIDs["ORO"], true)  -- Pausar Oro (Volviendo a Ataque)
-    end
-end)
+    ToggleAutoOro.TextColor3 = Theme.TextHighlight
+    ToggleAutoOro.Font = Enum.Font.GothamBold
+    ToggleAutoOro.TextSize = 20
+    Instance.new("UICorner", ToggleAutoOro).CornerRadius = UDim.new(0, 8)
+    ToggleAutoOro.MouseButton1Click:Connect(function() 
+        Config.AutoOroEnabled = not Config.AutoOroEnabled
+        ToggleAutoOro.Text = Config.AutoOroEnabled and "ORO: ON" or "ORO: OFF"
+        ToggleAutoOro.BackgroundColor3 = Config.AutoOroEnabled and Theme.Primary or Theme.Secondary 
+        
+        -- Pausa inteligente de pociones
+        if Config.AutoOroEnabled then
+            ToggleBuffGroup(BuffIDs["ORO"], false) 
+        else
+            ToggleBuffGroup(BuffIDs["ORO"], true)  
+        end
+    end)
 
-local ToggleAutoDrop = Instance.new("TextButton", MonitorFrame)
-ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 50)
-ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 180)
-ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary
-ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
-ToggleAutoDrop.TextColor3 = Theme.TextHighlight
-ToggleAutoDrop.Font = Enum.Font.GothamBold
-ToggleAutoDrop.TextSize = 20
-Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 8)
-ToggleAutoDrop.MouseButton1Click:Connect(function() 
-    Config.AutoDropEnabled = not Config.AutoDropEnabled
+    local ToggleAutoDrop = Instance.new("TextButton", MonitorFrame)
+    ToggleAutoDrop.Size = UDim2.new(0.38, 0, 0, 50)
+    ToggleAutoDrop.Position = UDim2.new(0.45, 0, 0, 180)
+    ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary
     ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
-    ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary 
-end)
+    ToggleAutoDrop.TextColor3 = Theme.TextHighlight
+    ToggleAutoDrop.Font = Enum.Font.GothamBold
+    ToggleAutoDrop.TextSize = 20
+    Instance.new("UICorner", ToggleAutoDrop).CornerRadius = UDim.new(0, 8)
+    ToggleAutoDrop.MouseButton1Click:Connect(function() 
+        Config.AutoDropEnabled = not Config.AutoDropEnabled
+        ToggleAutoDrop.Text = Config.AutoDropEnabled and "DROP: ON" or "DROP: OFF"
+        ToggleAutoDrop.BackgroundColor3 = Config.AutoDropEnabled and Theme.Primary or Theme.Secondary 
+    end)
 
-local ToggleAutoPots = Instance.new("TextButton", MonitorFrame)
-ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 50)
-ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 180)
-ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
-ToggleAutoPots.Text = "🧪"
-ToggleAutoPots.TextColor3 = Theme.TextHighlight
-ToggleAutoPots.Font = Enum.Font.GothamBold
-ToggleAutoPots.TextSize = 24
-ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
-Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 8)
-ToggleAutoPots.MouseButton1Click:Connect(function() 
-    Config.AutoGoldPotions = not Config.AutoGoldPotions
+    local ToggleAutoPots = Instance.new("TextButton", MonitorFrame)
+    ToggleAutoPots.Size = UDim2.new(0.12, 0, 0, 50)
+    ToggleAutoPots.Position = UDim2.new(0.85, 0, 0, 180)
     ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
+    ToggleAutoPots.Text = "🧪"
+    ToggleAutoPots.TextColor3 = Theme.TextHighlight
+    ToggleAutoPots.Font = Enum.Font.GothamBold
+    ToggleAutoPots.TextSize = 24
     ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
-end)
+    Instance.new("UICorner", ToggleAutoPots).CornerRadius = UDim.new(0, 8)
+    ToggleAutoPots.MouseButton1Click:Connect(function() 
+        Config.AutoGoldPotions = not Config.AutoGoldPotions
+        ToggleAutoPots.BackgroundColor3 = Config.AutoGoldPotions and Theme.Primary or Theme.Secondary
+        ToggleAutoPots.BackgroundTransparency = Config.AutoGoldPotions and 0 or 0.6
+    end)
 
-local TotalDamageDealt = 0
-local CurrentTarget = nil
-local PreviousTarget = nil 
-local DeadHpThreshold = 100 
-local SearchRadius = 30 
-local lastTick = 0
-local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
-local TiempoInicioEspecial = 0 
-local TiempoRegresoAtaque = 40
-local AutoDropThreshold = 2.5e72
+    local TotalDamageDealt = 0
+    local CurrentTarget = nil
+    local PreviousTarget = nil 
+    local DeadHpThreshold = 100 
+    local SearchRadius = 30 
+    local lastTick = 0
+    local enemyHPTracker = setmetatable({}, {__mode = "k"}) 
+    local TiempoInicioEspecial = 0 
+    local TiempoRegresoAtaque = 40
+    local AutoDropThreshold = 2.5e72
 
-ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
+    ResetDmgBtn.MouseButton1Click:Connect(function() TotalDamageDealt = 0; DamageLabel.Text = "DMG: 0" end)
 
-local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
-
-if RemoteDamage then
-    local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
-        -- Filtro ESTRICTO: Solo contamos el daño si tú eres el atacante
-        if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
-            local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
-            
-            if dmg > 0 then
-                local hitGuid = data.enemyGuid
-                local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+    local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+    if RemoteDamage then
+        local damageConn = RemoteDamage.OnClientEvent:Connect(function(data)
+            if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+                local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
                 
-                -- Ignoramos el daño al clon de la metralleta
-                if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then
-                    return 
-                end
-                
-                -- Cambio de objetivo automático al pegar a alguien nuevo
-                if hitGuid ~= currentGuid then
-                    local fld = Utils.GetEnemyFolder()
-                    if fld then
-                        for _, mob in pairs(fld:GetChildren()) do
-                            if Utils.GetGUID(mob) == hitGuid then
-                                CurrentTarget = mob
-                                TotalDamageDealt = 0 -- Reseteamos el daño
-                                break
+                if dmg > 0 then
+                    local hitGuid = data.enemyGuid
+                    local currentGuid = CurrentTarget and Utils.GetGUID(CurrentTarget)
+                    
+                    if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then return end
+                    
+                    if hitGuid ~= currentGuid then
+                        local fld = Utils.GetEnemyFolder()
+                        if fld then
+                            for _, mob in pairs(fld:GetChildren()) do
+                                if Utils.GetGUID(mob) == hitGuid then
+                                    CurrentTarget = mob
+                                    TotalDamageDealt = 0 
+                                    break
+                                end
                             end
                         end
                     end
-                end
 
-                TotalDamageDealt = TotalDamageDealt + dmg
-                if DamageLabel then
-                    DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
+                    TotalDamageDealt = TotalDamageDealt + dmg
+                    if DamageLabel then
+                        DamageLabel.Text = "DMG: " .. Utils.FormatHealth(TotalDamageDealt)
+                    end
                 end
             end
+        end)
+        table.insert(Hub.Connections, damageConn)
+    end
+
+    local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
+    local LastGoldPotionS = 0
+    local LastGoldPotionM = 0
+    local LastGoldPotionL = 0
+    local COOLDOWN_S = 600
+    local COOLDOWN_M = 1800
+    local COOLDOWN_L = 2400
+
+    local function AutoUseGoldPotions()
+        if not Config.AutoGoldPotions or not UseItemRemote then return end
+        local now = os.time()
+
+        if now - LastGoldPotionS >= COOLDOWN_S then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
+            LastGoldPotionS = now
+        end
+        if now - LastGoldPotionM >= COOLDOWN_M then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
+            LastGoldPotionM = now
+        end
+        if now - LastGoldPotionL >= COOLDOWN_L then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
+            LastGoldPotionL = now
+        end
+    end
+
+    TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
+
+    local monitorKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.L then
+            MonitorFrame.Visible = not MonitorFrame.Visible
         end
     end)
-    table.insert(Hub.Connections, damageConn)
+    table.insert(Hub.Connections, monitorKeyConn)
 end
-
-local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-local LastGoldPotionS = 0
-local LastGoldPotionM = 0
-local LastGoldPotionL = 0
-local COOLDOWN_S = 600
-local COOLDOWN_M = 1800
-local COOLDOWN_L = 2400
-
-local function AutoUseGoldPotions()
-    if not Config.AutoGoldPotions or not UseItemRemote then return end
-    local now = os.time()
-
-    if now - LastGoldPotionS >= COOLDOWN_S then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
-        LastGoldPotionS = now
-    end
-    if now - LastGoldPotionM >= COOLDOWN_M then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
-        LastGoldPotionM = now
-    end
-    if now - LastGoldPotionL >= COOLDOWN_L then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
-        LastGoldPotionL = now
-    end
-end
-
-TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
-
-local monitorKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.L then
-        MonitorFrame.Visible = not MonitorFrame.Visible
-    end
-end)
-table.insert(Hub.Connections, monitorKeyConn)
 
 -- ==========================================
 -- CANDIES
@@ -3094,128 +3091,166 @@ TabServer:CreateButton("GUARDAR CONFIGURACIÓN", Theme.PrimaryDark, SaveConfig)
 -- =========================================================
 -- PANEL DE ACCESO RÁPIDO (TECLA U)
 -- =========================================================
-local QuickPanel = Instance.new("Frame", Hub.ScreenGui)
-QuickPanel.Name = "QuickAccessPanel"
-QuickPanel.Size = UDim2.new(0, 220, 0, 210)
-QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -50)
-QuickPanel.BackgroundColor3 = Theme.Background
-QuickPanel.Visible = false
-QuickPanel.Active = true
-QuickPanel.Draggable = true
-Instance.new("UICorner", QuickPanel).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", QuickPanel).Color = Theme.Primary
+do
+    local QuickPanel = Instance.new("Frame", Hub.ScreenGui)
+    QuickPanel.Name = "QuickAccessPanel"
+    QuickPanel.Size = UDim2.new(0, 220, 0, 240) 
+    QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -50)
+    QuickPanel.BackgroundColor3 = Theme.Background
+    QuickPanel.Visible = false
+    QuickPanel.Active = true
+    QuickPanel.Draggable = true
+    Instance.new("UICorner", QuickPanel).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", QuickPanel).Color = Theme.Primary
 
-local QTitle = Instance.new("TextLabel", QuickPanel)
-QTitle.Size = UDim2.new(1, -30, 0, 20)
-QTitle.Position = UDim2.new(0, 10, 0, 5)
-QTitle.Text = "ACCESO RÁPIDO (U)"
-QTitle.Font = Enum.Font.GothamBlack
-QTitle.TextSize = 12
-QTitle.TextColor3 = Theme.TextHighlight
-QTitle.BackgroundTransparency = 1
-QTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local QTitle = Instance.new("TextLabel", QuickPanel)
+    QTitle.Size = UDim2.new(1, -30, 0, 20)
+    QTitle.Position = UDim2.new(0, 10, 0, 5)
+    QTitle.Text = "ACCESO RÁPIDO (U)"
+    QTitle.Font = Enum.Font.GothamBlack
+    QTitle.TextSize = 12
+    QTitle.TextColor3 = Theme.TextHighlight
+    QTitle.BackgroundTransparency = 1
+    QTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-local QClose = Instance.new("TextButton", QuickPanel)
-QClose.Size = UDim2.new(0, 20, 0, 20)
-QClose.Position = UDim2.new(1, -25, 0, 5)
-QClose.Text = "X"
-QClose.Font = Enum.Font.GothamBold
-QClose.TextColor3 = Theme.Danger
-QClose.BackgroundTransparency = 1
-QClose.MouseButton1Click:Connect(function() QuickPanel.Visible = false end)
+    local QClose = Instance.new("TextButton", QuickPanel)
+    QClose.Size = UDim2.new(0, 20, 0, 20)
+    QClose.Position = UDim2.new(1, -25, 0, 5)
+    QClose.Text = "X"
+    QClose.Font = Enum.Font.GothamBold
+    QClose.TextColor3 = Theme.Danger
+    QClose.BackgroundTransparency = 1
+    QClose.MouseButton1Click:Connect(function() QuickPanel.Visible = false end)
 
-local QPotionLbl = Instance.new("TextLabel", QuickPanel)
-QPotionLbl.Size = UDim2.new(1, -20, 0, 15)
-QPotionLbl.Position = UDim2.new(0, 10, 0, 30)
-QPotionLbl.Text = "Consumo Rápido de Pociones:"
-QPotionLbl.Font = Enum.Font.GothamBold
-QPotionLbl.TextSize = 11
-QPotionLbl.TextColor3 = Theme.Text
-QPotionLbl.BackgroundTransparency = 1
-QPotionLbl.TextXAlignment = Enum.TextXAlignment.Left
+    local QPotionLbl = Instance.new("TextLabel", QuickPanel)
+    QPotionLbl.Size = UDim2.new(1, -20, 0, 15)
+    QPotionLbl.Position = UDim2.new(0, 10, 0, 30)
+    QPotionLbl.Text = "Gestión de Pociones:"
+    QPotionLbl.Font = Enum.Font.GothamBold
+    QPotionLbl.TextSize = 11
+    QPotionLbl.TextColor3 = Theme.Text
+    QPotionLbl.BackgroundTransparency = 1
+    QPotionLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-local QPotionTypeBtn = Instance.new("TextButton", QuickPanel)
-QPotionTypeBtn.Size = UDim2.new(0.3, 0, 0, 25)
-QPotionTypeBtn.Position = UDim2.new(0, 10, 0, 50)
-QPotionTypeBtn.BackgroundColor3 = Theme.PrimaryDark
-QPotionTypeBtn.Text = "ATAQUE"
-QPotionTypeBtn.TextColor3 = Theme.TextHighlight
-QPotionTypeBtn.Font = Enum.Font.GothamBold
-QPotionTypeBtn.TextSize = 10
-Instance.new("UICorner", QPotionTypeBtn).CornerRadius = UDim.new(0, 4)
+    local QPotionTypeBtn = Instance.new("TextButton", QuickPanel)
+    QPotionTypeBtn.Size = UDim2.new(0.3, 0, 0, 25)
+    QPotionTypeBtn.Position = UDim2.new(0, 10, 0, 50)
+    QPotionTypeBtn.BackgroundColor3 = Theme.PrimaryDark
+    QPotionTypeBtn.Text = "ATAQUE"
+    QPotionTypeBtn.TextColor3 = Theme.TextHighlight
+    QPotionTypeBtn.Font = Enum.Font.GothamBold
+    QPotionTypeBtn.TextSize = 10
+    Instance.new("UICorner", QPotionTypeBtn).CornerRadius = UDim.new(0, 4)
 
-local qTypes = {"ATAQUE", "ORO", "SUERTE"}
-local qIdx = 1
-QPotionTypeBtn.MouseButton1Click:Connect(function()
-    qIdx = (qIdx % 3) + 1
-    QPotionTypeBtn.Text = qTypes[qIdx]
-end)
+    local qTypes = {"ATAQUE", "ORO", "SUERTE"}
+    local qIdx = 1
+    QPotionTypeBtn.MouseButton1Click:Connect(function()
+        qIdx = (qIdx % 3) + 1
+        QPotionTypeBtn.Text = qTypes[qIdx]
+    end)
 
-local function QuickBtnPosHelper(btnObj, posX, text)
-    btnObj.Size = UDim2.new(0.18, 0, 0, 25)
-    btnObj.Position = UDim2.new(posX, 0, 0, 50)
-    btnObj.BackgroundColor3 = Theme.Secondary
-    btnObj.Text = text
-    btnObj.TextColor3 = Theme.TextHighlight
-    btnObj.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", btnObj).CornerRadius = UDim.new(0, 4)
-end
-
-local btnS = Instance.new("TextButton", QuickPanel)
-QuickBtnPosHelper(btnS, 0.35, "S")
-btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
-
-local btnM = Instance.new("TextButton", QuickPanel)
-QuickBtnPosHelper(btnM, 0.56, "M")
-btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
-
-local btnL = Instance.new("TextButton", QuickPanel)
-QuickBtnPosHelper(btnL, 0.77, "L")
-btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
-
-local QModeLbl = Instance.new("TextLabel", QuickPanel)
-QModeLbl.Size = UDim2.new(1, -20, 0, 15)
-QModeLbl.Position = UDim2.new(0, 10, 0, 85)
-QModeLbl.Text = "Cambiar Modo de Combate:"
-QModeLbl.Font = Enum.Font.GothamBold
-QModeLbl.TextSize = 11
-QModeLbl.TextColor3 = Theme.Text
-QModeLbl.BackgroundTransparency = 1
-QModeLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-local quickModes = {
-    {name="ATAQUE", col=Theme.Danger}, {name="ORO", col=Color3.fromRGB(200, 160, 0)},
-    {name="DROP", col=Color3.fromRGB(40, 140, 200)}, {name="SUERTE", col=Color3.fromRGB(40, 200, 80)},
-    {name="PODER", col=Theme.Primary}
-}
-
-for i, md in ipairs(quickModes) do
-    local mb = Instance.new("TextButton", QuickPanel)
-    mb.Size = UDim2.new(0.45, 0, 0, 25)
-    local col = ((i-1)%2) * 0.48
-    local row = math.floor((i-1)/2) * 30
-    mb.Position = UDim2.new(0.035 + col, 0, 0, 105 + row)
-    
-    if i == 5 then 
-        mb.Size = UDim2.new(0.93, 0, 0, 25)
-        mb.Position = UDim2.new(0.035, 0, 0, 105 + row) 
+    local function QuickBtnPosHelper(btnObj, posX, text)
+        btnObj.Size = UDim2.new(0.18, 0, 0, 25)
+        btnObj.Position = UDim2.new(posX, 0, 0, 50)
+        btnObj.BackgroundColor3 = Theme.Secondary
+        btnObj.Text = text
+        btnObj.TextColor3 = Theme.TextHighlight
+        btnObj.Font = Enum.Font.GothamBold
+        Instance.new("UICorner", btnObj).CornerRadius = UDim.new(0, 4)
     end
-    
-    mb.BackgroundColor3 = md.col
-    mb.Text = md.name
-    mb.TextColor3 = Theme.TextHighlight
-    mb.Font = Enum.Font.GothamBold
-    mb.TextSize = 11
-    Instance.new("UICorner", mb).CornerRadius = UDim.new(0, 6)
-    mb.MouseButton1Click:Connect(function() CambiarModoAutoEquip(md.name) end)
-end
 
-local quickKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.U then
-        QuickPanel.Visible = not QuickPanel.Visible
+    local btnS = Instance.new("TextButton", QuickPanel)
+    QuickBtnPosHelper(btnS, 0.35, "S")
+    btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
+
+    local btnM = Instance.new("TextButton", QuickPanel)
+    QuickBtnPosHelper(btnM, 0.56, "M")
+    btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
+
+    local btnL = Instance.new("TextButton", QuickPanel)
+    QuickBtnPosHelper(btnL, 0.77, "L")
+    btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
+
+    local PauseCurrentBtn = Instance.new("TextButton", QuickPanel)
+    PauseCurrentBtn.Size = UDim2.new(0.9, 0, 0, 20)
+    PauseCurrentBtn.Position = UDim2.new(0.05, 0, 0, 80)
+    PauseCurrentBtn.BackgroundColor3 = Theme.Secondary
+    PauseCurrentBtn.Text = "⏸ PAUSAR SELECCIONADA"
+    PauseCurrentBtn.TextColor3 = Theme.TextHighlight
+    PauseCurrentBtn.Font = Enum.Font.GothamBold
+    PauseCurrentBtn.TextSize = 10
+    Instance.new("UICorner", PauseCurrentBtn).CornerRadius = UDim.new(0, 4)
+
+    local typeIsPaused = {["ATAQUE"] = false, ["ORO"] = false, ["SUERTE"] = false}
+    PauseCurrentBtn.MouseButton1Click:Connect(function()
+        local selectedType = qTypes[qIdx]
+        typeIsPaused[selectedType] = not typeIsPaused[selectedType]
+        
+        ToggleBuffGroup(BuffIDs[selectedType], typeIsPaused[selectedType])
+        
+        if typeIsPaused[selectedType] then
+            PauseCurrentBtn.Text = "▶ REANUDAR " .. selectedType
+            PauseCurrentBtn.BackgroundColor3 = Theme.Success
+        else
+            PauseCurrentBtn.Text = "⏸ PAUSAR " .. selectedType
+            PauseCurrentBtn.BackgroundColor3 = Theme.Secondary
+        end
+    end)
+
+    local QModeLbl = Instance.new("TextLabel", QuickPanel)
+    QModeLbl.Size = UDim2.new(1, -20, 0, 15)
+    QModeLbl.Position = UDim2.new(0, 10, 0, 110)
+    QModeLbl.Text = "Cambiar Modo de Combate:"
+    QModeLbl.Font = Enum.Font.GothamBold
+    QModeLbl.TextSize = 11
+    QModeLbl.TextColor3 = Theme.Text
+    QModeLbl.BackgroundTransparency = 1
+    QModeLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local quickModes = {
+        {name="ATAQUE", col=Theme.Danger}, {name="ORO", col=Color3.fromRGB(200, 160, 0)},
+        {name="DROP", col=Color3.fromRGB(40, 140, 200)}, {name="SUERTE", col=Color3.fromRGB(40, 200, 80)},
+        {name="PODER", col=Theme.Primary}
+    }
+
+    for i, md in ipairs(quickModes) do
+        local mb = Instance.new("TextButton", QuickPanel)
+        mb.Size = UDim2.new(0.45, 0, 0, 25)
+        local col = ((i-1)%2) * 0.48
+        local row = math.floor((i-1)/2) * 30
+        mb.Position = UDim2.new(0.035 + col, 0, 0, 130 + row)
+        
+        if i == 5 then 
+            mb.Size = UDim2.new(0.93, 0, 0, 25)
+            mb.Position = UDim2.new(0.035, 0, 0, 130 + row) 
+        end
+        
+        mb.BackgroundColor3 = md.col
+        mb.Text = md.name
+        mb.TextColor3 = Theme.TextHighlight
+        mb.Font = Enum.Font.GothamBold
+        mb.TextSize = 11
+        Instance.new("UICorner", mb).CornerRadius = UDim.new(0, 6)
+        
+        mb.MouseButton1Click:Connect(function() 
+            if md.name == "ORO" then
+                ToggleBuffGroup(BuffIDs["ORO"], false) 
+            elseif md.name == "ATAQUE" or md.name == "PODER" then
+                ToggleBuffGroup(BuffIDs["ORO"], true)   
+                ToggleBuffGroup(BuffIDs["ATAQUE"], false) 
+            end
+            
+            CambiarModoAutoEquip(md.name) 
+        end)
     end
-end)
-table.insert(Hub.Connections, quickKeyConn)
+
+    local quickKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.U then
+            QuickPanel.Visible = not QuickPanel.Visible
+        end
+    end)
+    table.insert(Hub.Connections, quickKeyConn)
+end
 
 -- =========================================================
 -- [9] PESTAÑA: CITY RAID (GRANJA Y HOPPING)
