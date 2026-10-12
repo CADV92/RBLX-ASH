@@ -110,34 +110,7 @@ function Utils.EstaMuerto(model) if not model or typeof(model) ~= "Instance" or 
 function Utils.EsMobValido(enemy, myRoot, limites) if Utils.EstaMuerto(enemy) then return false end local root = enemy:FindFirstChild("HumanoidRootPart") if not root then return false end local yPos = root.Position.Y if yPos < limites.MinHeight then return false end if math.abs(yPos - limites.BuggedHeight) < limites.BugTolerance then return false end return true end
 function Utils.ParseValue(str) if not str or str == "" then return 0 end if str:find("/") then str = str:split("/")[1] end local cleanStr = str:gsub("HP:", ""):gsub("Health:", ""):gsub("hp:", ""):gsub("%s+", ""):gsub(",", "") local valStr, sufStr = cleanStr:match("^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]; if mult then return num * mult end end return num end return 0 end
 function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then return 0 end local cleanStr = string.gsub(str, "<[^>]+>", "") cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "") local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)] if mult then return num * mult end end return num end return 0 end
-
-function Utils.GetCurrentRealHealth(model) 
-    if not model then return 0 end 
-    local maxVal = 0 
-    for _, lbl in pairs(model:GetDescendants()) do 
-        if lbl:IsA("TextLabel") and lbl.Visible then 
-            local txt = lbl.Text 
-            if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then 
-                local current = Utils.ParseValue(txt) 
-                if current > maxVal then maxVal = current end 
-            end 
-        end 
-    end 
-    
-    -- FALLBACK: Si el TextLabel no se renderizó, lee los atributos o el Humanoid
-    if maxVal == 0 then
-        local attr = model:GetAttribute("Health") or model:GetAttribute("HP")
-        if attr and type(attr) == "number" then
-            maxVal = attr
-        else
-            local hum = model:FindFirstChild("Humanoid")
-            if hum then maxVal = hum.Health end
-        end
-    end
-    
-    return maxVal 
-end
-
+function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
 function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
 function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
@@ -239,7 +212,7 @@ local function ToggleBuffGroup(buffGroup, isPaused)
 end
 
 -- =========================================================
--- VARIABLES EXPUESTAS PARA LA LÓGICA DE MONITOREO Y POCIONES
+-- VARIABLES EXPUESTAS PARA TU LÓGICA ORIGINAL
 -- =========================================================
 local MonitorFrame, TargetLabel, HpLabel, DamageLabel
 local TotalDamageDealt = 0
@@ -252,28 +225,6 @@ local enemyHPTracker = setmetatable({}, {__mode = "k"})
 local TiempoInicioEspecial = 0 
 local TiempoRegresoAtaque = 40
 local AutoDropThreshold = 2.5e72
-
-local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
-local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
-local COOLDOWN_S, COOLDOWN_M, COOLDOWN_L = 600, 1800, 2400
-
-local function AutoUseGoldPotions()
-    if not Config.AutoGoldPotions or not UseItemRemote then return end
-    local now = os.time()
-
-    if now - LastGoldPotionS >= COOLDOWN_S then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
-        LastGoldPotionS = now
-    end
-    if now - LastGoldPotionM >= COOLDOWN_M then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
-        LastGoldPotionM = now
-    end
-    if now - LastGoldPotionL >= COOLDOWN_L then
-        task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
-        LastGoldPotionL = now
-    end
-end
 
 -- ==========================================
 -- INTEGRACIÓN: MONITOR DE COMBATE (ESCALA x1.25)
@@ -435,6 +386,68 @@ do
         table.insert(Hub.Connections, damageConn)
     end
 
+    local UseItemRemote = ReplicatedStorage:WaitForChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("UseItem")
+    local LastGoldPotionS, LastGoldPotionM, LastGoldPotionL = 0, 0, 0
+    local COOLDOWN_S, COOLDOWN_M, COOLDOWN_L = 600, 1800, 2400
+
+    local function AutoUseGoldPotions()
+        if not Config.AutoGoldPotions or not UseItemRemote then return end
+        local now = os.time()
+
+        if now - LastGoldPotionS >= COOLDOWN_S then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10049, useCount = 1 }) end) end)
+            LastGoldPotionS = now
+        end
+        if now - LastGoldPotionM >= COOLDOWN_M then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10052, useCount = 1 }) end) end)
+            LastGoldPotionM = now
+        end
+        if now - LastGoldPotionL >= COOLDOWN_L then
+            task.spawn(function() pcall(function() UseItemRemote:InvokeServer({ itemId = 10061, useCount = 1 }) end) end)
+            LastGoldPotionL = now
+        end
+    end
+
+    -- =========================================================
+    -- OBSERVADOR DE AUTO-ORO INDEPENDIENTE
+    -- =========================================================
+    local RunService = game:GetService("RunService")
+    local enModoOro = false
+
+    local autoOroObserver = RunService.Heartbeat:Connect(function()
+        if not Config.AutoOroEnabled then return end
+        
+        if not CurrentTarget or not CurrentTarget.Parent then
+            if enModoOro then
+                enModoOro = false
+                pcall(function() CambiarModoAutoEquip("ATAQUE") end)
+                if Config.AutoGoldPotions then
+                    ToggleBuffGroup(BuffIDs["ORO"], true)
+                    ToggleBuffGroup(BuffIDs["ATAQUE"], false)
+                end
+            end
+            return
+        end
+
+        local hp = 0
+        local humanoid = CurrentTarget:FindFirstChild("Humanoid")
+        if humanoid then
+            hp = humanoid.Health
+        else
+            hp = CurrentTarget:GetAttribute("Health") or 0
+        end
+
+        if hp > 0 and hp <= DeadHpThreshold and not enModoOro then
+            enModoOro = true
+            pcall(function() CambiarModoAutoEquip("ORO") end)
+            if Config.AutoGoldPotions then
+                ToggleBuffGroup(BuffIDs["ATAQUE"], true)
+                ToggleBuffGroup(BuffIDs["ORO"], false)
+            end
+        end
+    end)
+    table.insert(Hub.Connections, autoOroObserver)
+
     TabPlayer:CreateButton("ABRIR MONITOR DE COMBATE (L)", Theme.Primary, function() MonitorFrame.Visible = not MonitorFrame.Visible end)
 
     local monitorKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
@@ -468,6 +481,7 @@ TabPlayer:CreateButton("RECLAMAR CANDIES", Theme.Primary, function()
         end)
     end)
 end)
+
 -- ==========================================
 -- INTEGRACIÓN: AUTOEQUIP 
 -- ==========================================
@@ -488,15 +502,6 @@ local function CambiarModoAutoEquip(nombre)
     local tSet = Config.TreeSettings[nombre]
     if not gear or not tSet then return end
     EquipModeSelected = nombre
-
-    -- LÓGICA MAESTRA DE PAUSADO: Centralizada para evitar bugs
-    if nombre == "ORO" then
-        ToggleBuffGroup(BuffIDs["ATAQUE"], true)  -- Pausar Ataque
-        ToggleBuffGroup(BuffIDs["ORO"], false)    -- Despausar Oro
-    elseif nombre == "ATAQUE" or nombre == "PODER" then
-        ToggleBuffGroup(BuffIDs["ORO"], true)     -- Pausar Oro
-        ToggleBuffGroup(BuffIDs["ATAQUE"], false) -- Despausar Ataque
-    end
 
     local EquipTreeID = TreeIDs[tSet.Equip]
     local BuffTreeID = TreeIDs[tSet.Buff]
@@ -560,9 +565,6 @@ local function CambiarModoAutoEquip(nombre)
     pcall(function() StarterGui:SetCore("SendNotification", { Title = "AutoEquip", Text = "¡" .. nombre .. " equipado!", Duration = 3 }) end)
 end
 
--- ==========================================
--- BUCLE MAESTRO: MONITOR Y CEREBRO DE AUTO-ORO
--- ==========================================
 local monitorConn = RunService.Heartbeat:Connect(function()
     local now = tick()
     if now - lastTick < 0.1 then return end 
@@ -586,7 +588,7 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         local isDestroyed = not CurrentTarget.Parent
         local currentHP = isDestroyed and 0 or Utils.GetCurrentRealHealth(CurrentTarget)
         
-        -- Si el jefe muere o baja de vida, nos equipamos las cosas de Oro y llamamos a AutoUseGoldPotions (que ya no falla)
+        -- Si el jefe muere, nos equipamos las cosas de Drop/Oro
         if isDestroyed or currentHP <= DeadHpThreshold then
             if Config.AutoOroEnabled then
                 if EquipModeSelected ~= "ORO" then
@@ -635,15 +637,14 @@ local monitorConn = RunService.Heartbeat:Connect(function()
 
     if CurrentTarget then
         local hp = Utils.GetCurrentRealHealth(CurrentTarget)
-        TargetLabel.Text = "OBJETIVO: " .. string.upper(CurrentTarget.Name)
-        HpLabel.Text = "HP: " .. Utils.FormatHealth(hp)
+        TargetLabel.Text = "🎯 " .. CurrentTarget.Name
+        HpLabel.Text = "❤️ " .. Utils.FormatHealth(hp)
         
         if Config.AutoDropEnabled and hp <= AutoDropThreshold and hp > DeadHpThreshold then
             if EquipModeSelected ~= "DROP" then CambiarModoAutoEquip("DROP") end
         end
     else
-        TargetLabel.Text = "OBJETIVO: NINGUNO"
-        HpLabel.Text = "HP: 0"
+        TargetLabel.Text = "🎯 NINGUNO"; HpLabel.Text = "❤️ 0"
     end
 end)
 table.insert(Hub.Connections, monitorConn)
@@ -1153,6 +1154,9 @@ local mapKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 table.insert(Hub.Connections, mapKeyConn)
 
+-- =========================================================
+-- BOTÓN EN PESTAÑA AUTO (Monitor de Raids)
+-- =========================================================
 TabAuto:CreateButton("ABRIR MONITOR DE RAIDS (Tecla: P)", Theme.PrimaryDark, function()
     local panel = TargetGui:FindFirstChild("NanoHub_UI") and TargetGui.NanoHub_UI:FindFirstChild("RaidMonitorPanel")
     if panel then panel.Visible = not panel.Visible end
@@ -1391,7 +1395,7 @@ local MetState = {
     InternalAttackActive = false,
     LastClickedGUID = nil,
     TIEMPO_ENCENDIDO = 0.30, 
-    TIEMPO_APAGADO = 0.30    
+    TIEMPO_APAGADO = 0.30  
 }
 local MetCaza = {
     SoloName = "", SecName = "", BossEspera = false, WasBossAlive = false,
@@ -1531,7 +1535,7 @@ TabMetralleta:CreateSlider("Tiempo Ataque (ON) (30 = 0.3s)", 10, 100, 30, functi
 TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
 
 -- ==========================================
--- LÓGICA DE ASIGNACIÓN PRINCIPAL (TargetKILL)
+-- LÓGICA DE ASIGNACIÓN PRINCIPAL
 -- ==========================================
 task.spawn(function()
     while task.wait(0.5) do
@@ -1715,6 +1719,9 @@ local function FireAttack(enemyInst, isTargetKill)
     end)
 end
 
+-- ==========================================
+-- CEREBRO INTERMITENTE
+-- ==========================================
 task.spawn(function()
     while HubRunning do
         if MetState.Activo then
@@ -1732,6 +1739,9 @@ task.spawn(function()
     end
 end)
 
+-- ==========================================
+-- DISPARADOR DE ATAQUES ASÍNCRONOS
+-- ==========================================
 task.spawn(function()
     while HubRunning do
         task.wait(MetState.Vel)
@@ -2320,12 +2330,11 @@ local RaidState = {
     ExitTime = 0,
     ClaimPosition = nil,
     CurrentBossMap = nil,
-    BossInst = nil -- Instancia del Boss actual
+    BossInst = nil 
 }
 
 local LblRaidStatus = TabAutoRaid:CreateLabel("Estado: Esperando órdenes...")
 
--- Botones Grandes (Sin SaveConfig)
 local BtnAutoRaid = TabAutoRaid:CreateLargeToggle(
     "▶ INICIAR AUTO RAID", "🛑 DETENER AUTO RAID", 
     Theme.Secondary, Theme.Danger, 
@@ -2340,7 +2349,6 @@ local BtnAutoTP = TabAutoRaid:CreateLargeToggle(
     function(state) Config.RaidSettings.AutoTP = state end
 )
 
--- Integración Toggle Reequipado de Héroes
 TabAutoRaid:CreateSideToggle("REEQUIPAR HÉROES EN RAID", Config.RaidSettings.AutoReequip, function(state) Config.RaidSettings.AutoReequip = state; SaveConfig() end)
 
 TabAutoRaid:CreateLabel("Lógica de Búsqueda")
@@ -2360,7 +2368,6 @@ TabAutoRaid:CreateRadioButtons("Modos permitidos:", {"AMBOS", "SOLO NORM", "SOLO
     end
 )
 
--- VIP List
 local vipTextStr = type(Config.RaidSettings.VipList) == "table" and table.concat(Config.RaidSettings.VipList, " ") or ""
 TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", vipTextStr, function(txt)
     local newList = {}
@@ -2368,7 +2375,6 @@ TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", v
     Config.RaidSettings.VipList = newList; SaveConfig()
 end)
 
--- Generador de Tablas para Grid
 local mapOpts = {} for i=1, 21 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
 local normOpts = {} for _, v in ipairs({"D", "B", "S", "SS", "G", "N", "M+", "M++", "XM", "ULT"}) do table.insert(normOpts, {Label = v}) end
 local ascOpts = {} for _, v in ipairs({"E", "D", "C", "B", "A", "S", "SS", "G", "N", "M"}) do table.insert(ascOpts, {Label = v}) end
@@ -2377,7 +2383,6 @@ TabAutoRaid:CreateGridToggles("Filtro de Mapas Permitidos:", mapOpts, Config.Rai
 TabAutoRaid:CreateGridToggles("Grados Normales Permitidos:", normOpts, Config.RaidSettings.AllowedGradesNormal)
 TabAutoRaid:CreateGridToggles("Grados Ascensión Permitidos:", ascOpts, Config.RaidSettings.AllowedGradesASC)
 
--- Blacklist Generador
 local HardRaidsList = { 
     "N-14-M+", "N-14-M++", "N-15-M+", "N-15-M++", "N-16-M+", "N-16-M++", "N-17-M+", "N-17-M++", 
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
@@ -2395,7 +2400,6 @@ local HardRaidsList = {
 local blackOpts = {} for _, v in ipairs(HardRaidsList) do table.insert(blackOpts, {Label = v, Key = v}) end
 TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSettings.Blacklist)
 
--- Runas UI
 TabAutoRaid:CreateLabel("Uso de Runas")
 local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 
@@ -2475,11 +2479,9 @@ task.spawn(function()
             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             
             if eGuid and bossRoot and myRoot then
-                -- Teleport continuo a la espalda del boss
                 myRoot.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 5)
                 myRoot.AssemblyLinearVelocity = Vector3.zero
 
-                -- Spam de ataques al boss
                 pcall(function()
                     if CEnemyRem then CEnemyRem:InvokeServer({ ["enemyGuid"] = eGuid, ["enemyCharacter"] = RaidState.BossInst }) end
                     if PAttackRem then PAttackRem:FireServer({ ["attackEnemyGUID"] = eGuid }) end
@@ -2650,14 +2652,13 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
     if root then enLobby = Utils.EstaEnLobby(root) end
 
     -- ==========================================
-    -- [CORRECCIÓN COOLDOWN] Detección de Lobby y Reset Seguro
+    -- Detección de Lobby y Reset Seguro
     -- ==========================================
     if enLobby then
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
 
-            -- Reset All State
             RaidState.IsInInstance = false
             RaidState.NoBossTimer = nil
             RaidState.ForceExit = false
@@ -2672,7 +2673,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             RaidState.CurrentBossMap = nil 
             _G.MapaOrigenAntesRuna = nil 
             
-            -- [NUEVO] Cambiamos radicalmente el EntryTime para que cualquier task.spawn viejo se cancele.
             RaidState.EntryTime = now + 99999 
             
             if cdRestante > 0 then
@@ -2684,7 +2684,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-    -- 1. MOTOR DE TELEPORT (Sniper de Mapas)
     if Config.RaidSettings.AutoTP and not RaidState.IsInInstance and not RaidState.IsProcessing and not RaidState.CooldownActive then
         local bestRaid, totalActive = GetBestGlobalRaid()
         if bestRaid then
@@ -2707,7 +2706,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-    -- 2. MOTOR DE ENTRADA (Lobby a Instancia)
     if Config.RaidSettings.AutoRaid and not RaidState.IsInInstance and not RaidState.CooldownActive and not RaidState.IsProcessing then
         if (now - LastEnterAttempt) < 3 then return end
         
@@ -2793,7 +2791,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 if tpSuccess then
                     LblRaidStatus.Text = "✅ ¡En Instancia! Esperando Jefe..."
                     RaidState.IsInInstance = true
-                    RaidState.EntryTime = tick() -- ESTABLECEMOS LA NUEVA SESIÓN
+                    RaidState.EntryTime = tick() 
                     RaidState.BossDeathTime = nil
                     RaidState.ForceExit = false
                     RaidState.ExitTriggered = false
@@ -2834,12 +2832,11 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
         end
     end
 
-    -- 3. GESTIÓN DE JEFE Y COFRE (Dentro de la Instancia)
     if RaidState.IsInInstance and not RaidState.IsProcessing then
         
         HandleRaidRewardUI()
         
-        local currentSession = RaidState.EntryTime -- Asegurar que trabajamos sobre esta sesión
+        local currentSession = RaidState.EntryTime 
         
         if tick() - RaidState.LastScan >= 0.5 then
             RaidState.LastScan = tick()
@@ -2894,7 +2891,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 end
             end
 
-            -- Lógica de validación de Estados a prueba de fallos
             if bossAlive then
                 RaidState.SawBossAlive = true 
                 RaidState.NoBossTimer = nil 
@@ -2909,7 +2905,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                         
                         task.spawn(function()
                             task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            if RaidState.EntryTime ~= currentSession then return end 
                             
                             local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                             if myRoot and LastBossPos then
@@ -2921,7 +2917,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                             pcall(function() ReplicatedStorage.Remotes.GainRaidsRewards:InvokeServer({1}) end)
                             
                             task.wait(1.5)
-                            if RaidState.EntryTime ~= currentSession then return end -- CANCELAR SI ES OTRA RAID
+                            if RaidState.EntryTime ~= currentSession then return end 
                             
                             if RaidState.IsInInstance and not RaidState.ExitTriggered then
                                 LblRaidStatus.Text = "Recompensa cobrada. Forzando salida..."
@@ -2954,7 +2950,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             end
         end 
 
-        -- 4. GESTIÓN DE SALIDA REFINADA Y PROTEGIDA
         if RaidState.ForceExit and not RaidState.ExitTriggered then
             RaidState.ExitTriggered = true
             RaidState.ExitTime = tick()
@@ -2969,7 +2964,7 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             task.spawn(function()
                 local intentos = 0
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
-                    if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                    if RaidState.EntryTime ~= currentSession then return end 
                     
                     intentos = intentos + 1
                     local success = pcall(function() 
@@ -2979,11 +2974,9 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     task.wait(1.5)
                 end
                 
-                -- Permitimos que el juego nos haga TP al Lobby
                 task.wait(4.0)
-                if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                if RaidState.EntryTime ~= currentSession then return end 
                 
-                -- Limpieza física antibug
                 local char = LocalPlayer.Character
                 if char then
                     local root = char:FindFirstChild("HumanoidRootPart")
@@ -2995,7 +2988,6 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if hum then hum.PlatformStand = false end
                 end
                 
-                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
                 if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
                     RaidState.IsInInstance = false
                     RaidState.BossDeathTime = nil
@@ -3162,16 +3154,16 @@ do
     end
 
     local btnS = Instance.new("TextButton", QuickPanel)
-    QuickBtnPosHelper(btnS, 0.35, "S")
-    btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
+        QuickBtnPosHelper(btnS, 0.35, "S")
+        btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
 
-    local btnM = Instance.new("TextButton", QuickPanel)
-    QuickBtnPosHelper(btnM, 0.56, "M")
-    btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
+        local btnM = Instance.new("TextButton", QuickPanel)
+        QuickBtnPosHelper(btnM, 0.56, "M")
+        btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
 
-    local btnL = Instance.new("TextButton", QuickPanel)
-    QuickBtnPosHelper(btnL, 0.77, "L")
-    btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
+        local btnL = Instance.new("TextButton", QuickPanel)
+        QuickBtnPosHelper(btnL, 0.77, "L")
+        btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
 
     local PauseCurrentBtn = Instance.new("TextButton", QuickPanel)
     PauseCurrentBtn.Size = UDim2.new(0.9, 0, 0, 20)
@@ -3267,9 +3259,6 @@ local StarterGui = game:GetService("StarterGui")
 
 local TabCity = Hub:CreateTab("City Raid")
 
--- ==========================================
--- 1. Viajes Rápidos a Mapas Clave
--- ==========================================
 TabCity:CreateLabel("1. Viajes Rápidos a Mapas Clave")
 
 local function TPCityMap(mapIdx)
@@ -3290,9 +3279,6 @@ TabCity:CreateDualButtons(
     "MAPA 18", Theme.Secondary, function() TPCityMap(18) end
 )
 
--- ==========================================
--- 2. Ingreso y Limpieza (Fila Doble Personalizada)
--- ==========================================
 TabCity:CreateLabel("2. Ingreso y Limpieza")
 
 local FrameSec2 = Instance.new("Frame", TabCity.Page)
@@ -3335,7 +3321,6 @@ BtnAura.MouseButton1Click:Connect(function()
     BtnAura.BackgroundColor3 = CityAuraActiva and Theme.Danger or Theme.Secondary
 end)
 
--- Motor de ataque masivo para City Raid
 task.spawn(function()
     local Remotes = ReplicatedStorage:WaitForChild("Remotes")
     local CEnemyRem = Remotes:FindFirstChild("ClickEnemy")
@@ -3367,9 +3352,6 @@ task.spawn(function()
     end
 end)
 
--- ==========================================
--- 3. Escaneo, Tiempo y Salto de Servidor
--- ==========================================
 TabCity:CreateLabel("3. Escaneo y Salto de Servidor")
 
 local MinutosIngresados = 0
@@ -3394,7 +3376,6 @@ local function SoloRegistrar()
         local servidoresActivos = {}
         
         for _, srv in ipairs(servidores) do
-            -- Damos un margen de 10 minutos (-600 segundos) antes de borrarlos al guardar uno nuevo
             if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
                 table.insert(servidoresActivos, srv)
             end
@@ -3452,9 +3433,6 @@ end
 
 TabCity:CreateDualButtons("📝 REGISTRAR", Theme.PrimaryDark, SoloRegistrar, "🚀 HOP SERVER", Theme.Secondary, SoloHopServer)
 
--- ==========================================
--- 4. Volver a Servidores Guardados
--- ==========================================
 TabCity:CreateLabel("4. Regresar a Servidores Activos")
 
 local ServidorSeleccionadoId = nil
@@ -3470,7 +3448,6 @@ TabCity:CreateDropdown("Servidores Disponibles",
             local tiempoExpiracion = srv.SavedAt + (srv.Minutes * 60)
             local segundosRestantes = tiempoExpiracion - tiempoActual
             
-            -- Margen de -10 minutos (-600 segundos) para mostrar en la lista
             if segundosRestantes >= -600 then
                 table.insert(servidoresConTiempo, {
                     DataOriginal = srv,
@@ -3479,7 +3456,6 @@ TabCity:CreateDropdown("Servidores Disponibles",
             end
         end
 
-        -- Ordenar de menor a mayor (los negativos saldrán primero)
         table.sort(servidoresConTiempo, function(a, b)
             return a.Segundos < b.Segundos
         end)
@@ -3518,7 +3494,6 @@ TabCity:CreateDualButtons("🔄 FORZAR LIMPIEZA JSON", Theme.Secondary, function
     local servidoresActivos = {}
     
     for _, srv in ipairs(servidores) do
-        -- Respeta el margen de -10 minutos también al limpiar
         if (srv.SavedAt + (srv.Minutes * 60)) - tiempoActual >= -600 then
             table.insert(servidoresActivos, srv)
             opciones = opciones + 1
@@ -3546,21 +3521,17 @@ end)
 -- [NUEVO] ATAJOS DE TECLADO PERSONALIZADOS (ACTUALIZADO)
 -- =========================================================
 local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gpe)
-    -- Ignorar si el jugador está escribiendo en el chat o en un TextBox
     if gpe then return end
 
-    -- [ T ] Abrir Hub y forzar pestaña "Torre"
     if input.KeyCode == Enum.KeyCode.T then
         Hub.MainFrame.Visible = true
         for i, tabBtn in ipairs(Hub.Tabs) do
             if tabBtn.Text:find("Torre") then
-                -- Ocultar todas las páginas y resetear botones
                 for _, page in pairs(Hub.Pages) do page.Visible = false end
                 for _, btn in pairs(Hub.Tabs) do 
                     btn.BackgroundColor3 = Theme.Panel
                     btn.TextColor3 = Theme.Text
                 end
-                -- Mostrar la página de la Torre y resaltar botón
                 Hub.Pages[i].Visible = true
                 tabBtn.BackgroundColor3 = Theme.Primary
                 tabBtn.TextColor3 = Theme.TextHighlight
@@ -3569,7 +3540,6 @@ local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gp
         end
     end
 
-    -- [ 7, 8, 9 ] Cambio rápido de Modos de Metralleta
     if input.KeyCode == Enum.KeyCode.Seven then
         Config.MetralletaModo = "SOLO"
         MetCaza.SoloName = ""
@@ -3587,7 +3557,6 @@ local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gp
         pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo cambiado a: BOSS", Duration = 2 }) end)
     end
 
-    -- [ 1 ] Teleport Rápido al Portal RAID (Pestaña Auto)
     if input.KeyCode == Enum.KeyCode.One then
         local found = Utils.ManualTeleportAndEnter(false)
         if not found then
@@ -3595,17 +3564,11 @@ local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gp
         end
     end
 
-    -- [ J ] Activar/Desactivar Kill Aura (Pestaña Auto)
     if input.KeyCode == Enum.KeyCode.J then
-        Config.KillAura = not Config.KillAura -- Cambia 'Config.KillAura' si tu variable tiene otro nombre
-        
-        -- Si tienes un botón visual para esto, puedes actualizar su estado aquí. Ejemplo:
-        -- BtnKillAura.SetState(Config.KillAura, Config.KillAura and "Kill Aura [ON]" or "Kill Aura [OFF]")
-        
+        Config.KillAura = not Config.KillAura 
         pcall(function() StarterGui:SetCore("SendNotification", { Title = "Kill Aura", Text = Config.KillAura and "Activado" or "Desactivado", Duration = 2 }) end)
     end
 
-    -- [ 2, 3, 4 ] Modos de Equipo
     if input.KeyCode == Enum.KeyCode.Two then
         CambiarModoAutoEquip("ATAQUE")
     elseif input.KeyCode == Enum.KeyCode.Three then
