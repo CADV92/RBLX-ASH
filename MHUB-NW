@@ -246,7 +246,7 @@ DamageLabel.Position = UDim2.new(0.05, 0, 0, 65)
 DamageLabel.Text = "DMG: 0"
 DamageLabel.Font = Enum.Font.GothamBlack
 DamageLabel.TextSize = 16
-DamageLabel.TextColor3 = Theme.Primary
+DamageLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
 DamageLabel.TextXAlignment = Enum.TextXAlignment.Left
 DamageLabel.BackgroundTransparency = 1
 
