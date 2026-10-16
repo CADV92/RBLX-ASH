@@ -3633,7 +3633,7 @@ end, "🚀 VIAJAR AL SELECCIONADO", Theme.Primary, function()
 end)
 
 -- ==============================================================================
--- [10] PESTAÑA: AUTO EVENT BOSS (STANDALONE SEGURO)
+-- [10] PESTAÑA: AUTO EVENT BOSS (STANDALONE SEGURO Y COMPATIBLE)
 -- ==============================================================================
 local TabEventBoss = Hub:CreateTab("Event Boss")
 
@@ -3642,7 +3642,7 @@ local EventBossState = {
     IsEventLive = false,
     CurrentMap = 1,
     MaxMap = 20,
-    IsProcessing = false,
+    IsProcessing = false
 }
 
 local LblEventStatus = TabEventBoss:CreateLabel("Estado: Esperando evento...")
@@ -3657,21 +3657,6 @@ TabEventBoss:CreateLargeToggle(
 TabEventBoss:CreateSlider("Mapa Tope (Max)", 1, 21, EventBossState.MaxMap, function(v) EventBossState.MaxMap = v end, true)
 
 -- ==========================================
--- FUNCIONES SEGURAS DE UI
--- ==========================================
-local function SafeUpdateLabel(text)
-    pcall(function() if LblEventStatus then LblEventStatus.Text = text end end)
-end
-
-local function SafeNotify(title, text)
-    task.spawn(function()
-        pcall(function() 
-            StarterGui:SetCore("SendNotification", { Title = title, Text = text, Duration = 3 }) 
-        end)
-    end)
-end
-
--- ==========================================
 -- MOTOR DE FARMEO EVENT BOSS
 -- ==========================================
 local function IniciarRutaEventBoss()
@@ -3684,23 +3669,23 @@ local function IniciarRutaEventBoss()
             if not HubRunning then break end
 
             local mapId = EventBossState.CurrentMap
-            SafeUpdateLabel("🌎 Viajando a Mapa " .. mapId .. "...")
+            pcall(function() LblEventStatus.Text = "🌎 Viajando a Mapa " .. mapId .. "..." end)
             
             pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + mapId}) end)
             _G.LastSelectedMap = mapId
             
-            task.wait(2.5) -- Tiempo de espera seguro para carga de mapa
+            task.wait(2.5)
             
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
                 char.HumanoidRootPart.Anchored = false
             end
 
-            SafeUpdateLabel("🔎 Buscando Event Bosses en M" .. mapId)
+            pcall(function() LblEventStatus.Text = "🔎 Buscando Event Bosses en M" .. mapId end)
             
             local mapaLimpio = false
             while not mapaLimpio and EventBossState.IsEventLive and EventBossState.Enabled do
-                task.wait(0.5) -- Evita saturar el reconciliador de Roblox
+                task.wait(0.5)
                 
                 local fld = Utils.GetEnemyFolder()
                 local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -3729,13 +3714,13 @@ local function IniciarRutaEventBoss()
 
                 if #eventBosses == 0 then
                     mapaLimpio = true
-                    SafeUpdateLabel("✅ Mapa " .. mapId .. " limpio.")
+                    pcall(function() LblEventStatus.Text = "✅ Mapa " .. mapId .. " limpio." end)
                 else
                     table.sort(eventBosses, function(a, b) return a.hp < b.hp end)
                     local targetBoss = eventBosses[1].inst
                     local refMob = #normalMobs > 0 and normalMobs[1] or targetBoss 
 
-                    SafeUpdateLabel("⚔️ Atacando Event Boss (" .. #eventBosses .. " restantes)...")
+                    pcall(function() LblEventStatus.Text = "⚔️ Atacando Event Boss (" .. #eventBosses .. " restantes)..." end)
 
                     local bossRoot = targetBoss.HumanoidRootPart
                     myRoot.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 5)
@@ -3769,56 +3754,54 @@ local function IniciarRutaEventBoss()
 
         EventBossState.IsProcessing = false
         if EventBossState.CurrentMap > EventBossState.MaxMap then
-            SafeUpdateLabel("🏁 Ruta completada (M1 a M" .. EventBossState.MaxMap .. ")")
+            pcall(function() LblEventStatus.Text = "🏁 Ruta completada (M1 a M" .. EventBossState.MaxMap .. ")" end)
         end
     end)
 end
 
 -- ==========================================
--- INTERCEPTOR DEL EVENTO
+-- INTERCEPTOR CON TIMEOUT PARA XENO
 -- ==========================================
-local EventRemotes = ReplicatedStorage:FindFirstChild("EventBossRemotes")
+task.spawn(function()
+    local EventRemotes = ReplicatedStorage:WaitForChild("EventBossRemotes", 5)
 
-if EventRemotes then
-    local stateEvent = EventRemotes:FindFirstChild("State")
-    local getStateFunc = EventRemotes:FindFirstChild("GetState")
+    if EventRemotes then
+        local stateEvent = EventRemotes:WaitForChild("State", 5)
+        local getStateFunc = EventRemotes:WaitForChild("GetState", 5)
 
-    local function HandleEventState(data)
-        if type(data) == "table" then
-            if data.Active and data.Phase == "Live" then
-                if not EventBossState.IsEventLive then
-                    EventBossState.IsEventLive = true
-                    SafeNotify("EVENT BOSS", "¡El evento ha comenzado!")
-                    if EventBossState.Enabled then
-                        IniciarRutaEventBoss()
+        local function HandleEventState(data)
+            if type(data) == "table" then
+                if data.Active and data.Phase == "Live" then
+                    if not EventBossState.IsEventLive then
+                        EventBossState.IsEventLive = true
+                        if EventBossState.Enabled then
+                            IniciarRutaEventBoss()
+                        end
                     end
-                end
-            else
-                if EventBossState.IsEventLive then
-                    EventBossState.IsEventLive = false
-                    EventBossState.IsProcessing = false
-                    SafeUpdateLabel("Estado: Evento terminado o en espera.")
+                else
+                    if EventBossState.IsEventLive then
+                        EventBossState.IsEventLive = false
+                        EventBossState.IsProcessing = false
+                        pcall(function() LblEventStatus.Text = "Estado: Evento terminado o en espera." end)
+                    end
                 end
             end
         end
-    end
 
-    if stateEvent then 
-        stateEvent.OnClientEvent:Connect(function(data)
-            pcall(function() HandleEventState(data) end)
-        end) 
-    end
+        if stateEvent then 
+            stateEvent.OnClientEvent:Connect(function(data)
+                pcall(function() HandleEventState(data) end)
+            end) 
+        end
 
-    task.spawn(function()
         if getStateFunc then
             local success, currentState = pcall(function() return getStateFunc:InvokeServer() end)
             if success and currentState then 
                 HandleEventState(currentState) 
             end
         end
-    end)
-end
-
+    end
+end)  
 -- =========================================================
 -- [NUEVO] ATAJOS DE TECLADO PERSONALIZADOS (ACTUALIZADO)
 -- =========================================================
