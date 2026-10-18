@@ -197,7 +197,7 @@ task.spawn(function()
         local method = getnamecallmethod() 
         local args = {...}
         if method == "FireServer" or method == "InvokeServer" then
-            -- PARCHE: Validamos que 'self' sea un objeto real de Roblox antes de pedir su .Name
+            -- PARCHE: Validamos que 'self' sea un Instance real antes de pedir el .Name
             if typeof(self) == "Instance" and (self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap") then
                 if args[1] and type(args[1]) == "table" then
                     local targetID = args[1].mapId or args[1].toMapId
