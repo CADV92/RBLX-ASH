@@ -1,3 +1,4 @@
+
 -- ==============================================================================
 -- MIRROR HUB - MODULAR, CONCURRENTE Y ROBUSTO (ACTUALIZADO - VERSIÓN MODULAR)
 -- ==============================================================================
@@ -896,6 +897,7 @@ table.insert(Hub.Connections, auraVisConn)
 task.spawn(function()
     local overlapParams = OverlapParams.new(); overlapParams.FilterType = Enum.RaycastFilterType.Include
     while HubRunning do
+        if _G.EventBoss_PausaHub then task.wait(1) continue end
         if Config.KillAura then
             local char = LocalPlayer.Character 
             local fld = Utils.GetEnemyFolder()
@@ -2670,6 +2672,7 @@ end
 
 local raidEngineConn = RunService.Heartbeat:Connect(function()
     if not HubRunning then return end
+    if _G.EventBoss_PausaHub then return end
     
     local now = tick()
     if now - LastRaidTick < 0.5 then return end
