@@ -166,13 +166,13 @@ end
 local Utils = {}
 function Utils.GetEnemyFolder() return Workspace:FindFirstChild("Enemys") or Workspace:FindFirstChild("Enemies") or Workspace:FindFirstChild("Mobs") end
 function Utils.GetGUID(model) if not model or typeof(model) ~= "Instance" then return nil end local attr = model:GetAttribute("GUID") or model:GetAttribute("guid") or model:GetAttribute("EnemyGuid") if attr then return attr end local valObj = model:FindFirstChild("GUID") or model:FindFirstChild("EnemyId") if valObj then return valObj.Value end return model.Name end
-function Utils.EstaMuerto(model) if not model or typeof(model) ~= "Instance" or not model.Parent or not model:FindFirstChild("HumanoidRootPart") then return true end local root = model.HumanoidRootPart if root:FindFirstChild("EnemyNameGui") and root.EnemyNameGui:FindFirstChild("Progress") and root.EnemyNameGui.Progress:FindFirstChild("HealthNum") then local txt = root.EnemyNameGui.Progress.HealthNum.Text if txt ~= "" and txt ~= "0" then return false end return true end local hum = model:FindFirstChild("Humanoid") if hum then return hum.Health <= 0 end return true end
+function Utils.EstaMuerto(model) if not model or typeof(model) ~= "Instance" or not model.Parent or not model:FindFirstChild("HumanoidRootPart") then return true end local root = model.HumanoidRootPart if root:FindFirstChild("EnemyNameGui") and root.EnemyNameGui:FindFirstChild("Progress") and root.EnemyNameGui.Progress:FindFirstChild("HealthNum") then local txt = root.EnemyNameGui.Progress.HealthNum.Text if txt ~= "" and txt ~= "0" and not txt:match("^0%s*/") and not txt:match("^0%.00") then return false end return true end local hum = model:FindFirstChild("Humanoid") if hum then return hum.Health <= 0 end return true end
 function Utils.EsMobValido(enemy, myRoot, limites) if Utils.EstaMuerto(enemy) then return false end local root = enemy:FindFirstChild("HumanoidRootPart") if not root then return false end local yPos = root.Position.Y if yPos < limites.MinHeight then return false end if math.abs(yPos - limites.BuggedHeight) < limites.BugTolerance then return false end return true end
 function Utils.ParseValue(str) if not str or str == "" then return 0 end if str:find("/") then str = str:split("/")[1] end local cleanStr = str:gsub("HP:", ""):gsub("Health:", ""):gsub("hp:", ""):gsub("%s+", ""):gsub(",", "") local valStr, sufStr = cleanStr:match("^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)]; if mult then return num * mult end end return num end return 0 end
 function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then return 0 end local cleanStr = string.gsub(str, "<[^>]+>", "") cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "") local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)] if mult then return num * mult end end return num end return 0 end
 function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
 function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
-function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
+function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then if _G.PausarMetralleta then _G.PausarMetralleta() end root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
 local LobbyPortalCache = nil
 function Utils.EstaEnLobby(root)
@@ -197,7 +197,8 @@ task.spawn(function()
         local method = getnamecallmethod() 
         local args = {...}
         if method == "FireServer" or method == "InvokeServer" then
-            if self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap" then
+            if self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap" or self.Name == "StartLocalPlayerTeleport" or self.Name == "StartChallengeRaidMap" then
+                if _G.PausarMetralleta then task.spawn(_G.PausarMetralleta) end
                 if args[1] and type(args[1]) == "table" then
                     local targetID = args[1].mapId or args[1].toMapId
                     if targetID then 
@@ -211,7 +212,6 @@ task.spawn(function()
     end)
     if setreadonly then setreadonly(mt, true) end
 end)
-
 -- ==============================================================================
 -- CARGA DE LA LIBRERÍA MODULAR DE INTERFAZ 
 -- ==============================================================================
@@ -1461,6 +1461,14 @@ local function RestaurarMetralleta()
     MetCFrames = {}
 end
 
+_G.PausarMetralleta = function()
+    if MetState.Activo then
+        MetState.Activo = false
+        RestaurarMetralleta()
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Pausada automáticamente por TP/Raid.", Duration = 2 }) end)
+    end
+end
+
 local LblStatusMet = TabMetralleta:CreateLabel("Estado: En reposo")
 
 TabMetralleta:CreateButton("ESCANEAR ZONA (MANUAL)", Theme.Secondary, function()
@@ -1572,11 +1580,78 @@ TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, functio
 -- LÓGICA DE ASIGNACIÓN PRINCIPAL (TargetKILL)
 -- ==========================================
 task.spawn(function()
+    MetState.Blacklist = MetState.Blacklist or {}
+    MetState.LastHitByGuid = {}
+
+    -- Conexión dedicada para escuchar el daño real (Igual que el Monitor de Combate)
+    local RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
+    if RemoteDamage and not MetState.DmgConn then
+        MetState.DmgConn = RemoteDamage.OnClientEvent:Connect(function(data)
+            if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
+                local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
+                if dmg > 0 and data.enemyGuid then
+                    MetState.LastHitByGuid[data.enemyGuid] = tick()
+                end
+            end
+        end)
+    end
+
     while task.wait(0.5) do
-        if not HubRunning then break end 
+        if not HubRunning then 
+            if MetState.DmgConn then MetState.DmgConn:Disconnect() end
+            break 
+        end 
         if not MetState.Activo then continue end
 
-        if MetState.ModoManual and MetState.TargetKillInst and Utils.EstaMuerto(MetState.TargetKillInst) then 
+        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local currentMapID = GetCurrentMapID()
+
+        -- Función interna para validar si el objetivo actual sigue siendo válido en TODO momento
+        local function IsTargetValid(target)
+            if not target or Utils.EstaMuerto(target) then return false end
+            if MetState.Blacklist[target] then return false end -- Evita fantasmas
+            local tRoot = target:FindFirstChild("HumanoidRootPart")
+            if not tRoot then return false end
+            local pos = tRoot.Position
+            
+            if pos.Y < -50 or pos.Y > 5000 then return false end
+            
+            if currentMapID and MapData[currentMapID] then
+                local b = MapData[currentMapID].Bounds
+                if pos.X < b.MinX or pos.X > b.MaxX or pos.Y < b.MinY or pos.Y > b.MaxY or pos.Z < b.MinZ or pos.Z > b.MaxZ then
+                    return false
+                end
+            elseif myRoot then
+                if (pos - myRoot.Position).Magnitude > 2500 then return false end
+            end
+            
+            return true
+        end
+
+        -- [NUEVO] SISTEMA ANTI-FANTASMAS (Basado en Daño Cuantificado de Red)
+        if MetState.TargetKillInst and not MetCaza.BossEspera then
+            local eGuid = Utils.GetGUID(MetState.TargetKillInst)
+            
+            if MetState.TargetKillInst ~= MetState.LastTargetTracker then
+                MetState.LastTargetTracker = MetState.TargetKillInst
+                MetState.TimeStuckTracker = tick()
+            elseif eGuid then
+                local lastHit = MetState.LastHitByGuid[eGuid] or 0
+                local isTakingDamage = (tick() - lastHit) < 4
+                
+                if not isTakingDamage and (tick() - MetState.TimeStuckTracker) > 4 then
+                    MetState.Blacklist[MetState.TargetKillInst] = true
+                    MetState.TargetKillInst = nil
+                    MetState.ModoManual = false
+                    pcall(function() StarterGui:SetCore("SendNotification", { Title = "Anti-Fantasma", Text = "Mob sin recibir daño de red ignorado.", Duration = 2 }) end)
+                elseif isTakingDamage then
+                    -- Si el servidor confirma que le estamos haciendo daño, reseteamos el estancamiento
+                    MetState.TimeStuckTracker = tick()
+                end
+            end
+        end
+
+        if MetState.ModoManual and MetState.TargetKillInst and not IsTargetValid(MetState.TargetKillInst) then 
             MetState.ModoManual = false; MetState.TargetKillInst = nil 
         end
         
@@ -1584,15 +1659,16 @@ task.spawn(function()
             LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."; continue 
         end
 
-        if not MetState.ModoManual and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
-            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        -- Si no hay objetivo buscar uno nuevo
+        if not MetState.ModoManual and not IsTargetValid(MetState.TargetKillInst) then
+            MetState.TargetKillInst = nil
             if not myRoot then continue end
             
             local mobs = {}
             local fld = Utils.GetEnemyFolder()
             if fld then
                 for _, enemy in pairs(fld:GetChildren()) do
-                    if Utils.EsMobValido(enemy, myRoot, MetState.Limites) then
+                    if Utils.EsMobValido(enemy, myRoot, MetState.Limites) and not MetState.Blacklist[enemy] then
                         table.insert(mobs, { inst = enemy, dist = (enemy.HumanoidRootPart.Position - myRoot.Position).Magnitude, name = enemy.Name })
                     end
                 end
@@ -1616,33 +1692,29 @@ task.spawn(function()
                     if seqInst then MetState.TargetKillInst = seqInst
                     else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
 
-elseif Config.MetralletaModo == "BOSS" then
-                    if MetCaza.WasBossAlive and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
+                elseif Config.MetralletaModo == "BOSS" then
+                    if MetCaza.WasBossAlive then
                         MetCaza.BossEspera = true; MetCaza.WasBossAlive = false; MetState.TargetKillInst = nil
                         task.spawn(function() task.wait(1.2); MetCaza.BossEspera = false end)
                         continue
                     end
 
                     local bossInst = nil
-                    local currentMapID = GetCurrentMapID()
                     
                     for _, data in ipairs(mobs) do 
                         if table.find(MetCaza.BossList, data.name) then 
                             local pos = data.inst:GetPivot().Position
                             local isInsideBounds = false
                             
-                            -- Validación estricta por límites topográficos
                             if currentMapID and MapData[currentMapID] then
                                 local b = MapData[currentMapID].Bounds
                                 isInsideBounds = pos.X >= b.MinX and pos.X <= b.MaxX and
                                                  pos.Y >= b.MinY and pos.Y <= b.MaxY and
                                                  pos.Z >= b.MinZ and pos.Z <= b.MaxZ
                             else
-                                -- Fallback si el mapa es desconocido (Radio seguro)
                                 isInsideBounds = (pos - myRoot.Position).Magnitude <= 1500
                             end
                             
-                            -- Filtro final anti-fantasmas en altura
                             if isInsideBounds and pos.Y >= -50 and pos.Y <= 5000 then
                                 bossInst = data.inst
                                 break 
