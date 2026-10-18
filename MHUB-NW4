@@ -1163,66 +1163,66 @@ local ActiveRaids = {}
 local RanksMapNormal = { [1]="D", [2]="B", [3]="S", [4]="SS", [5]="G", [6]="N", [7]="M+", [8]="M++", [9]="XM", [10]="ULT" }
 local RanksMapASC = { [1]="E", [2]="D", [3]="C", [4]="B", [5]="A", [6]="S", [7]="SS", [8]="G", [9]="N", [10]="M" }
 
-local RaidPanel = Instance.new("Frame", Hub.ScreenGui)
-RaidPanel.Name = "RaidMonitorPanel"
-RaidPanel.Size = UDim2.new(0, 260, 0, 440)
-RaidPanel.Position = UDim2.new(0.5, 440, 0.5, -220)
-RaidPanel.BackgroundColor3 = Theme.Background
-RaidPanel.Active = true
-RaidPanel.Draggable = true
-RaidPanel.Visible = false
-Instance.new("UICorner", RaidPanel).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", RaidPanel).Color = Theme.Primary
+GUI.RaidPanel = Instance.new("Frame", Hub.ScreenGui)
+GUI.RaidPanel.Name = "RaidMonitorPanel"
+GUI.RaidPanel.Size = UDim2.new(0, 260, 0, 440)
+GUI.RaidPanel.Position = UDim2.new(0.5, 440, 0.5, -220)
+GUI.RaidPanel.BackgroundColor3 = Theme.Background
+GUI.RaidPanel.Active = true
+GUI.RaidPanel.Draggable = true
+GUI.RaidPanel.Visible = false
+Instance.new("UICorner", GUI.RaidPanel).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", GUI.RaidPanel).Color = Theme.Primary
 
-local RaidHeader = Instance.new("TextLabel", RaidPanel)
-RaidHeader.Size = UDim2.new(1, -70, 0, 30)
-RaidHeader.Position = UDim2.new(0, 10, 0, 0)
-RaidHeader.BackgroundTransparency = 1
-RaidHeader.Text = "📡 MONITOR DE RAIDS"
-RaidHeader.TextColor3 = Theme.TextHighlight
-RaidHeader.Font = Enum.Font.GothamBlack
-RaidHeader.TextSize = 13
-RaidHeader.TextXAlignment = Enum.TextXAlignment.Left
+GUI.RaidHeader = Instance.new("TextLabel", GUI.RaidPanel)
+GUI.RaidHeader.Size = UDim2.new(1, -70, 0, 30)
+GUI.RaidHeader.Position = UDim2.new(0, 10, 0, 0)
+GUI.RaidHeader.BackgroundTransparency = 1
+GUI.RaidHeader.Text = "📡 MONITOR DE RAIDS"
+GUI.RaidHeader.TextColor3 = Theme.TextHighlight
+GUI.RaidHeader.Font = Enum.Font.GothamBlack
+GUI.RaidHeader.TextSize = 13
+GUI.RaidHeader.TextXAlignment = Enum.TextXAlignment.Left
 
-local RefreshRaidBtn = Instance.new("TextButton", RaidPanel)
-RefreshRaidBtn.Size = UDim2.new(0, 24, 0, 24)
-RefreshRaidBtn.Position = UDim2.new(1, -55, 0, 3)
-RefreshRaidBtn.BackgroundColor3 = Theme.Secondary
-RefreshRaidBtn.Text = "🔄"
-RefreshRaidBtn.TextColor3 = Theme.TextHighlight
-Instance.new("UICorner", RefreshRaidBtn).CornerRadius = UDim.new(0, 4)
+GUI.RefreshRaidBtn = Instance.new("TextButton", GUI.RaidPanel)
+GUI.RefreshRaidBtn.Size = UDim2.new(0, 24, 0, 24)
+GUI.RefreshRaidBtn.Position = UDim2.new(1, -55, 0, 3)
+GUI.RefreshRaidBtn.BackgroundColor3 = Theme.Secondary
+GUI.RefreshRaidBtn.Text = "🔄"
+GUI.RefreshRaidBtn.TextColor3 = Theme.TextHighlight
+Instance.new("UICorner", GUI.RefreshRaidBtn).CornerRadius = UDim.new(0, 4)
 
-local RaidCloseBtn = Instance.new("TextButton", RaidPanel)
-RaidCloseBtn.Size = UDim2.new(0, 24, 0, 24)
-RaidCloseBtn.Position = UDim2.new(1, -28, 0, 3)
-RaidCloseBtn.BackgroundColor3 = Theme.Danger
-RaidCloseBtn.Text = "X"
-RaidCloseBtn.TextColor3 = Theme.TextHighlight
-RaidCloseBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", RaidCloseBtn).CornerRadius = UDim.new(0, 4)
-RaidCloseBtn.MouseButton1Click:Connect(function() RaidPanel.Visible = false end)
+GUI.RaidCloseBtn = Instance.new("TextButton", GUI.RaidPanel)
+GUI.RaidCloseBtn.Size = UDim2.new(0, 24, 0, 24)
+GUI.RaidCloseBtn.Position = UDim2.new(1, -28, 0, 3)
+GUI.RaidCloseBtn.BackgroundColor3 = Theme.Danger
+GUI.RaidCloseBtn.Text = "X"
+GUI.RaidCloseBtn.TextColor3 = Theme.TextHighlight
+GUI.RaidCloseBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", GUI.RaidCloseBtn).CornerRadius = UDim.new(0, 4)
+GUI.RaidCloseBtn.MouseButton1Click:Connect(function() GUI.RaidPanel.Visible = false end)
 
-local RaidScroll = Instance.new("ScrollingFrame", RaidPanel)
-RaidScroll.Size = UDim2.new(1, -12, 0, 345)
-RaidScroll.Position = UDim2.new(0, 6, 0, 35)
-RaidScroll.BackgroundTransparency = 1
-RaidScroll.ScrollBarThickness = 0
-RaidScroll.ScrollingEnabled = false
-RaidScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
-local RaidLayout = Instance.new("UIListLayout", RaidScroll)
-RaidLayout.Padding = UDim.new(0, 4)
-RaidLayout.SortOrder = Enum.SortOrder.LayoutOrder
+GUI.RaidScroll = Instance.new("ScrollingFrame", GUI.RaidPanel)
+GUI.RaidScroll.Size = UDim2.new(1, -12, 0, 345)
+GUI.RaidScroll.Position = UDim2.new(0, 6, 0, 35)
+GUI.RaidScroll.BackgroundTransparency = 1
+GUI.RaidScroll.ScrollBarThickness = 0
+GUI.RaidScroll.ScrollingEnabled = false
+GUI.RaidScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+GUI.RaidLayout = Instance.new("UIListLayout", GUI.RaidScroll)
+GUI.RaidLayout.Padding = UDim.new(0, 4)
+GUI.RaidLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local PortalRaidBtn = Instance.new("TextButton", RaidPanel)
-PortalRaidBtn.Size = UDim2.new(1, -12, 0, 30)
-PortalRaidBtn.Position = UDim2.new(0, 6, 1, -40)
-PortalRaidBtn.BackgroundColor3 = Theme.Primary
-PortalRaidBtn.Text = "TELEPORT PORTAL RAID"
-PortalRaidBtn.TextColor3 = Theme.TextHighlight
-PortalRaidBtn.Font = Enum.Font.GothamBold
-PortalRaidBtn.TextSize = 12
-Instance.new("UICorner", PortalRaidBtn).CornerRadius = UDim.new(0, 6)
-PortalRaidBtn.MouseButton1Click:Connect(function()
+GUI.PortalRaidBtn = Instance.new("TextButton", GUI.RaidPanel)
+GUI.PortalRaidBtn.Size = UDim2.new(1, -12, 0, 30)
+GUI.PortalRaidBtn.Position = UDim2.new(0, 6, 1, -40)
+GUI.PortalRaidBtn.BackgroundColor3 = Theme.Primary
+GUI.PortalRaidBtn.Text = "TELEPORT PORTAL RAID"
+GUI.PortalRaidBtn.TextColor3 = Theme.TextHighlight
+GUI.PortalRaidBtn.Font = Enum.Font.GothamBold
+GUI.PortalRaidBtn.TextSize = 12
+Instance.new("UICorner", GUI.PortalRaidBtn).CornerRadius = UDim.new(0, 6)
+GUI.PortalRaidBtn.MouseButton1Click:Connect(function()
     local found = Utils.ManualTeleportAndEnter(false)
     if not found then 
         pcall(function() StarterGui:SetCore("SendNotification", { Title = "Error", Text = "Portal RAID no encontrado.", Duration = 2 }) end) 
@@ -1246,7 +1246,7 @@ local function ParseRaidID(mapId, raidId)
 end
 
 local function RefreshRaidUI()
-    for _, child in pairs(RaidScroll:GetChildren()) do
+    for _, child in pairs(GUI.RaidScroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
 
@@ -1258,7 +1258,7 @@ local function RefreshRaidUI()
             local modeColor = isAsc and Theme.Primary or Color3.fromRGB(40, 160, 100)
             local tagText = isAsc and "✨[ASC]" or "[NORM]"
 
-            local Item = Instance.new("Frame", RaidScroll)
+            local Item = Instance.new("Frame", GUI.RaidScroll)
             Item.Size = UDim2.new(1, 0, 0, 30)
             Item.BackgroundColor3 = Theme.Panel
             Instance.new("UICorner", Item).CornerRadius = UDim.new(0, 4)
@@ -1321,7 +1321,7 @@ local function ProcessRaidPacket(pkt)
 end
 
 local function FetchRaidData()
-    RefreshRaidBtn.Text = "⏳"
+    GUI.RefreshRaidBtn.Text = "⏳"
     task.spawn(function()
         local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
         if Remotes then
@@ -1332,11 +1332,11 @@ local function FetchRaidData()
             end
         end
         task.wait(0.5)
-        RefreshRaidBtn.Text = "🔄"
+        GUI.RefreshRaidBtn.Text = "🔄"
     end)
 end
 
-RefreshRaidBtn.MouseButton1Click:Connect(FetchRaidData)
+GUI.RefreshRaidBtn.MouseButton1Click:Connect(FetchRaidData)
 
 local RemotesData = ReplicatedStorage:FindFirstChild("Remotes")
 if RemotesData then
@@ -1357,7 +1357,7 @@ end
 task.spawn(function()
     while HubRunning do
         task.wait(1)
-        if RaidPanel.Visible then
+        if GUI.RaidPanel.Visible then
             local currentTime = os.time()
             local changed = false
             for mapId, info in pairs(ActiveRaids) do
@@ -1372,7 +1372,7 @@ FetchRaidData()
 
 local raidKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == Enum.KeyCode.P then
-        RaidPanel.Visible = not RaidPanel.Visible
+        GUI.RaidPanel.Visible = not GUI.RaidPanel.Visible
     end
 end)
 table.insert(Hub.Connections, raidKeyConn)
@@ -3304,14 +3304,6 @@ table.insert(Hub.Connections, quickKeyConn)
 -- =========================================================
 -- [9] PESTAÑA: CITY RAID (GRANJA Y HOPPING)
 -- =========================================================
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
-
 local TabCity = Hub:CreateTab("City Raid")
 
 -- ==========================================
