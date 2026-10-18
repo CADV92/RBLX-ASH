@@ -16,29 +16,6 @@ local LocalPlayer = Players.LocalPlayer
 local HubRunning = true 
 _G.MapaOrigenAntesRuna = nil
 
--- ==========================================
--- ESTADOS DEL EVENT BOSS (INTEGRADO)
--- ==========================================
-local EventBossState = {
-    Enabled = false,
-    IsEventLive = false,
-    CurrentMap = 1,
-    MaxMap = 20,
-    MaxRounds = 3,
-    IsProcessing = false,
-    PreviousMap = 1,
-    WasAutoRaid = false,
-    WasAutoFarm = false,
-    WasKillAura = false
-}
-
-local BossNameByMap = {
-    "Goblin King", "Giant Arachnid Buryura", "Igris", "The Leader Of The Polar Bears",
-    "Arch Lich", "Kargalgan", "baran", "Beru", "Giant Monarch",
-    "Monarch of Plague", "Frostborne", "Legia", "Silas", "Yogumunt",
-    "Antares", "Ashborn", "Dominion", "Absolute", "Broly", "Goku[Super4]"
-}
-
 -- ==============================================================================
 -- DATOS ESTÁTICOS
 -- ==============================================================================
@@ -136,179 +113,6 @@ function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then ret
 function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
 function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
 function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
-
--- ==========================================
--- MOTOR AURA Y DETECCION (EVENT BOSS)
--- ==========================================
-local LblEventStatus = nil
-
-local function EventBoss_GetValidBosses()
-    local bosses = {}
-    local fld = Utils.GetEnemyFolder()
-    local candidates = fld and fld:GetChildren() or Workspace:GetChildren()
-    
-    for _, mob in ipairs(candidates) do
-        if not mob:IsA("Model") or mob == LocalPlayer.Character then continue end
-        if not mob:FindFirstChild("HumanoidRootPart") then continue end
-        if Utils.EstaMuerto(mob) then continue end
-        
-        local isBoss = false
-        local nameLower = string.lower(mob.Name)
-        
-        for _, bossName in pairs(BossNameByMap) do
-            if string.find(nameLower, string.lower(bossName), 1, true) then isBoss = true; break end
-        end
-        
-        if not isBoss then
-            if mob:GetAttribute("IsBoss") == true or mob:GetAttribute("isBoss") == true or mob:GetAttribute("Boss") == true then
-                isBoss = true
-            elseif mob:GetAttribute("EnemyType") == "Boss" or mob:GetAttribute("EnemyType") == "EventBoss" then
-                isBoss = true
-            end
-        end
-        
-        if not isBoss and (string.find(nameLower, "boss") or string.find(nameLower, "event")) then isBoss = true end
-        
-        if isBoss then table.insert(bosses, mob) end
-    end
-    return bosses
-end
-
-local function EventBoss_CastAura(bosses)
-    local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-    if not Remotes then return end
-
-    for _, boss in ipairs(bosses) do
-        local guid = Utils.GetGUID(boss)
-        if guid then
-            task.spawn(function()
-                pcall(function() if Remotes:FindFirstChild("ClickEnemy") then Remotes.ClickEnemy:InvokeServer({ ["enemyGuid"] = guid, ["enemyCharacter"] = boss }) end end)
-                pcall(function()
-                    if Remotes:FindFirstChild("PlayerClickAttackSkill") then 
-                        Remotes.PlayerClickAttackSkill:FireServer({ ["attackEnemyGUID"] = guid })
-                        Remotes.PlayerClickAttackSkill:FireServer({ ["autoClickEnemyGUID"] = guid })
-                    end
-                    if Remotes:FindFirstChild("PlayerClickAttack") then Remotes.PlayerClickAttack:FireServer({ ["attackEnemyGUID"] = guid }) end
-                end)
-                pcall(function()
-                    local heroesFolder = Workspace:FindFirstChild("Heros") or Workspace:FindFirstChild("Heroes")
-                    if heroesFolder and heroesFolder:FindFirstChild("Hero_" .. tostring(LocalPlayer.UserId)) then
-                        for _, hero in pairs(heroesFolder["Hero_" .. tostring(LocalPlayer.UserId)]:GetChildren()) do
-                            local hGuid = Utils.GetGUID(hero)
-                            if hGuid and Remotes:FindFirstChild("HeroUseSkill") then
-                                Remotes.HeroUseSkill:FireServer({{["heroGuid"] = hGuid, ["attackType"] = math.random(1, 3), ["userId"] = LocalPlayer.UserId, ["enemyGuid"] = guid}})
-                            end
-                        end
-                    end
-                end)
-            end)
-        end
-    end
-end
-
-local function IniciarEventBossAura()
-    if EventBossState.IsProcessing or not EventBossState.Enabled then return end
-    EventBossState.IsProcessing = true
-    EventBossState.CurrentMap = 1
-    local currentRound = 1
-
-    task.spawn(function()
-        -- 1. Guardar estado actual y pausar farmeos de la Config
-        EventBossState.PreviousMap = _G.LastSelectedMap or 1
-        EventBossState.WasAutoRaid = Config.RaidSettings.AutoRaid
-        EventBossState.WasAutoFarm = Config.AutoRandom
-        EventBossState.WasKillAura = Config.KillAura
-        
-        Config.RaidSettings.AutoRaid = false
-        Config.AutoRandom = false
-        Config.KillAura = false
-        
-        -- 2. Bucle de Mapas
-        while EventBossState.IsEventLive and EventBossState.Enabled and currentRound <= EventBossState.MaxRounds do
-            while EventBossState.IsEventLive and EventBossState.Enabled and EventBossState.CurrentMap <= EventBossState.MaxMap do
-                local mapId = EventBossState.CurrentMap
-                if LblEventStatus then LblEventStatus.Text = "[R" .. currentRound .. "] Viajando a M" .. mapId end
-                
-                pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + mapId}) end)
-                _G.LastSelectedMap = mapId
-                task.wait(2)
-                
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = false end
-                local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-
-                local mapaLimpio = false
-                local ticksSinJefes = 0
-                local bossHealthCache = {}
-
-                while not mapaLimpio and EventBossState.IsEventLive and EventBossState.Enabled do
-                    local bosses = EventBoss_GetValidBosses()
-
-                    if #bosses == 0 then
-                        ticksSinJefes = ticksSinJefes + 1
-                        if LblEventStatus and ticksSinJefes % 5 == 0 then LblEventStatus.Text = "Buscando en M" .. mapId .. " (" .. string.format("%.1f", 12 - (ticksSinJefes*0.1)) .. "s)" end
-                        
-                        if ticksSinJefes >= 120 then 
-                            mapaLimpio = true
-                            if LblEventStatus then LblEventStatus.Text = "[OK] M" .. mapId .. " limpio." end
-                            break 
-                        end
-                    else
-                        ticksSinJefes = 0
-                        if myRoot and bosses[1]:FindFirstChild("HumanoidRootPart") then
-                            myRoot.CFrame = bosses[1].HumanoidRootPart.CFrame * CFrame.new(0, 0, 6)
-                            myRoot.AssemblyLinearVelocity = Vector3.zero
-                        end
-
-                        if LblEventStatus then LblEventStatus.Text = "[AURA] " .. #bosses .. " Jefes en M" .. mapId end
-                        EventBoss_CastAura(bosses)
-
-                        for _, b in ipairs(bosses) do
-                            local hp = Utils.GetCurrentRealHealth(b)
-                            if not bossHealthCache[b] then
-                                bossHealthCache[b] = { hp = hp, ticks = 0 }
-                            else
-                                if bossHealthCache[b].hp == hp then
-                                    bossHealthCache[b].ticks = bossHealthCache[b].ticks + 1
-                                    if bossHealthCache[b].ticks > 30 then 
-                                        pcall(function() if b:FindFirstChild("HumanoidRootPart") then b.HumanoidRootPart.CFrame = CFrame.new(0, -50000, 0) end; b:Destroy() end)
-                                    end
-                                else
-                                    bossHealthCache[b].hp = hp
-                                    bossHealthCache[b].ticks = 0
-                                end
-                            end
-                        end
-                    end
-                    task.wait(0.1)
-                end
-                EventBossState.CurrentMap = EventBossState.CurrentMap + 1
-            end
-
-            if EventBossState.IsEventLive and EventBossState.Enabled then
-                if currentRound < EventBossState.MaxRounds then
-                    currentRound = currentRound + 1
-                    EventBossState.CurrentMap = 1
-                    task.wait(2)
-                else
-                    break
-                end
-            end
-        end
-
-        -- 3. Restaurar farmeos originales y volver
-        EventBossState.IsProcessing = false
-        if LblEventStatus then LblEventStatus.Text = "Evento Finalizado / En Espera" end
-        
-        pcall(function() ReplicatedStorage.Remotes.LocalPlayerTeleport:FireServer({["mapId"] = 50000 + EventBossState.PreviousMap}) end)
-        _G.LastSelectedMap = EventBossState.PreviousMap
-        task.wait(2)
-        
-        Config.RaidSettings.AutoRaid = EventBossState.WasAutoRaid
-        Config.AutoRandom = EventBossState.WasAutoFarm
-        Config.KillAura = EventBossState.WasKillAura
-    end)
-end
 
 local LobbyPortalCache = nil
 function Utils.EstaEnLobby(root)
@@ -1059,24 +863,6 @@ local PAttackBase = ReplicatedStorage.Remotes:FindFirstChild("PlayerClickAttack"
 
 TabAuto:CreateSideToggle("KILL AURA", Config.KillAura, function(state) Config.KillAura = state end)
 
--- ==========================================
--- CONTROLES DEL EVENT BOSS AUTO
--- ==========================================
-TabAuto:CreateLabel("[ EVENT BOSS: AURA MASIVA ]")
-
-TabAuto:CreateSideToggle("Auto Iniciar Event Boss", EventBossState.Enabled, function(state)
-    EventBossState.Enabled = state
-    if state and EventBossState.IsEventLive then
-        IniciarEventBossAura()
-    end
-end)
-
-TabAuto:CreateSlider("Top Mapas (Event Boss)", 1, 21, EventBossState.MaxMap, function(v) 
-    EventBossState.MaxMap = v 
-end, true)
-
-LblEventStatus = TabAuto:CreateLabel("Estado: Esperando al Servidor...")
-
 TabAuto:CreateSliderWithToggle("Radio de Ataque", 50, 500, Config.AuraRadio, 
     function(v) Config.AuraRadio = v end, 
     Config.AuraModoSec, "Secuencial", "Masivo", 
@@ -1567,6 +1353,42 @@ local MetCaza = {
 }
 local MetCFrames = {}
 
+local MapData = {
+    [1] = { Bounds = { MinX = -267.0, MaxX = 217.0, MinY = -150.0, MaxY = 156.0, MinZ = -2319.0, MaxZ = -1354.0 } },
+    [2] = { Bounds = { MinX = 1502.0, MaxX = 2423.0, MinY = -150.0, MaxY = 152.0, MinZ = -2442.0, MaxZ = -1525.0 } },
+    [3] = { Bounds = { MinX = 3576.0, MaxX = 4386.0, MinY = -154.0, MaxY = 152.0, MinZ = -2363.0, MaxZ = -1687.0 } },
+    [4] = { Bounds = { MinX = 5599.0, MaxX = 6656.0, MinY = -152.0, MaxY = 176.0, MinZ = -4412.0, MaxZ = -3593.0 } },
+    [5] = { Bounds = { MinX = -449.0, MaxX = 464.0, MinY = -148.0, MaxY = 158.0, MinZ = -4565.0, MaxZ = -3566.0 } },
+    [6] = { Bounds = { MinX = 1727.0, MaxX = 2267.0, MinY = -149.0, MaxY = 176.0, MinZ = -4361.0, MaxZ = -3559.0 } },
+    [7] = { Bounds = { MinX = 3609.0, MaxX = 4464.0, MinY = -149.0, MaxY = 158.0, MinZ = -4349.0, MaxZ = -3422.0 } },
+    [8] = { Bounds = { MinX = 4643.0, MaxX = 5232.0, MinY = -555.0, MaxY = -209.0, MinZ = -7695.0, MaxZ = -7044.0 } },
+    [9] = { Bounds = { MinX = -278.0, MaxX = 290.0, MinY = -147.0, MaxY = 166.0, MinZ = -6415.0, MaxZ = -5640.0 } },
+    [10] = { Bounds = { MinX = 1708.0, MaxX = 2302.0, MinY = -152.0, MaxY = 157.0, MinZ = -6430.0, MaxZ = -5565.0 } },
+    [11] = { Bounds = { MinX = 3648.0, MaxX = 4390.0, MinY = -152.0, MaxY = 183.0, MinZ = -6459.0, MaxZ = -5653.0 } },
+    [12] = { Bounds = { MinX = 5637.0, MaxX = 6206.0, MinY = -146.0, MaxY = 157.0, MinZ = -8511.0, MaxZ = -7650.0 } },
+    [13] = { Bounds = { MinX = -270.0, MaxX = 450.0, MinY = -145.0, MaxY = 221.0, MinZ = -8337.0, MaxZ = -7610.0 } },
+    [14] = { Bounds = { MinX = 1774.0, MaxX = 2245.0, MinY = -145.0, MaxY = 201.0, MinZ = -8316.0, MaxZ = -7604.0 } },
+    [15] = { Bounds = { MinX = 3745.0, MaxX = 4242.0, MinY = -217.0, MaxY = 164.0, MinZ = -8842.0, MaxZ = -7692.0 } },
+    [16] = { Bounds = { MinX = 5661.0, MaxX = 6336.0, MinY = -166.0, MaxY = 164.0, MinZ = -10314.0, MaxZ = -9585.0 } },
+    [17] = { Bounds = { MinX = -233.0, MaxX = 261.0, MinY = -146.0, MaxY = 165.0, MinZ = -10333.0, MaxZ = -9757.0 } },
+    [18] = { Bounds = { MinX = 1657.0, MaxX = 2364.0, MinY = -148.0, MaxY = 194.0, MinZ = -10474.0, MaxZ = -9616.0 } },
+    [19] = { Bounds = { MinX = 3691.0, MaxX = 4317.0, MinY = -147.0, MaxY = 158.0, MinZ = -10496.0, MaxZ = -9738.0 } },
+    [20] = { Bounds = { MinX = 5621.0, MaxX = 6407.0, MinY = -145.0, MaxY = 163.0, MinZ = -12398.0, MaxZ = -11575.0 } },
+}
+
+local function GetCurrentMapID()
+    local char = LocalPlayer.Character
+    if not char or not char:GetPivot() then return nil end
+    local pos = char:GetPivot().Position
+    for mapID, data in pairs(MapData) do
+        local b = data.Bounds
+        if pos.X >= b.MinX and pos.X <= b.MaxX and pos.Y >= b.MinY and pos.Y <= b.MaxY and pos.Z >= b.MinZ and pos.Z <= b.MaxZ then
+            return mapID
+        end
+    end
+    return nil 
+end
+
 local FocusHighlight = Instance.new("Highlight")
 FocusHighlight.Name = "MetralletaFocus"
 FocusHighlight.FillColor = Theme.Danger
@@ -1740,7 +1562,7 @@ task.spawn(function()
                     if seqInst then MetState.TargetKillInst = seqInst
                     else MetCaza.SecName = mobs[1].name; MetState.TargetKillInst = mobs[1].inst end
 
-                elseif Config.MetralletaModo == "BOSS" then
+elseif Config.MetralletaModo == "BOSS" then
                     if MetCaza.WasBossAlive and (not MetState.TargetKillInst or Utils.EstaMuerto(MetState.TargetKillInst)) then
                         MetCaza.BossEspera = true; MetCaza.WasBossAlive = false; MetState.TargetKillInst = nil
                         task.spawn(function() task.wait(1.2); MetCaza.BossEspera = false end)
@@ -1748,7 +1570,31 @@ task.spawn(function()
                     end
 
                     local bossInst = nil
-                    for _, data in ipairs(mobs) do if table.find(MetCaza.BossList, data.name) then bossInst = data.inst; break end end
+                    local currentMapID = GetCurrentMapID()
+                    
+                    for _, data in ipairs(mobs) do 
+                        if table.find(MetCaza.BossList, data.name) then 
+                            local pos = data.inst:GetPivot().Position
+                            local isInsideBounds = false
+                            
+                            -- Validación estricta por límites topográficos
+                            if currentMapID and MapData[currentMapID] then
+                                local b = MapData[currentMapID].Bounds
+                                isInsideBounds = pos.X >= b.MinX and pos.X <= b.MaxX and
+                                                 pos.Y >= b.MinY and pos.Y <= b.MaxY and
+                                                 pos.Z >= b.MinZ and pos.Z <= b.MaxZ
+                            else
+                                -- Fallback si el mapa es desconocido (Radio seguro)
+                                isInsideBounds = (pos - myRoot.Position).Magnitude <= 1500
+                            end
+                            
+                            -- Filtro final anti-fantasmas en altura
+                            if isInsideBounds and pos.Y >= -50 and pos.Y <= 5000 then
+                                bossInst = data.inst
+                                break 
+                            end
+                        end 
+                    end
                     MetState.TargetKillInst = bossInst; MetCaza.WasBossAlive = (MetState.TargetKillInst ~= nil)
                 end
             end
@@ -3765,41 +3611,3 @@ local customHotkeysConn = UserInputService.InputBegan:Connect(function(input, gp
 end)
 
 table.insert(Hub.Connections, customHotkeysConn)
-
--- ==============================================================================
--- INTERCEPTOR DEL EVENT BOSS (GATILLO AUTOMATICO)
--- ==============================================================================
-task.spawn(function()
-    local EventRemotes = ReplicatedStorage:WaitForChild("EventBossRemotes", 5)
-
-    if EventRemotes then
-        local stateEvent = EventRemotes:WaitForChild("State", 5)
-        local getStateFunc = EventRemotes:WaitForChild("GetState", 5)
-
-        local function HandleEventState(data)
-            if type(data) == "table" then
-                if data.Active and data.Phase == "Live" then
-                    if not EventBossState.IsEventLive then
-                        EventBossState.IsEventLive = true
-                        pcall(function() StarterGui:SetCore("SendNotification", {Title = "EVENT BOSS", Text = "Iniciando Evento (Pausando otros farmeos)", Duration = 4}) end)
-                        if EventBossState.Enabled then IniciarEventBossAura() end
-                    end
-                else
-                    if EventBossState.IsEventLive then
-                        EventBossState.IsEventLive = false
-                    end
-                end
-            end
-        end
-
-        if stateEvent then 
-            local conn = stateEvent.OnClientEvent:Connect(function(data) pcall(function() HandleEventState(data) end) end)
-            table.insert(Hub.Connections, conn)
-        end
-
-        if getStateFunc then
-            local success, currentState = pcall(function() return getStateFunc:InvokeServer() end)
-            if success and currentState then HandleEventState(currentState) end
-        end
-    end
-end)
