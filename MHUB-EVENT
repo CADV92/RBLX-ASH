@@ -1580,6 +1580,8 @@ TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, functio
 -- LÓGICA DE ASIGNACIÓN PRINCIPAL (TargetKILL)
 -- ==========================================
 task.spawn(function()
+    MetState.Blacklist = MetState.Blacklist or {}
+
     while task.wait(0.5) do
         if not HubRunning then break end 
         if not MetState.Activo then continue end
@@ -1590,25 +1592,45 @@ task.spawn(function()
         -- Función interna para validar si el objetivo actual sigue siendo válido en TODO momento
         local function IsTargetValid(target)
             if not target or Utils.EstaMuerto(target) then return false end
+            if MetState.Blacklist[target] then return false end -- Evita fantasmas
             local tRoot = target:FindFirstChild("HumanoidRootPart")
             if not tRoot then return false end
             local pos = tRoot.Position
             
-            -- Filtro de altura (Fantasmas enterrados)
             if pos.Y < -50 or pos.Y > 5000 then return false end
             
-            -- Si cambiamos de mapa, verificamos que el Boss pertenezca al mapa actual
             if currentMapID and MapData[currentMapID] then
                 local b = MapData[currentMapID].Bounds
                 if pos.X < b.MinX or pos.X > b.MaxX or pos.Y < b.MinY or pos.Y > b.MaxY or pos.Z < b.MinZ or pos.Z > b.MaxZ then
-                    return false -- El Boss está en otro mapa, soltar anclaje
+                    return false
                 end
             elseif myRoot then
-                -- Fallback si estamos en zona desconocida
                 if (pos - myRoot.Position).Magnitude > 2500 then return false end
             end
             
             return true
+        end
+
+        -- [NUEVO] SISTEMA ANTI-FANTASMAS (Timeout de Daño)
+        if MetState.TargetKillInst and not MetCaza.BossEspera then
+            local hpActual = Utils.GetCurrentRealHealth(MetState.TargetKillInst)
+            if MetState.TargetKillInst ~= MetState.LastTargetTracker then
+                MetState.LastTargetTracker = MetState.TargetKillInst
+                MetState.LastHPTracker = hpActual
+                MetState.TimeStuckTracker = tick()
+            elseif hpActual == MetState.LastHPTracker then
+                -- Si pasan 4 segundos y la vida no ha bajado NADA, es un fantasma
+                if tick() - MetState.TimeStuckTracker > 4 then
+                    MetState.Blacklist[MetState.TargetKillInst] = true
+                    MetState.TargetKillInst = nil
+                    MetState.ModoManual = false
+                    pcall(function() StarterGui:SetCore("SendNotification", { Title = "Anti-Fantasma", Text = "Mob invulnerable ignorado.", Duration = 2 }) end)
+                end
+            else
+                -- Si la vida cambia (recibe daño), reseteamos el contador
+                MetState.LastHPTracker = hpActual
+                MetState.TimeStuckTracker = tick()
+            end
         end
 
         if MetState.ModoManual and MetState.TargetKillInst and not IsTargetValid(MetState.TargetKillInst) then 
@@ -1619,7 +1641,7 @@ task.spawn(function()
             LblStatusMet.Text = "Jefe Eliminado. Esperando reaparición..."; continue 
         end
 
-        -- Si no hay objetivo, o el actual ya murió / quedó en el mapa anterior, buscar uno nuevo
+        -- Si no hay objetivo buscar uno nuevo
         if not MetState.ModoManual and not IsTargetValid(MetState.TargetKillInst) then
             MetState.TargetKillInst = nil
             if not myRoot then continue end
@@ -1628,7 +1650,7 @@ task.spawn(function()
             local fld = Utils.GetEnemyFolder()
             if fld then
                 for _, enemy in pairs(fld:GetChildren()) do
-                    if Utils.EsMobValido(enemy, myRoot, MetState.Limites) then
+                    if Utils.EsMobValido(enemy, myRoot, MetState.Limites) and not MetState.Blacklist[enemy] then
                         table.insert(mobs, { inst = enemy, dist = (enemy.HumanoidRootPart.Position - myRoot.Position).Magnitude, name = enemy.Name })
                     end
                 end
