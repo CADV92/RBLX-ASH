@@ -1570,7 +1570,8 @@ TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, functio
 
 -- ==========================================
 -- LÓGICA DE ASIGNACIÓN PRINCIPAL (TargetKILL)
--- ==========================================task.spawn(function()
+-- ==========================================
+task.spawn(function()
     while task.wait(0.5) do
         if not HubRunning then break end 
         if not MetState.Activo then continue end
