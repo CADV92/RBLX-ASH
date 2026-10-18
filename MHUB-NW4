@@ -3178,7 +3178,8 @@ TabServer:CreateButton("GUARDAR CONFIGURACIÓN", Theme.PrimaryDark, SaveConfig)
 
 -- =========================================================
 -- PANEL DE ACCESO RÁPIDO (TECLA U)
--- =========================================================GUI.QuickPanel = Instance.new("Frame", Hub.ScreenGui)
+-- =========================================================
+GUI.QuickPanel = Instance.new("Frame", Hub.ScreenGui)
 GUI.QuickPanel.Name = "QuickAccessPanel"
 GUI.QuickPanel.Size = UDim2.new(0, 220, 0, 210)
 GUI.QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -50)
