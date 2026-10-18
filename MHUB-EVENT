@@ -172,7 +172,7 @@ function Utils.ParseValue(str) if not str or str == "" then return 0 end if str:
 function Utils.ParseDamageText(str) if not str or type(str) ~= "string" then return 0 end local cleanStr = string.gsub(str, "<[^>]+>", "") cleanStr = string.gsub(cleanStr, "[%+%-%s,]", "") local valStr, sufStr = string.match(cleanStr, "^([%d%.]+)(.*)$") if valStr then local num = tonumber(valStr) or 0 if sufStr and sufStr ~= "" then local mult = ReadSuffixes[sufStr] or ReadSuffixes[string.upper(sufStr)] if mult then return num * mult end end return num end return 0 end
 function Utils.GetCurrentRealHealth(model) if not model then return 0 end local maxVal = 0 for _, lbl in pairs(model:GetDescendants()) do if lbl:IsA("TextLabel") and lbl.Visible then local txt = lbl.Text if txt:match("%d") and not txt:find("Lvl") and not txt:find("Level") then local current = Utils.ParseValue(txt) if current > maxVal then maxVal = current end end end end return maxVal end
 function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e111 then return string.format("%.2f E111", val/1e111) end if val >= 1e108 then return string.format("%.2f E108", val/1e108) end if val >= 1e105 then return string.format("%.2f E105", val/1e105) end if val >= 1e102 then return string.format("%.2f E102", val/1e102) end if val >= 1e99 then return string.format("%.2f E99", val/1e99) end if val >= 1e96 then return string.format("%.2f E96", val/1e96) end if val >= 1e93 then return string.format("%.2f E93", val/1e93) end if val >= 1e90 then return string.format("%.2f E90", val/1e90) end if val >= 1e87 then return string.format("%.2f E87", val/1e87) end if val >= 1e84 then return string.format("%.2f E84", val/1e84) end if val >= 1e81 then return string.format("%.2f E81", val/1e81) end if val >= 1e78 then return string.format("%.2f E78", val/1e78) end if val >= 1e75 then return string.format("%.2f E75", val/1e75) end if val >= 1e72 then return string.format("%.2f E72", val/1e72) end if val >= 1e69 then return string.format("%.2f E69", val/1e69) end if val >= 1e66 then return string.format("%.2f E66", val/1e66) end if val >= 1e63 then return string.format("%.2f E63", val/1e63) end if val >= 1e60 then return string.format("%.2f E60", val/1e60) end if val >= 1e57 then return string.format("%.2f E57", val/1e57) end if val >= 1e54 then return string.format("%.2f E54", val/1e54) end if val >= 1e51 then return string.format("%.2f E51", val/1e51) end if val >= 1e48 then return string.format("%.2f E48", val/1e48) end if val >= 1e45 then return string.format("%.2f E45", val/1e45) end if val >= 1e42 then return string.format("%.2f Td", val/1e42) end if val >= 1e39 then return string.format("%.2f Dd", val/1e39) end if val >= 1e36 then return string.format("%.2f Ud", val/1e36) end if val >= 1e33 then return string.format("%.2f Dc", val/1e33) end if val >= 1e30 then return string.format("%.2f No", val/1e30) end if val >= 1e27 then return string.format("%.2f Oc", val/1e27) end if val >= 1e24 then return string.format("%.2f Sp", val/1e24) end if val >= 1e21 then return string.format("%.2f Sx", val/1e21) end if val >= 1e18 then return string.format("%.2f Qi", val/1e18) end if val >= 1e15 then return string.format("%.2f Qa", val/1e15) end if val >= 1e12 then return string.format("%.2f T", val/1e12) end if val >= 1e9 then return string.format("%.2f B", val/1e9) end if val >= 1e6 then return string.format("%.2f M", val/1e6) end if val >= 1e3 then return string.format("%.2f K", val/1e3) end return tostring(math.floor(val)) end
-function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
+function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then if _G.PausarMetralleta then _G.PausarMetralleta() end root.CFrame = v.Parent.CFrame task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
 local LobbyPortalCache = nil
 function Utils.EstaEnLobby(root)
@@ -197,8 +197,8 @@ task.spawn(function()
         local method = getnamecallmethod() 
         local args = {...}
         if method == "FireServer" or method == "InvokeServer" then
-            -- PARCHE: Validamos que 'self' sea un Instance real antes de pedir el .Name
-            if typeof(self) == "Instance" and (self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap") then
+            if self.Name == "LocalPlayerTeleport" or self.Name == "QuitRaidsMap" or self.Name == "StartLocalPlayerTeleport" or self.Name == "StartChallengeRaidMap" then
+                if _G.PausarMetralleta then task.spawn(_G.PausarMetralleta) end
                 if args[1] and type(args[1]) == "table" then
                     local targetID = args[1].mapId or args[1].toMapId
                     if targetID then 
@@ -1459,6 +1459,14 @@ local function RestaurarMetralleta()
         end
     end
     MetCFrames = {}
+end
+
+_G.PausarMetralleta = function()
+    if MetState.Activo then
+        MetState.Activo = false
+        RestaurarMetralleta()
+        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Pausada automáticamente por TP/Raid.", Duration = 2 }) end)
+    end
 end
 
 local LblStatusMet = TabMetralleta:CreateLabel("Estado: En reposo")
