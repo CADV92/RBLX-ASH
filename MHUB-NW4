@@ -11,11 +11,67 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
-local StarterGui = game:GetService("StarterGui")
+local RealStarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local HubRunning = true 
 _G.MapaOrigenAntesRuna = nil
+
+-- ==============================================================================
+-- PARCHE ANTI-CRASH (Notificaciones Custom para evitar error de Locales)
+-- ==============================================================================
+local StarterGui = {}
+function StarterGui:SetCore(name, data)
+    if name == "SendNotification" then
+        task.spawn(function()
+            pcall(function()
+                local sg = Instance.new("ScreenGui")
+                sg.Name = "MHUB_Notif"
+                local success = pcall(function() sg.Parent = CoreGui end)
+                if not success then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+                
+                local f = Instance.new("Frame", sg)
+                f.Size = UDim2.new(0, 250, 0, 60)
+                f.Position = UDim2.new(1, 10, 1, -100)
+                f.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+                f.BorderSizePixel = 0
+                Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
+                Instance.new("UIStroke", f).Color = Color3.fromRGB(0, 150, 255)
+                
+                local t = Instance.new("TextLabel", f)
+                t.Size = UDim2.new(1, -20, 0, 20)
+                t.Position = UDim2.new(0, 10, 0, 5)
+                t.BackgroundTransparency = 1
+                t.Text = data.Title or "Aviso"
+                t.TextColor3 = Color3.fromRGB(255, 255, 255)
+                t.Font = Enum.Font.GothamBold
+                t.TextSize = 12
+                t.TextXAlignment = Enum.TextXAlignment.Left
+                
+                local d = Instance.new("TextLabel", f)
+                d.Size = UDim2.new(1, -20, 0, 30)
+                d.Position = UDim2.new(0, 10, 0, 25)
+                d.BackgroundTransparency = 1
+                d.Text = data.Text or ""
+                d.TextColor3 = Color3.fromRGB(200, 200, 200)
+                d.Font = Enum.Font.Gotham
+                d.TextSize = 11
+                d.TextXAlignment = Enum.TextXAlignment.Left
+                d.TextWrapped = true
+                
+                TweenService:Create(f, TweenInfo.new(0.5), {Position = UDim2.new(1, -260, 1, -100)}):Play()
+                task.wait(data.Duration or 3)
+                local out = TweenService:Create(f, TweenInfo.new(0.5), {Position = UDim2.new(1, 10, 1, -100)})
+                out:Play()
+                out.Completed:Wait()
+                sg:Destroy()
+            end)
+        end)
+    else
+        pcall(function() RealStarterGui:SetCore(name, data) end)
+    end
+end
 
 -- ==============================================================================
 -- DATOS ESTÁTICOS
@@ -1380,8 +1436,11 @@ local MapData = {
 
 local function GetCurrentMapID()
     local char = LocalPlayer.Character
-    if not char or not char:GetPivot() then return nil end
-    local pos = char:GetPivot().Position
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local pos = root.Position
+    
     for mapID, data in pairs(MapData) do
         local b = data.Bounds
         if pos.X >= b.MinX and pos.X <= b.MaxX and pos.Y >= b.MinY and pos.Y <= b.MaxY and pos.Z >= b.MinZ and pos.Z <= b.MaxZ then
