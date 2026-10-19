@@ -1857,15 +1857,25 @@ task.spawn(function()
         task.wait(MetState.Vel)
         
         if MetState.Activo and MetState.InternalAttackActive then
-            if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) then
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            -- Si no hay referencia, está muerta, o resultó ser un fantasma en la Blacklist
+            if not MetState.TargetRefInst or Utils.EstaMuerto(MetState.TargetRefInst) or MetState.Blacklist[MetState.TargetRefInst] then
                 local fld = Utils.GetEnemyFolder()
-                if fld then
+                if fld and myRoot then
+                    local validRefs = {}
                     for _, mob in pairs(fld:GetChildren()) do
-                        if not Utils.EstaMuerto(mob) and mob ~= MetState.TargetKillInst and mob:FindFirstChild("HumanoidRootPart") then
-                            MetState.TargetRefInst = mob
-                            _G.MetralletaRefGuid = Utils.GetGUID(mob)
-                            break
+                        -- Filtramos que no sea el Boss, que no esté en Blacklist y que sea un mob físicamente válido
+                        if mob ~= MetState.TargetKillInst and not MetState.Blacklist[mob] and Utils.EsMobValido(mob, myRoot, MetState.Limites) then
+                            table.insert(validRefs, mob)
                         end
+                    end
+                    
+                    if #validRefs > 0 then
+                        -- Elegimos uno aleatorio para garantizar que no se trabe en el mismo mob bugeado
+                        local randomMob = validRefs[math.random(1, #validRefs)]
+                        MetState.TargetRefInst = randomMob
+                        _G.MetralletaRefGuid = Utils.GetGUID(randomMob)
                     end
                 end
             end
