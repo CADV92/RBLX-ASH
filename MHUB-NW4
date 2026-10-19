@@ -1632,9 +1632,9 @@ task.spawn(function()
                 MetState.TimeStuckTracker = tick()
             elseif eGuid then
                 local lastHit = MetState.LastHitByGuid[eGuid] or 0
-                local isTakingDamage = (tick() - lastHit) < 4
+                local isTakingDamage = (tick() - lastHit) < 8
                 
-                if not isTakingDamage and (tick() - MetState.TimeStuckTracker) > 4 then
+                if not isTakingDamage and (tick() - MetState.TimeStuckTracker) > 8 then
                     MetState.Blacklist[MetState.TargetKillInst] = true
                     MetState.TargetKillInst = nil
                     MetState.ModoManual = false
