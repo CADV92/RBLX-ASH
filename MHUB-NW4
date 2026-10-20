@@ -1385,7 +1385,8 @@ local TabMetralleta = Hub:CreateTab("Metralleta")
 local MetState = {
     Activo = false, ModoManual = false, TargetKillInst = nil, TargetRefInst = nil, Vel = 0.05,
     Limites = LimitesMobsBase,
-    ScannedMobsCache = {},
+    ScannedMobsCache = {},`
+    EnPausaTP = false,
     -- Lógica Standalone: Cerebro Intermitente
     InternalAttackActive = false,
     LastClickedGUID = nil,
@@ -1462,10 +1463,32 @@ local function RestaurarMetralleta()
 end
 
 _G.PausarMetralleta = function()
-    if MetState.Activo then
-        MetState.Activo = false
-        RestaurarMetralleta()
-        pcall(function() StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Pausada automáticamente por TP/Raid.", Duration = 2 }) end)
+    -- Solo pausamos si está activa y no está ya en medio de una pausa de TP
+    if MetState.Activo and not MetState.EnPausaTP then
+        MetState.EnPausaTP = true
+        MetState.Activo = false -- Apaga la lógica temporalmente
+        RestaurarMetralleta() -- Restaura posiciones físicas
+        
+        pcall(function() 
+            StarterGui:SetCore("SendNotification", { 
+                Title = "Metralleta", 
+                Text = "Pausada brevemente (2s) por TP/Raid...", 
+                Duration = 2 
+            }) 
+        end)
+        
+        -- Reactivación automática después de 2 segundos
+        task.delay(2, function()
+            MetState.Activo = true
+            MetState.EnPausaTP = false
+            pcall(function() 
+                StarterGui:SetCore("SendNotification", { 
+                    Title = "Metralleta", 
+                    Text = "Secuencia reanudada automáticamente.", 
+                    Duration = 2 
+                }) 
+            end)
+        end)
     end
 end
 
