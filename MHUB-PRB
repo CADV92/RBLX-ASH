@@ -1821,6 +1821,21 @@ end)
 local TabReroll = Hub:CreateTab("Fast Reroll")
 TabReroll:CreateLabel("Selecciona un menú para Auto-Roll")
 
+-- NUEVO BOTÓN PARA EJECUTAR EL SCRIPT EXTERNO
+TabReroll:CreateButton("ABRIR STANDALONE PREMIUM", Theme.Primary, function()
+    task.spawn(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/CADV92/RBLX-ASH/refs/heads/main/AUTO_REROLL"))()
+        end)
+        if not success then
+            warn("Error al cargar el Auto Reroll: " .. tostring(err))
+        end
+    end)
+end)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     local uiParent = TargetGui
     if uiParent:FindFirstChild("AutoRollQuirkUI") then 
