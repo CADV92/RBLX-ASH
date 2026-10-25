@@ -1,0 +1,377 @@
+-- =========================================================
+-- SCRIPT STANDALONE: BATCH AUTO-REROLL (GOLD PREMIUM EDITION)
+-- FIX: MULTI-CAPTURA PRECISA POR Z-INDEX
+-- =========================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local TargetGui = (RunService and RunService:IsStudio()) and LocalPlayer:WaitForChild("PlayerGui") or (CoreGui:FindFirstChild("RobloxGui") or LocalPlayer:WaitForChild("PlayerGui"))
+local uuidPattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
+
+if TargetGui:FindFirstChild("StandaloneBatchRerollUI") then 
+    TargetGui.StandaloneBatchRerollUI:Destroy() 
+end
+
+-- ================= CONFIGURACIÓN PREMIUM GOLD =================
+local Theme = {
+    Background = Color3.fromRGB(20, 20, 23),    -- Fondo oscuro premium
+    PanelLight = Color3.fromRGB(32, 32, 36),    -- Paneles ligeramente más claros
+    Primary = Color3.fromRGB(255, 215, 0),      -- Oro brillante (Acento principal)
+    PrimaryDark = Color3.fromRGB(204, 172, 0),  -- Oro oscuro
+    Secondary = Color3.fromRGB(45, 45, 50),     -- Botones inactivos
+    Success = Color3.fromRGB(40, 220, 100),     -- Verde neón
+    Danger = Color3.fromRGB(230, 50, 60),       -- Rojo intenso
+    Warning = Color3.fromRGB(220, 140, 30),     -- Naranja/Advertencia
+    Text = Color3.fromRGB(200, 200, 200),       -- Texto gris claro
+    TextHighlight = Color3.fromRGB(255, 255, 255),-- Texto blanco puro
+    BlackText = Color3.fromRGB(15, 15, 15)      -- Texto negro para contrastar con el Oro
+}
+
+local function ExtractUUIDs(text)
+    local list = {}
+    for uuid in string.gmatch(text, uuidPattern) do table.insert(list, uuid) end
+    return list
+end
+
+local function CheckVals(res, tgts)
+    if type(res) == "table" then 
+        for k, v in pairs(res) do 
+            local nv = tonumber(v)
+            if nv and table.find(tgts, nv) then return nv end
+            if type(v) == "table" then local f = CheckVals(v, tgts); if f then return f end end 
+        end
+    elseif type(res) == "number" or type(res) == "string" then 
+        local nv = tonumber(res); if nv and table.find(tgts, nv) then return nv end 
+    end
+    return nil
+end
+
+_G.BatchHeroActivo = false
+_G.BatchGearActivo = false
+_G.BatchWeaponActivo = false
+
+-- ================= INTERFAZ BASE (CONTENEDOR) =================
+local Base = {}
+Base.Screen = Instance.new("ScreenGui", TargetGui)
+Base.Screen.Name = "StandaloneBatchRerollUI"
+Base.Screen.ResetOnSpawn = false
+Base.Screen.AutoLocalize = false
+
+Base.Main = Instance.new("Frame", Base.Screen)
+Base.Main.Size = UDim2.new(0, 320, 0, 500)
+Base.Main.Position = UDim2.new(0.5, -160, 0.5, -250)
+Base.Main.BackgroundColor3 = Theme.Background
+Base.Main.BorderSizePixel = 0
+Instance.new("UICorner", Base.Main).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", Base.Main).Color = Theme.PrimaryDark
+Base.Main.UIStroke.Thickness = 1.5
+
+Base.Title = Instance.new("TextLabel", Base.Main)
+Base.Title.Size = UDim2.new(1, -40, 0, 30); Base.Title.Position = UDim2.new(0, 15, 0, 5)
+Base.Title.Text = "BATCH REROLL AIO"; Base.Title.Font = Enum.Font.GothamBlack; Base.Title.TextSize = 13
+Base.Title.TextColor3 = Theme.Primary; Base.Title.BackgroundTransparency = 1; Base.Title.TextXAlignment = Enum.TextXAlignment.Left
+
+Base.CloseBtn = Instance.new("TextButton", Base.Main)
+Base.CloseBtn.Size = UDim2.new(0, 30, 0, 30); Base.CloseBtn.Position = UDim2.new(1, -30, 0, 5)
+Base.CloseBtn.Text = "X"; Base.CloseBtn.Font = Enum.Font.GothamBold; Base.CloseBtn.TextColor3 = Theme.Danger
+Base.CloseBtn.BackgroundTransparency = 1
+Base.CloseBtn.MouseButton1Click:Connect(function() 
+    _G.BatchHeroActivo = false; _G.BatchGearActivo = false; _G.BatchWeaponActivo = false
+    Base.Screen:Destroy() 
+end)
+
+local drag = { dragging = false, dInp = nil, dStart = nil, sPos = nil }
+Base.Main.InputBegan:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then drag.dragging = true; drag.dStart = i.Position; drag.sPos = Base.Main.Position; i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then drag.dragging = false end end) end 
+end)
+Base.Main.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then drag.dInp = i end end)
+UserInputService.InputChanged:Connect(function(i) 
+    if i == drag.dInp and drag.dragging then local d = i.Position - drag.dStart; Base.Main.Position = UDim2.new(drag.sPos.X.Scale, drag.sPos.X.Offset+d.X, drag.sPos.Y.Scale, drag.sPos.Y.Offset+d.Y) end 
+end)
+
+Base.TabBar = Instance.new("Frame", Base.Main)
+Base.TabBar.Size = UDim2.new(1, 0, 0, 30); Base.TabBar.Position = UDim2.new(0, 0, 0, 38)
+Base.TabBar.BackgroundColor3 = Theme.PanelLight
+Base.TabBar.BorderSizePixel = 0
+local tabLayout = Instance.new("UIListLayout", Base.TabBar)
+tabLayout.FillDirection = Enum.FillDirection.Horizontal; tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+Base.TabLine = Instance.new("Frame", Base.Main)
+Base.TabLine.Size = UDim2.new(1, 0, 0, 2); Base.TabLine.Position = UDim2.new(0, 0, 0, 68)
+Base.TabLine.BackgroundColor3 = Theme.Primary
+Base.TabLine.BorderSizePixel = 0
+
+Base.Frames = {}
+Base.Btns = {}
+
+local function CreateTabContent(name)
+    local frame = Instance.new("Frame", Base.Main)
+    frame.Size = UDim2.new(1, 0, 1, -70); frame.Position = UDim2.new(0, 0, 0, 75)
+    frame.BackgroundTransparency = 1; frame.Visible = false
+    Base.Frames[name] = frame
+    return frame
+end
+
+local function AddTab(name, isFirst)
+    local btn = Instance.new("TextButton", Base.TabBar)
+    btn.Size = UDim2.new(0.3333, 0, 1, 0)
+    btn.Text = name; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11
+    btn.BackgroundColor3 = isFirst and Theme.Primary or Theme.PanelLight
+    btn.TextColor3 = isFirst and Theme.BlackText or Theme.Text
+    btn.BorderSizePixel = 0
+    Base.Btns[name] = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        for n, f in pairs(Base.Frames) do f.Visible = (n == name) end
+        for n, b in pairs(Base.Btns) do 
+            b.BackgroundColor3 = (n == name) and Theme.Primary or Theme.PanelLight
+            b.TextColor3 = (n == name) and Theme.BlackText or Theme.Text 
+        end
+    end)
+end
+
+-- =========================================================
+-- FUNCIÓN COMPARTIDA (NÚCLEO DE LA MULTI-CAPTURA DE ALTA PRECISIÓN)
+-- =========================================================
+local function BuildCommonUI(tabFrame, stateTbl, typeName, startY)
+    local U = {}
+    U.Lbl = Instance.new("TextLabel", tabFrame); U.Lbl.Size = UDim2.new(0.9,0,0,15); U.Lbl.Position = UDim2.new(0.05,0,0,startY); U.Lbl.Text = "Pegar IDs o Capturar en el juego:"; U.Lbl.Font = Enum.Font.GothamMedium; U.Lbl.TextSize = 11; U.Lbl.TextColor3 = Theme.Text; U.Lbl.BackgroundTransparency = 1; U.Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    U.Cap = Instance.new("TextButton", tabFrame); U.Cap.Size = UDim2.new(0.28,0,0,20); U.Cap.Position = UDim2.new(0.05,0,0,startY+15); U.Cap.Text = "Capturar"; U.Cap.Font = Enum.Font.GothamMedium; U.Cap.TextSize = 10; U.Cap.BackgroundColor3 = Theme.Secondary; U.Cap.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", U.Cap).CornerRadius = UDim.new(0, 4)
+    U.Clr = Instance.new("TextButton", tabFrame); U.Clr.Size = UDim2.new(0.28,0,0,20); U.Clr.Position = UDim2.new(0.36,0,0,startY+15); U.Clr.Text = "Limpiar"; U.Clr.Font = Enum.Font.GothamMedium; U.Clr.TextSize = 10; U.Clr.BackgroundColor3 = Theme.Danger; U.Clr.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", U.Clr).CornerRadius = UDim.new(0, 4)
+    U.Dup = Instance.new("TextButton", tabFrame); U.Dup.Size = UDim2.new(0.31,0,0,20); U.Dup.Position = UDim2.new(0.67,0,0,startY+15); U.Dup.Text = "Sin Duplis"; U.Dup.Font = Enum.Font.GothamMedium; U.Dup.TextSize = 10; U.Dup.BackgroundColor3 = Theme.Warning; U.Dup.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", U.Dup).CornerRadius = UDim.new(0, 4)
+    U.Box = Instance.new("TextBox", tabFrame); U.Box.Size = UDim2.new(0.9,0,0,70); U.Box.Position = UDim2.new(0.05,0,0,startY+40); U.Box.PlaceholderText = "..."; U.Box.Text = ""; U.Box.Font = Enum.Font.Gotham; U.Box.TextSize = 9; U.Box.TextYAlignment = Enum.TextYAlignment.Top; U.Box.TextXAlignment = Enum.TextXAlignment.Left; U.Box.MultiLine = true; U.Box.ClearTextOnFocus = false; U.Box.BackgroundColor3 = Theme.PanelLight; U.Box.TextColor3 = Theme.Primary; Instance.new("UICorner", U.Box).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", U.Box).Color = Theme.Secondary
+    U.Log = Instance.new("ScrollingFrame", tabFrame); U.Log.Size = UDim2.new(0.9,0,0,140); U.Log.Position = UDim2.new(0.05,0,0,startY+115); U.Log.BackgroundColor3 = Theme.PanelLight; U.Log.ScrollBarThickness = 4; Instance.new("UICorner", U.Log).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", U.Log).Color = Theme.Secondary; U.LogL = Instance.new("UIListLayout", U.Log); U.LogL.SortOrder = Enum.SortOrder.LayoutOrder; U.LogL.Padding = UDim.new(0, 2)
+    U.Tog = Instance.new("TextButton", tabFrame); U.Tog.Size = UDim2.new(0.9,0,0,35); U.Tog.Position = UDim2.new(0.05,0,0,startY+265); U.Tog.Text = "INICIAR " .. typeName; U.Tog.Font = Enum.Font.GothamBlack; U.Tog.TextSize = 13; U.Tog.BackgroundColor3 = Theme.Primary; U.Tog.TextColor3 = Theme.BlackText; Instance.new("UICorner", U.Tog).CornerRadius = UDim.new(0, 6)
+
+    U.AddLog = function(msg, color)
+        local l = Instance.new("TextLabel", U.Log); l.Size = UDim2.new(1,-10,0,16); l.BackgroundTransparency = 1; l.Position = UDim2.new(0,5,0,0); l.Text = msg; l.Font = Enum.Font.Gotham; l.TextSize = 10; l.TextColor3 = color or Theme.Text; l.TextXAlignment = Enum.TextXAlignment.Left; U.Log.CanvasSize = UDim2.new(0,0,0,U.LogL.AbsoluteContentSize.Y); U.Log.CanvasPosition = Vector2.new(0,U.Log.CanvasSize.Y.Offset)
+    end
+    U.Clr.MouseButton1Click:Connect(function() U.Box.Text = ""; U.AddLog("🗑️ Lista limpiada.", Theme.Text) end)
+    U.Dup.MouseButton1Click:Connect(function() local s,u={},{} for v in string.gmatch(U.Box.Text,uuidPattern) do if not s[v] then s[v]=true table.insert(u,v) end end U.Box.Text = table.concat(u,"\n") U.AddLog(tostring(#u).." IDs únicos.", Theme.Success) end)
+    
+    -- SISTEMA DE CAPTURA MEJORADO (No se cierra tras un clic, respeta Z-Index superior)
+    U.Cap.MouseButton1Click:Connect(function()
+        if stateTbl.IsSniffing then 
+            stateTbl.IsSniffing = false; if stateTbl.ClickConn then stateTbl.ClickConn:Disconnect() end
+            U.Cap.Text = "Capturar"; U.Cap.BackgroundColor3 = Theme.Secondary; return 
+        end
+        
+        stateTbl.IsSniffing = true; U.Cap.Text = "Cancelar"; U.Cap.BackgroundColor3 = Theme.Danger
+        U.AddLog("Modo Captura: ACTIVO (Puedes hacer clics múltiples)", Theme.Warning)
+        
+        stateTbl.ClickConn = UserInputService.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                task.wait(0.05); local mp = UserInputService:GetMouseLocation()
+                local guis = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(mp.X, mp.Y)
+                local fu = nil
+                
+                for _, g in ipairs(guis) do
+                    local uid = string.match(g.Name, uuidPattern)
+                    if not uid and (g:IsA("TextLabel") or g:IsA("TextButton") or g:IsA("TextBox")) then uid = string.match(g.Text, uuidPattern) end
+                    if not uid then for _, a in pairs(g:GetAttributes()) do if type(a)=="string" and string.match(a, uuidPattern) then uid = string.match(a, uuidPattern) break end end end
+                    if not uid then for _, c in ipairs(g:GetChildren()) do if c:IsA("StringValue") and string.match(c.Value, uuidPattern) then uid = string.match(c.Value, uuidPattern) break end end end
+                    
+                    if uid then fu = uid; break end
+                end
+                
+                if fu then 
+                    if not string.find(U.Box.Text, fu) then
+                        U.Box.Text = (U.Box.Text=="" and fu or U.Box.Text.."\n"..fu)
+                        U.AddLog("📸 UUID Atrapado: "..string.sub(fu,1,8), Theme.Success) 
+                    end
+                end
+            end
+        end)
+    end)
+    return U
+end
+
+-- =========================================================
+-- MÓDULO 1: HERO QUIRKS UI
+-- =========================================================
+local HeroFrame = CreateTabContent("HERO")
+AddTab("HERO", true)
+HeroFrame.Visible = true
+
+local HeroState = {
+    Skill = "Hab 1", StopIds = {}, IsSniffing = false, ClickConn = nil,
+    Config = {
+        ["Hab 1"] = { drawId = 920001, quirks = { { Text = "Golden Era", Id = 99109 }, { Text = "Axiom of Value", Id = 99111 } } },
+        ["Hab 2"] = { drawId = 920002, quirks = { { Text = "Eclipse Masquerade", Id = 99113 }, { Text = "Celestial Benediction", Id = 99112 } } },
+        ["Hab 3"] = { drawId = 920003, quirks = { { Text = "Cosmic Cataclysm", Id = 99115 }, { Text = "Omega Oblivion", Id = 99116 } } }
+    }, Names = {}
+}
+for _, s in pairs(HeroState.Config) do for _, q in ipairs(s.quirks) do HeroState.Names[q.Id] = q.Text end end
+
+local HUI = {}
+HUI.SFrame = Instance.new("Frame", HeroFrame); HUI.SFrame.Size = UDim2.new(0.9,0,0,25); HUI.SFrame.Position = UDim2.new(0.05,0,0,0); HUI.SFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", HUI.SFrame).CellSize = UDim2.new(0.31,0,1,0); HUI.SFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0,0)
+HUI.QFrame = Instance.new("Frame", HeroFrame); HUI.QFrame.Size = UDim2.new(0.9,0,0,25); HUI.QFrame.Position = UDim2.new(0.05,0,0,30); HUI.QFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", HUI.QFrame).CellSize = UDim2.new(0.48,0,1,0); HUI.QFrame.UIGridLayout.CellPadding = UDim2.new(0.04,0,0,0)
+HUI.SBtns = {}
+
+HUI.LoadQ = function(sn)
+    for _, c in ipairs(HUI.QFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    HeroState.StopIds = {}
+    for _, q in ipairs(HeroState.Config[sn].quirks) do
+        local b = Instance.new("TextButton", HUI.QFrame); b.Text = q.Text; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+        local function U() b.BackgroundColor3 = HeroState.StopIds[q.Id] and Theme.Primary or Theme.Secondary; b.TextColor3 = HeroState.StopIds[q.Id] and Theme.BlackText or Theme.Text end
+        U(); b.MouseButton1Click:Connect(function() HeroState.StopIds[q.Id] = not HeroState.StopIds[q.Id]; U() end)
+    end
+end
+
+for _, sn in ipairs({"Hab 1", "Hab 2", "Hab 3"}) do
+    local b = Instance.new("TextButton", HUI.SFrame); b.Text = sn; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4); HUI.SBtns[sn] = b
+    b.MouseButton1Click:Connect(function() if _G.BatchHeroActivo then return end; HeroState.Skill = sn; for n, bt in pairs(HUI.SBtns) do bt.BackgroundColor3 = (n==sn) and Theme.Primary or Theme.Secondary; bt.TextColor3 = (n==sn) and Theme.BlackText or Theme.Text end; HUI.LoadQ(sn) end)
+end
+HUI.SBtns["Hab 1"].BackgroundColor3 = Theme.Primary; HUI.SBtns["Hab 1"].TextColor3 = Theme.BlackText; HUI.LoadQ("Hab 1")
+
+HUI.C = BuildCommonUI(HeroFrame, HeroState, "HERO REROLL", 60)
+HUI.C.Tog.MouseButton1Click:Connect(function()
+    if not _G.BatchHeroActivo then
+        local ts = false; for _, a in pairs(HeroState.StopIds) do if a then ts=true break end end
+        if not ts then HUI.C.AddLog("⚠️ Selecciona un Quirk.", Theme.Danger) return end
+        local uList = ExtractUUIDs(HUI.C.Box.Text); if #uList == 0 then HUI.C.AddLog("⚠️ Sin UUIDs.", Theme.Danger) return end
+        _G.BatchHeroActivo = true; HUI.C.Tog.Text = "DETENER"; HUI.C.Tog.BackgroundColor3 = Theme.Danger; HUI.C.Tog.TextColor3 = Theme.TextHighlight
+        local Remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AutoRandomHeroQuirk")
+        local dId = HeroState.Config[HeroState.Skill].drawId; local dyn = {}; for id, a in pairs(HeroState.StopIds) do if a then table.insert(dyn, id) end end
+        HUI.C.AddLog("=================", Theme.Primary); HUI.C.AddLog("Lote de " .. #uList .. " UUID(s)...", Theme.TextHighlight)
+        task.spawn(function()
+            for i, uid in ipairs(uList) do
+                if not _G.BatchHeroActivo then break end
+                local sId = string.sub(uid,1,8); HUI.C.AddLog("▶ ["..i.."/"..#uList.."] "..sId, Theme.TextHighlight); local tries = 0
+                while _G.BatchHeroActivo do
+                    local s, r = pcall(function() return Remote:InvokeServer({drawId = dId, heroGuid = uid, stopQuirkIds = dyn}) end)
+                    if s and r then tries = tries + 1; local found = CheckVals(r, dyn); if found then HUI.C.AddLog("✔ "..sId.." -> ["..(HeroState.Names[found] or tostring(found)).."] en "..tries, Theme.Success) break end else HUI.C.AddLog("✖ Error red "..sId, Theme.Danger) break end
+                    task.wait(0.1)
+                end
+            end
+            HUI.C.AddLog(_G.BatchHeroActivo and "⭐ FIN DEL LOTE" or "⛔ DETENIDO", _G.BatchHeroActivo and Theme.Primary or Theme.Danger)
+            _G.BatchHeroActivo = false; HUI.C.Tog.Text = "INICIAR HERO REROLL"; HUI.C.Tog.BackgroundColor3 = Theme.Primary; HUI.C.Tog.TextColor3 = Theme.BlackText
+        end)
+    else _G.BatchHeroActivo = false end
+end)
+
+-- =========================================================
+-- MÓDULO 2: GEAR SKILLS UI
+-- =========================================================
+local GearFrame = CreateTabContent("GEAR")
+AddTab("GEAR", false)
+
+local GearState = {
+    Cat = "R", StopTxt = {["GM"]=true, ["MM"]=true, ["M++"]=true}, IsSniffing = false, ClickConn = nil,
+    Config = {
+        ["R"] = { drawId = 980001, grades = { {Text="N",Id=990009}, {Text="M",Id=990010}, {Text="M+",Id=990031}, {Text="GM",Id=990032}, {Text="MM",Id=990033}, {Text="M++",Id=990034} } },
+        ["Y"] = { drawId = 980002, grades = { {Text="N",Id=990019}, {Text="M",Id=990020}, {Text="M+",Id=990041}, {Text="GM",Id=990042}, {Text="MM",Id=990043}, {Text="M++",Id=990044} } },
+        ["B"] = { drawId = 980003, grades = { {Text="N",Id=990029}, {Text="M",Id=990030}, {Text="M+",Id=990051}, {Text="GM",Id=990052}, {Text="MM",Id=990053}, {Text="M++",Id=990054} } }
+    }, Names = {}
+}
+for _, c in pairs(GearState.Config) do for _, g in ipairs(c.grades) do GearState.Names[g.Id] = g.Text end end
+
+local GUI = {}
+GUI.CFrame = Instance.new("Frame", GearFrame); GUI.CFrame.Size = UDim2.new(0.9,0,0,25); GUI.CFrame.Position = UDim2.new(0.05,0,0,0); GUI.CFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", GUI.CFrame).CellSize = UDim2.new(0.31,0,1,0); GUI.CFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0,0)
+GUI.CBtns = {}
+for _, cn in ipairs({"R", "Y", "B"}) do
+    local b = Instance.new("TextButton", GUI.CFrame); b.Text = "Tipo " .. cn; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4); GUI.CBtns[cn] = b
+    b.MouseButton1Click:Connect(function() if _G.BatchGearActivo then return end; GearState.Cat = cn; for n, bt in pairs(GUI.CBtns) do bt.BackgroundColor3 = (n==cn) and Theme.Primary or Theme.Secondary; bt.TextColor3 = (n==cn) and Theme.BlackText or Theme.Text end end)
+end
+GUI.CBtns["R"].BackgroundColor3 = Theme.Primary; GUI.CBtns["R"].TextColor3 = Theme.BlackText
+
+GUI.GFrame = Instance.new("Frame", GearFrame); GUI.GFrame.Size = UDim2.new(0.9,0,0,50); GUI.GFrame.Position = UDim2.new(0.05,0,0,30); GUI.GFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", GUI.GFrame).CellSize = UDim2.new(0.31,0,0.45,0); GUI.GFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0.1,0)
+for _, g in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
+    local b = Instance.new("TextButton", GUI.GFrame); b.Text = g; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    local function U() b.BackgroundColor3 = GearState.StopTxt[g] and Theme.Primary or Theme.Secondary; b.TextColor3 = GearState.StopTxt[g] and Theme.BlackText or Theme.Text end; U()
+    b.MouseButton1Click:Connect(function() GearState.StopTxt[g] = not GearState.StopTxt[g]; U() end)
+end
+
+GUI.C = BuildCommonUI(GearFrame, GearState, "GEAR REROLL", 85)
+GUI.C.Tog.MouseButton1Click:Connect(function()
+    if not _G.BatchGearActivo then
+        local ts = false; for _, a in pairs(GearState.StopTxt) do if a then ts=true break end end
+        if not ts then GUI.C.AddLog("⚠️ Selecciona un Grado.", Theme.Danger) return end
+        local uList = ExtractUUIDs(GUI.C.Box.Text); if #uList == 0 then GUI.C.AddLog("⚠️ Sin UUIDs.", Theme.Danger) return end
+        _G.BatchGearActivo = true; GUI.C.Tog.Text = "DETENER"; GUI.C.Tog.BackgroundColor3 = Theme.Danger; GUI.C.Tog.TextColor3 = Theme.TextHighlight
+        local Remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AutoRandomHeroEquipGrade")
+        local dId = GearState.Config[GearState.Cat].drawId; local dyn = {}; for _, g in ipairs(GearState.Config[GearState.Cat].grades) do if GearState.StopTxt[g.Text] then table.insert(dyn, g.Id) end end
+        GUI.C.AddLog("=================", Theme.Primary); GUI.C.AddLog("Lote de " .. #uList .. " UUID(s)...", Theme.TextHighlight)
+        task.spawn(function()
+            for i, uid in ipairs(uList) do
+                if not _G.BatchGearActivo then break end
+                local sId = string.sub(uid,1,8); GUI.C.AddLog("▶ ["..i.."/"..#uList.."] "..sId, Theme.TextHighlight); local tries = 0
+                while _G.BatchGearActivo do
+                    local s, r = pcall(function() return Remote:InvokeServer({drawId = dId, stopGradeIds = dyn, guid = uid}) end)
+                    if s and r then tries = tries + 1; local found = CheckVals(r, dyn); if found then GUI.C.AddLog("✔ "..sId.." -> [Grado "..(GearState.Names[found] or tostring(found)).."] en "..tries, Theme.Success) break end else GUI.C.AddLog("✖ Error red "..sId, Theme.Danger) break end
+                    task.wait(0.05)
+                end
+            end
+            GUI.C.AddLog(_G.BatchGearActivo and "⭐ FIN DEL LOTE" or "⛔ DETENIDO", _G.BatchGearActivo and Theme.Primary or Theme.Danger)
+            _G.BatchGearActivo = false; GUI.C.Tog.Text = "INICIAR GEAR REROLL"; GUI.C.Tog.BackgroundColor3 = Theme.Primary; GUI.C.Tog.TextColor3 = Theme.BlackText
+        end)
+    else _G.BatchGearActivo = false end
+end)
+
+-- =========================================================
+-- MÓDULO 3: WEAPON SKILLS UI
+-- =========================================================
+local WeapFrame = CreateTabContent("WEAPON")
+AddTab("WEAPON", false)
+
+local WeapState = {
+    Cat = "Hab 1", StopTxt = {["Eternal"]=true, ["Seraphic"]=true, ["Doombringer"]=true}, IsSniffing = false, ClickConn = nil,
+    Config = {
+        ["Hab 1"] = { drawId = 960001, quirks = { {Text="Lucky",Id=99068}, {Text="Eternal",Id=99118}, {Text="Seraphic",Id=99119}, {Text="Doombringer",Id=99120} } },
+        ["Hab 2"] = { drawId = 960002, quirks = { {Text="Lucky",Id=99086}, {Text="Eternal",Id=99121}, {Text="Seraphic",Id=99122}, {Text="Doombringer",Id=99123} } },
+        ["Hab 3"] = { drawId = 960003, quirks = { {Text="Lucky",Id=99104}, {Text="Eternal",Id=99124}, {Text="Seraphic",Id=99125}, {Text="Doombringer",Id=99126} } }
+    }, Names = {}
+}
+for _, c in pairs(WeapState.Config) do for _, q in ipairs(c.quirks) do WeapState.Names[q.Id] = q.Text end end
+
+local WUI = {}
+WUI.CFrame = Instance.new("Frame", WeapFrame); WUI.CFrame.Size = UDim2.new(0.9,0,0,25); WUI.CFrame.Position = UDim2.new(0.05,0,0,0); WUI.CFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", WUI.CFrame).CellSize = UDim2.new(0.31,0,1,0); WUI.CFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0,0)
+WUI.CBtns = {}
+for _, cn in ipairs({"Hab 1", "Hab 2", "Hab 3"}) do
+    local b = Instance.new("TextButton", WUI.CFrame); b.Text = cn; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4); WUI.CBtns[cn] = b
+    b.MouseButton1Click:Connect(function() if _G.BatchWeaponActivo then return end; WeapState.Cat = cn; for n, bt in pairs(WUI.CBtns) do bt.BackgroundColor3 = (n==cn) and Theme.Primary or Theme.Secondary; bt.TextColor3 = (n==cn) and Theme.BlackText or Theme.Text end end)
+end
+WUI.CBtns["Hab 1"].BackgroundColor3 = Theme.Primary; WUI.CBtns["Hab 1"].TextColor3 = Theme.BlackText
+
+WUI.QFrame = Instance.new("Frame", WeapFrame); WUI.QFrame.Size = UDim2.new(0.9,0,0,25); WUI.QFrame.Position = UDim2.new(0.05,0,0,30); WUI.QFrame.BackgroundTransparency = 1
+Instance.new("UIGridLayout", WUI.QFrame).CellSize = UDim2.new(0.23,0,1,0); WUI.QFrame.UIGridLayout.CellPadding = UDim2.new(0.02,0,0,0)
+for _, qt in ipairs({"Lucky", "Eternal", "Seraphic", "Doombringer"}) do
+    local b = Instance.new("TextButton", WUI.QFrame); b.Text = qt; b.Font = Enum.Font.GothamMedium; b.TextSize = 10; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    local function U() b.BackgroundColor3 = WeapState.StopTxt[qt] and Theme.Primary or Theme.Secondary; b.TextColor3 = WeapState.StopTxt[qt] and Theme.BlackText or Theme.Text end; U()
+    b.MouseButton1Click:Connect(function() WeapState.StopTxt[qt] = not WeapState.StopTxt[qt]; U() end)
+end
+
+WUI.C = BuildCommonUI(WeapFrame, WeapState, "WEAPON REROLL", 60)
+WUI.C.Tog.MouseButton1Click:Connect(function()
+    if not _G.BatchWeaponActivo then
+        local ts = false; for _, a in pairs(WeapState.StopTxt) do if a then ts=true break end end
+        if not ts then WUI.C.AddLog("⚠️ Selecciona Habilidad.", Theme.Danger) return end
+        local uList = ExtractUUIDs(WUI.C.Box.Text); if #uList == 0 then WUI.C.AddLog("⚠️ Sin UUIDs.", Theme.Danger) return end
+        _G.BatchWeaponActivo = true; WUI.C.Tog.Text = "DETENER"; WUI.C.Tog.BackgroundColor3 = Theme.Danger; WUI.C.Tog.TextColor3 = Theme.TextHighlight
+        local Remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AutoRandomWeaponQuirk")
+        local dId = WeapState.Config[WeapState.Cat].drawId; local dyn = {}; for _, q in ipairs(WeapState.Config[WeapState.Cat].quirks) do if WeapState.StopTxt[q.Text] then table.insert(dyn, q.Id) end end
+        WUI.C.AddLog("=================", Theme.Primary); WUI.C.AddLog("Lote de " .. #uList .. " UUID(s)...", Theme.TextHighlight)
+        task.spawn(function()
+            for i, uid in ipairs(uList) do
+                if not _G.BatchWeaponActivo then break end
+                local sId = string.sub(uid,1,8); WUI.C.AddLog("▶ ["..i.."/"..#uList.."] "..sId, Theme.TextHighlight); local tries = 0
+                while _G.BatchWeaponActivo do
+                    local s, r = pcall(function() return Remote:InvokeServer({drawId = dId, stopQuirkIds = dyn, guid = uid}) end)
+                    if s and r then tries = tries + 1; local found = CheckVals(r, dyn); if found then WUI.C.AddLog("✔ "..sId.." -> ["..(WeapState.Names[found] or tostring(found)).."] en "..tries, Theme.Success) break end else WUI.C.AddLog("✖ Error red "..sId, Theme.Danger) break end
+                    task.wait(0.05)
+                end
+            end
+            WUI.C.AddLog(_G.BatchWeaponActivo and "⭐ FIN DEL LOTE" or "⛔ DETENIDO", _G.BatchWeaponActivo and Theme.Primary or Theme.Danger)
+            _G.BatchWeaponActivo = false; WUI.C.Tog.Text = "INICIAR WEAPON REROLL"; WUI.C.Tog.BackgroundColor3 = Theme.Primary; WUI.C.Tog.TextColor3 = Theme.BlackText
+        end)
+    else _G.BatchWeaponActivo = false end
+end)
