@@ -1816,7 +1816,7 @@ end, "IR A VISITA", Theme.Primary, function()
 end)
 
 -- =========================================================
--- [6] PESTAÑA: FAST REROLL (BATCH EDITION - OPTIMIZADO)
+-- [6] PESTAÑA: FAST REROLL (BATCH EDITION - OPTIMIZADO Y FIX LOCALES)
 -- =========================================================
 local TabReroll = Hub:CreateTab("Fast Reroll")
 TabReroll:CreateLabel("Selecciona un menú para Batch Auto-Roll")
@@ -1862,7 +1862,7 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     _G.BatchHeroActivo = false
 
     local UI = {}
-    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollQuirkUI"; UI.Screen.ResetOnSpawn = false
+    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollQuirkUI"; UI.Screen.ResetOnSpawn = false; UI.Screen.AutoLocalize = false
     UI.Main = Instance.new("Frame", UI.Screen); UI.Main.Size = UDim2.new(0, 320, 0, 470); UI.Main.Position = UDim2.new(0.5, -160, 0.5, -235); UI.Main.BackgroundColor3 = Theme.Background; Instance.new("UICorner", UI.Main).CornerRadius = UDim.new(0, 8); Instance.new("UIStroke", UI.Main).Color = Theme.Primary
     
     UI.Title = Instance.new("TextLabel", UI.Main); UI.Title.Size = UDim2.new(1, -40, 0, 30); UI.Title.Position = UDim2.new(0, 15, 0, 5); UI.Title.Text = "BATCH HERO REROLL"; UI.Title.Font = Enum.Font.GothamBlack; UI.Title.TextSize = 14; UI.Title.TextColor3 = Theme.TextHighlight; UI.Title.BackgroundTransparency = 1; UI.Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -1974,7 +1974,7 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     _G.BatchGearActivo = false
 
     local UI = {}
-    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollGearUI"; UI.Screen.ResetOnSpawn = false
+    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollGearUI"; UI.Screen.ResetOnSpawn = false; UI.Screen.AutoLocalize = false
     UI.Main = Instance.new("Frame", UI.Screen); UI.Main.Size = UDim2.new(0, 320, 0, 490); UI.Main.Position = UDim2.new(0.5, -160, 0.5, -245); UI.Main.BackgroundColor3 = Theme.Background; Instance.new("UICorner", UI.Main).CornerRadius = UDim.new(0, 8); Instance.new("UIStroke", UI.Main).Color = Theme.Primary
     
     UI.Title = Instance.new("TextLabel", UI.Main); UI.Title.Size = UDim2.new(1, -40, 0, 30); UI.Title.Position = UDim2.new(0, 15, 0, 5); UI.Title.Text = "BATCH GEAR REROLL"; UI.Title.Font = Enum.Font.GothamBlack; UI.Title.TextSize = 14; UI.Title.TextColor3 = Theme.TextHighlight; UI.Title.BackgroundTransparency = 1; UI.Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -2081,7 +2081,7 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
     _G.BatchWeaponActivo = false
 
     local UI = {}
-    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollWeaponUI"; UI.Screen.ResetOnSpawn = false
+    UI.Screen = Instance.new("ScreenGui", TargetGui); UI.Screen.Name = "BatchAutoRollWeaponUI"; UI.Screen.ResetOnSpawn = false; UI.Screen.AutoLocalize = false
     UI.Main = Instance.new("Frame", UI.Screen); UI.Main.Size = UDim2.new(0, 320, 0, 470); UI.Main.Position = UDim2.new(0.5, -160, 0.5, -235); UI.Main.BackgroundColor3 = Theme.Background; Instance.new("UICorner", UI.Main).CornerRadius = UDim.new(0, 8); Instance.new("UIStroke", UI.Main).Color = Theme.Primary
     
     UI.Title = Instance.new("TextLabel", UI.Main); UI.Title.Size = UDim2.new(1, -40, 0, 30); UI.Title.Position = UDim2.new(0, 15, 0, 5); UI.Title.Text = "BATCH WEAPON REROLL"; UI.Title.Font = Enum.Font.GothamBlack; UI.Title.TextSize = 14; UI.Title.TextColor3 = Theme.TextHighlight; UI.Title.BackgroundTransparency = 1; UI.Title.TextXAlignment = Enum.TextXAlignment.Left
