@@ -383,6 +383,8 @@ GUI.ResetDmgBtn.MouseButton1Click:Connect(function() GUI.TotalDamageDealt = 0; G
 GUI.RemoteDamage = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ShowEnemyTakeDamageInfo")
 
 if GUI.RemoteDamage then
+    GUI.LastHitTimes = {} -- Tabla para registrar el tiempo del último golpe
+
     local damageConn = GUI.RemoteDamage.OnClientEvent:Connect(function(data)
         if type(data) == "table" and data.attackUserId == LocalPlayer.UserId then
             local dmg = tonumber(data.attack) or tonumber(data.realityHarm) or 0
@@ -392,27 +394,46 @@ if GUI.RemoteDamage then
                 
                 if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then return end
                 
+                -- 1. Detectar objetivo estricto leyendo el Adornee del Focus Visual de la Metralleta
+                local focusVisual = CoreGui:FindFirstChild("MetralletaFocus") or (TargetGui and TargetGui:FindFirstChild("MetralletaFocus"))
+                local priorityGuid = (focusVisual and focusVisual.Adornee) and Utils.GetGUID(focusVisual.Adornee) or nil
+                
+                -- 2. Si la Metralleta está cazando, descartamos inmediatamente cualquier daño a otros mobs
+                if priorityGuid and hitGuid ~= priorityGuid then
+                    return
+                end
+                
                 if hitGuid ~= currentGuid then
-                    -- NUEVO: Si tenemos un objetivo asignado y sigue vivo, ignoramos daños colaterales
-                    if GUI.CurrentTarget and not Utils.EstaMuerto(GUI.CurrentTarget) then
-                        return 
+                    -- 3. Si NO hay metralleta, aplicamos un "bloqueo suave" (1.5 seg) 
+                    -- para evitar que el daño en área nos salte constantemente el objetivo.
+                    local now = tick()
+                    if not priorityGuid and currentGuid and GUI.LastHitTimes[currentGuid] and (now - GUI.LastHitTimes[currentGuid] < 1.5) then
+                        if GUI.CurrentTarget and not Utils.EstaMuerto(GUI.CurrentTarget) then
+                            return -- Es daño colateral esporádico, se ignora
+                        end
                     end
                     
+                    -- 4. Si pasamos los filtros, asignamos el nuevo objetivo
                     local fld = Utils.GetEnemyFolder()
                     if fld then
                         for _, mob in pairs(fld:GetChildren()) do
                             if Utils.GetGUID(mob) == hitGuid then
                                 GUI.CurrentTarget = mob
                                 GUI.TotalDamageDealt = 0 
+                                currentGuid = hitGuid
                                 break
                             end
                         end
                     end
                 end
 
-                GUI.TotalDamageDealt = GUI.TotalDamageDealt + dmg
-                if GUI.DamageLabel then
-                    GUI.DamageLabel.Text = "DMG: " .. Utils.FormatHealth(GUI.TotalDamageDealt)
+                -- Registrar el tiempo y sumar daño (si corresponde al objetivo validado)
+                if hitGuid == currentGuid then
+                    GUI.LastHitTimes[hitGuid] = tick()
+                    GUI.TotalDamageDealt = GUI.TotalDamageDealt + dmg
+                    if GUI.DamageLabel then
+                        GUI.DamageLabel.Text = "DMG: " .. Utils.FormatHealth(GUI.TotalDamageDealt)
+                    end
                 end
             end
         end
