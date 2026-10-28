@@ -393,6 +393,11 @@ if GUI.RemoteDamage then
                 if _G.MetralletaRefGuid and hitGuid == _G.MetralletaRefGuid then return end
                 
                 if hitGuid ~= currentGuid then
+                    -- NUEVO: Si tenemos un objetivo asignado y sigue vivo, ignoramos daños colaterales
+                    if GUI.CurrentTarget and not Utils.EstaMuerto(GUI.CurrentTarget) then
+                        return 
+                    end
+                    
                     local fld = Utils.GetEnemyFolder()
                     if fld then
                         for _, mob in pairs(fld:GetChildren()) do
