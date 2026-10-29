@@ -1416,7 +1416,7 @@ local MetState = {
     -- Lógica Standalone: Cerebro Intermitente
     InternalAttackActive = false,
     LastClickedGUID = nil,
-    TIEMPO_ENCENDIDO = 0.30, -- Tiempo de ataque
+    TIEMPO_ENCENDIDO = 0.1, -- Modificado: Tiempo de ataque por defecto a 10 (0.1s)
     TIEMPO_APAGADO = 0.30    -- Tiempo de apagón/reset
 }
 local MetCaza = {
@@ -1618,7 +1618,7 @@ TabMetralleta:CreateRadioButtons("Modo de Caza", {"SOLO", "SEC", "BOSS"}, modoMa
 end)
 
 TabMetralleta:CreateLabel("Ajuste de Animation Canceling")
-TabMetralleta:CreateSlider("Tiempo Ataque (ON) (30 = 0.3s)", 0, 100, 30, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
+TabMetralleta:CreateSlider("Tiempo Ataque (ON) (10 = 0.1s)", 0, 30, 10, function(v) MetState.TIEMPO_ENCENDIDO = v / 100 end, true)
 TabMetralleta:CreateSlider("Tiempo Corte (OFF) (30 = 0.3s)", 5, 100, 30, function(v) MetState.TIEMPO_APAGADO = v / 100 end, true)
 
 -- ==========================================
