@@ -2767,7 +2767,7 @@ local BossPorMapaASC = {
     [1] = "baran", [2] = "baran", [3] = "Giant Monarch", [4] = "Giant Monarch", 
     [5] = "Monarch of Plague", [6] = "Monarch of Plague", [7] = "Frostborne", [8] = "Frostborne", 
     [9] = "Legia", [10] = "Legia", [11] = "Silas", [12] = "Silas", [13] = "Yogumunt", 
-    [14] = "Yogumunt", [15] = "Antares", [16] = "Antares", [17] = "Ashborn", [18] = "Ashborn", [19] = "Dominion", [20] = "Dominion" 
+    [14] = "Yogumunt", [15] = "Antares", [16] = "Antares", [17] = "Ashborn", [18] = "Ashborn", [19] = "Dominion", [20] = "Dominion", [21] = "Ashborn" 
 }
 local CurrentRaidIsASC = false
 
