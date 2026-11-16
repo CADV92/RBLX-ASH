@@ -257,63 +257,149 @@ HUI.C.Tog.MouseButton1Click:Connect(function()
 end)
 
 -- =========================================================
--- MÓDULO 2: GEAR SKILLS UI
+-- MÓDULO 2: GEAR SKILLS UI (CORREGIDO + SS Y G)
 -- =========================================================
 local GearFrame = CreateTabContent("GEAR")
 AddTab("GEAR", false)
 
 local GearState = {
-    Cat = "R", StopTxt = {["GM"]=true, ["MM"]=true, ["M++"]=true}, IsSniffing = false, ClickConn = nil,
+    Cat = "R", 
+    StopTxt = {["GM"]=true, ["MM"]=true, ["M++"]=true}, 
+    IsSniffing = false, 
+    ClickConn = nil,
     Config = {
-        ["R"] = { drawId = 980001, grades = { {Text="N",Id=990009}, {Text="M",Id=990010}, {Text="M+",Id=990031}, {Text="GM",Id=990032}, {Text="MM",Id=990033}, {Text="M++",Id=990034} } },
-        ["Y"] = { drawId = 980002, grades = { {Text="N",Id=990019}, {Text="M",Id=990020}, {Text="M+",Id=990041}, {Text="GM",Id=990042}, {Text="MM",Id=990043}, {Text="M++",Id=990044} } },
-        ["B"] = { drawId = 980003, grades = { {Text="N",Id=990029}, {Text="M",Id=990030}, {Text="M+",Id=990051}, {Text="GM",Id=990052}, {Text="MM",Id=990053}, {Text="M++",Id=990054} } }
-    }, Names = {}
+        ["R"] = { drawId = 980001, grades = { 
+            {Text="SS",Id=990007}, {Text="G",Id=990008}, {Text="N",Id=990009}, {Text="M",Id=990010}, 
+            {Text="M+",Id=990031}, {Text="GM",Id=990032}, {Text="MM",Id=990033}, {Text="M++",Id=990034} 
+        } },
+        ["Y"] = { drawId = 980002, grades = { 
+            {Text="SS",Id=990017}, {Text="G",Id=990018}, {Text="N",Id=990019}, {Text="M",Id=990020}, 
+            {Text="M+",Id=990041}, {Text="GM",Id=990042}, {Text="MM",Id=990043}, {Text="M++",Id=990044} 
+        } },
+        ["B"] = { drawId = 980003, grades = { 
+            {Text="SS",Id=990027}, {Text="G",Id=990028}, {Text="N",Id=990029}, {Text="M",Id=990030}, 
+            {Text="M+",Id=990051}, {Text="GM",Id=990052}, {Text="MM",Id=990053}, {Text="M++",Id=990054} 
+        } }
+    }, 
+    Names = {}
 }
-for _, c in pairs(GearState.Config) do for _, g in ipairs(c.grades) do GearState.Names[g.Id] = g.Text end end
+for _, c in pairs(GearState.Config) do 
+    for _, g in ipairs(c.grades) do 
+        GearState.Names[g.Id] = g.Text 
+    end 
+end
 
 local GUI = {}
-GUI.CFrame = Instance.new("Frame", GearFrame); GUI.CFrame.Size = UDim2.new(0.9,0,0,25); GUI.CFrame.Position = UDim2.new(0.05,0,0,0); GUI.CFrame.BackgroundTransparency = 1
-Instance.new("UIGridLayout", GUI.CFrame).CellSize = UDim2.new(0.31,0,1,0); GUI.CFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0,0)
+GUI.CFrame = Instance.new("Frame", GearFrame)
+GUI.CFrame.Size = UDim2.new(0.9, 0, 0, 25)
+GUI.CFrame.Position = UDim2.new(0.05, 0, 0, 0)
+GUI.CFrame.BackgroundTransparency = 1
+local catGrid = Instance.new("UIGridLayout", GUI.CFrame)
+catGrid.CellSize = UDim2.new(0.31, 0, 1, 0)
+catGrid.CellPadding = UDim2.new(0.035, 0, 0, 0)
+
 GUI.CBtns = {}
 for _, cn in ipairs({"R", "Y", "B"}) do
-    local b = Instance.new("TextButton", GUI.CFrame); b.Text = "Tipo " .. cn; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4); GUI.CBtns[cn] = b
-    b.MouseButton1Click:Connect(function() if _G.BatchGearActivo then return end; GearState.Cat = cn; for n, bt in pairs(GUI.CBtns) do bt.BackgroundColor3 = (n==cn) and Theme.Primary or Theme.Secondary; bt.TextColor3 = (n==cn) and Theme.BlackText or Theme.Text end end)
+    local b = Instance.new("TextButton", GUI.CFrame)
+    b.Text = "Tipo " .. cn; b.Font = Enum.Font.GothamMedium; b.TextSize = 11
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    GUI.CBtns[cn] = b
+    b.MouseButton1Click:Connect(function() 
+        if _G.BatchGearActivo then return end
+        GearState.Cat = cn
+        for n, bt in pairs(GUI.CBtns) do 
+            bt.BackgroundColor3 = (n==cn) and Theme.Primary or Theme.Secondary
+            bt.TextColor3 = (n==cn) and Theme.BlackText or Theme.Text 
+        end 
+    end)
 end
-GUI.CBtns["R"].BackgroundColor3 = Theme.Primary; GUI.CBtns["R"].TextColor3 = Theme.BlackText
+GUI.CBtns["R"].BackgroundColor3 = Theme.Primary
+GUI.CBtns["R"].TextColor3 = Theme.BlackText
 
-GUI.GFrame = Instance.new("Frame", GearFrame); GUI.GFrame.Size = UDim2.new(0.9,0,0,50); GUI.GFrame.Position = UDim2.new(0.05,0,0,30); GUI.GFrame.BackgroundTransparency = 1
-Instance.new("UIGridLayout", GUI.GFrame).CellSize = UDim2.new(0.31,0,0.45,0); GUI.GFrame.UIGridLayout.CellPadding = UDim2.new(0.035,0,0.1,0)
-for _, g in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
-    local b = Instance.new("TextButton", GUI.GFrame); b.Text = g; b.Font = Enum.Font.GothamMedium; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
-    local function U() b.BackgroundColor3 = GearState.StopTxt[g] and Theme.Primary or Theme.Secondary; b.TextColor3 = GearState.StopTxt[g] and Theme.BlackText or Theme.Text end; U()
-    b.MouseButton1Click:Connect(function() GearState.StopTxt[g] = not GearState.StopTxt[g]; U() end)
+-- Cuadrícula de 4x2 para los 8 grados (SS, G, N, M / M+, GM, MM, M++)
+GUI.GFrame = Instance.new("Frame", GearFrame)
+GUI.GFrame.Size = UDim2.new(0.9, 0, 0, 50)
+GUI.GFrame.Position = UDim2.new(0.05, 0, 0, 30)
+GUI.GFrame.BackgroundTransparency = 1
+local gradeGrid = Instance.new("UIGridLayout", GUI.GFrame)
+gradeGrid.CellSize = UDim2.new(0.23, 0, 0.45, 0)
+gradeGrid.CellPadding = UDim2.new(0.026, 0, 0.1, 0)
+
+for _, g in ipairs({"SS", "G", "N", "M", "M+", "GM", "MM", "M++"}) do
+    local b = Instance.new("TextButton", GUI.GFrame)
+    b.Text = g; b.Font = Enum.Font.GothamMedium; b.TextSize = 10
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    local function UpdateVisual() 
+        b.BackgroundColor3 = GearState.StopTxt[g] and Theme.Primary or Theme.Secondary
+        b.TextColor3 = GearState.StopTxt[g] and Theme.BlackText or Theme.Text 
+    end
+    UpdateVisual()
+    b.MouseButton1Click:Connect(function() 
+        GearState.StopTxt[g] = not GearState.StopTxt[g]
+        UpdateVisual() 
+    end)
 end
 
 GUI.C = BuildCommonUI(GearFrame, GearState, "GEAR REROLL", 85)
 GUI.C.Tog.MouseButton1Click:Connect(function()
     if not _G.BatchGearActivo then
-        local ts = false; for _, a in pairs(GearState.StopTxt) do if a then ts=true break end end
+        local ts = false
+        for _, a in pairs(GearState.StopTxt) do if a then ts = true break end end
         if not ts then GUI.C.AddLog("⚠️ Selecciona un Grado.", Theme.Danger) return end
-        local uList = ExtractUUIDs(GUI.C.Box.Text); if #uList == 0 then GUI.C.AddLog("⚠️ Sin UUIDs.", Theme.Danger) return end
-        _G.BatchGearActivo = true; GUI.C.Tog.Text = "DETENER"; GUI.C.Tog.BackgroundColor3 = Theme.Danger; GUI.C.Tog.TextColor3 = Theme.TextHighlight
+        
+        local uList = ExtractUUIDs(GUI.C.Box.Text)
+        if #uList == 0 then GUI.C.AddLog("⚠️ Sin UUIDs.", Theme.Danger) return end
+        
+        _G.BatchGearActivo = true
+        GUI.C.Tog.Text = "DETENER"
+        GUI.C.Tog.BackgroundColor3 = Theme.Danger
+        GUI.C.Tog.TextColor3 = Theme.TextHighlight
+        
         local Remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AutoRandomHeroEquipGrade")
-        local dId = GearState.Config[GearState.Cat].drawId; local dyn = {}; for _, g in ipairs(GearState.Config[GearState.Cat].grades) do if GearState.StopTxt[g.Text] then table.insert(dyn, g.Id) end end
-        GUI.C.AddLog("=================", Theme.Primary); GUI.C.AddLog("Lote de " .. #uList .. " UUID(s)...", Theme.TextHighlight)
+        local dId = GearState.Config[GearState.Cat].drawId
+        local dyn = {}
+        for _, g in ipairs(GearState.Config[GearState.Cat].grades) do 
+            if GearState.StopTxt[g.Text] then table.insert(dyn, g.Id) end 
+        end
+        
+        GUI.C.AddLog("=================", Theme.Primary)
+        GUI.C.AddLog("Lote de " .. #uList .. " UUID(s)...", Theme.TextHighlight)
+        
         task.spawn(function()
             for i, uid in ipairs(uList) do
                 if not _G.BatchGearActivo then break end
-                local sId = string.sub(uid,1,8); GUI.C.AddLog("▶ ["..i.."/"..#uList.."] "..sId, Theme.TextHighlight); local tries = 0
+                local sId = string.sub(uid, 1, 8)
+                GUI.C.AddLog("▶ ["..i.."/"..#uList.."] "..sId, Theme.TextHighlight)
+                local tries = 0
+                
                 while _G.BatchGearActivo do
-                    local s, r = pcall(function() return Remote:InvokeServer({drawId = dId, stopGradeIds = dyn, guid = uid}) end)
-                    if s and r then tries = tries + 1; local found = CheckVals(r, dyn); if found then GUI.C.AddLog("✔ "..sId.." -> [Grado "..(GearState.Names[found] or tostring(found)).."] en "..tries, Theme.Success) break end else GUI.C.AddLog("✖ Error red "..sId, Theme.Danger) break end
-                    task.wait(0.05)
+                    local args = { { drawId = dId, stopGradeIds = dyn, guid = uid } }
+                    local s, r = pcall(function() return Remote:InvokeServer(unpack(args)) end)
+                    
+                    -- Se evalúa 's' (éxito de red) igual que en el script funcional, sin exigir que 'r' no sea nil
+                    if s then 
+                        tries = tries + 1
+                        local found = CheckVals(r, dyn)
+                        if found then 
+                            GUI.C.AddLog("✔ "..sId.." -> [Grado "..(GearState.Names[found] or tostring(found)).."] en "..tries, Theme.Success) 
+                            break 
+                        end 
+                    else 
+                        GUI.C.AddLog("✖ Error servidor en "..sId, Theme.Danger) 
+                        break 
+                    end
+                    task.wait(0.01)
                 end
             end
             GUI.C.AddLog(_G.BatchGearActivo and "⭐ FIN DEL LOTE" or "⛔ DETENIDO", _G.BatchGearActivo and Theme.Primary or Theme.Danger)
-            _G.BatchGearActivo = false; GUI.C.Tog.Text = "INICIAR GEAR REROLL"; GUI.C.Tog.BackgroundColor3 = Theme.Primary; GUI.C.Tog.TextColor3 = Theme.BlackText
+            _G.BatchGearActivo = false
+            GUI.C.Tog.Text = "INICIAR GEAR REROLL"
+            GUI.C.Tog.BackgroundColor3 = Theme.Primary
+            GUI.C.Tog.TextColor3 = Theme.BlackText
         end)
-    else _G.BatchGearActivo = false end
+    else 
+        _G.BatchGearActivo = false 
+    end
 end)
 
 -- =========================================================
