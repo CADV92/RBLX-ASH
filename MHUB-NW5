@@ -630,6 +630,8 @@ local monitorConn = RunService.Heartbeat:Connect(function()
     if Config.AutoOroEnabled and EquipModeSelected == "ORO" then
         if GUI.TiempoInicioEspecial == 0 then GUI.TiempoInicioEspecial = now end
         if now - GUI.TiempoInicioEspecial >= GUI.TiempoRegresoAtaque then
+            -- 1. Pausar pociones de Oro antes de volver a Ataque
+            if _G.SetGoldPotionsPaused then _G.SetGoldPotionsPaused(true) end
             CambiarModoAutoEquip("ATAQUE")
             GUI.TiempoInicioEspecial = 0
         end
@@ -644,6 +646,8 @@ local monitorConn = RunService.Heartbeat:Connect(function()
         if isDestroyed or currentHP <= GUI.DeadHpThreshold then
             if Config.AutoOroEnabled then
                 if EquipModeSelected ~= "ORO" then
+                    -- 1. Activar/Reanudar pociones de Oro antes de equipar set de Oro
+                    if _G.SetGoldPotionsPaused then _G.SetGoldPotionsPaused(false) end
                     AutoUseGoldPotions() 
                     CambiarModoAutoEquip("ORO")
                 end
@@ -3520,6 +3524,23 @@ do
             end
             ToggleBusy[cat.key] = false
             RefreshBuffButtonsUI()
+        end)
+    end
+
+    _G.SetGoldPotionsPaused = function(shouldPause)
+        local oroCat = BuffCategories[3] -- { key = "ORO", ids = {20003, 20006, 20009} }
+        if not oroCat or not SetBuffPausedRem then return end
+
+        BuffStateCache["ORO"] = not shouldPause
+        RefreshBuffButtonsUI()
+
+        task.spawn(function()
+            for _, id in ipairs(oroCat.ids) do
+                pcall(function()
+                    SetBuffPausedRem:InvokeServer({ isPaused = shouldPause, buffId = id })
+                end)
+                task.wait(0.15)
+            end
         end)
     end
 
