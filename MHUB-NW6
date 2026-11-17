@@ -1644,7 +1644,7 @@ task.spawn(function()
         if not MetState.Activo then continue end
 
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local currentMapID = GetCurrentMapID()
+        local currentMapID = Utils.GetCurrentMapID(myRoot)
 
         local function IsTargetValid(target)
             if not target or Utils.EstaMuerto(target) then return false end
@@ -1653,15 +1653,14 @@ task.spawn(function()
             if not tRoot then return false end
             local pos = tRoot.Position
             
-            if pos.Y < -50 or pos.Y > 5000 then return false end
-            
             if currentMapID and MapData[currentMapID] then
                 local b = MapData[currentMapID].Bounds
                 if pos.X < b.MinX or pos.X > b.MaxX or pos.Y < b.MinY or pos.Y > b.MaxY or pos.Z < b.MinZ or pos.Z > b.MaxZ then
                     return false
                 end
-            elseif myRoot then
-                if (pos - myRoot.Position).Magnitude > 2500 then return false end
+            else
+                if pos.Y < -50 or pos.Y > 5000 then return false end
+                if myRoot and (pos - myRoot.Position).Magnitude > 2500 then return false end
             end
             return true
         end
