@@ -3446,15 +3446,6 @@ do
     local ColorActivo = Color3.fromRGB(215, 165, 20) -- Dorado
     local ColorPausa  = Theme.Secondary                -- Gris
 
-    local PlayerManager, AgentManager
-    pcall(function()
-        local scripts = ReplicatedStorage:WaitForChild("Scripts", 3)
-        if scripts then
-            PlayerManager = require(scripts.Client.Manager.PlayerManager)
-            AgentManager  = require(scripts.Share.Manager.AgentManager)
-        end
-    end)
-
     local SetBuffPausedRem = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("SetBuffPaused")
     local BuffStateCache = { SUERTE = false, ATAQUE = false, ORO = false }
     local ToggleBusy = { SUERTE = false, ATAQUE = false, ORO = false }
@@ -3591,14 +3582,6 @@ do
 
         table.insert(RegisteredButtons[cat.key], hBtn)
         hBtn.MouseButton1Click:Connect(function() TogglePotionCategory(cat) end)
-    end
-
-    if AgentManager and AgentManager.EventNames and AgentManager.EventNames.UpdateBuff then
-        pcall(function()
-            AgentManager.RegisterEvent(AgentManager.EventNames.UpdateBuff, function()
-                if HubRunning then RefreshBuffButtonsUI() end
-            end)
-        end)
     end
 
     task.spawn(function()
