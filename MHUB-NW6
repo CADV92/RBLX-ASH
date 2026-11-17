@@ -2562,7 +2562,7 @@ local HardRaidsList = {
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
     "N-20-B", "N-20-S", "N-20-G", "N-20-N", "N-20-M+", "N-20-M++",
     "N-21-D", "N-21-B", "N-21-S", "N-21-G", "N-21-N", "N-21-M+", "N-21-M++",
-    "N-22-D", "N-22-B", "N-22-S", "N-22-G", "N-22-N", "N-22-M+", "N-22-M++"
+    "N-22-D", "N-22-B", "N-22-S", "N-22-G", "N-22-N", "N-22-M+", "N-22-M++",
     "A-11-C", "A-11-S", "A-11-G", "A-11-N", "A-11-M", "A-12-C", "A-12-S", "A-12-G", "A-12-N", "A-12-M",
     "A-13-C", "A-13-S", "A-13-G", "A-13-N", "A-13-M", "A-14-C", "A-14-S", "A-14-G", "A-14-N", "A-14-M",
     "A-15-C", "A-15-S", "A-15-G", "A-15-N", "A-15-M", "A-16-C", "A-16-S", "A-16-G", "A-16-N", "A-16-M",
@@ -2758,7 +2758,7 @@ local BossPorMapa = {
     [1] = "Goblin King", [2] = "Giant Arachnid Buryura", [3] = "Igris", [4] = "The Leader Of The Polar Bears",
     [5] = "Arch Lich", [6] = "Kargalgan", [7] = "baran", [8] = "Beru", [9] = "Giant Monarch", 
     [10] = "Monarch of Plague", [11] = "Frostborne", [12] = "Legia", [13] = "Silas", [14] = "Yogumunt", 
-    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]", [21] = "Gojo", [21] = "Sukuna" 
+    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]", [21] = "Gojo", [22] = "Sukuna" 
 }
 local BossPorMapaASC = { 
     [1] = "baran", [2] = "baran", [3] = "Giant Monarch", [4] = "Giant Monarch", 
