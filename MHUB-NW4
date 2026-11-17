@@ -3324,130 +3324,338 @@ TabServer:CreateLabel("Preferencias")
 TabServer:CreateButton("GUARDAR CONFIGURACIÓN", Theme.PrimaryDark, SaveConfig)
 
 -- =========================================================
--- PANEL DE ACCESO RÁPIDO (TECLA U)
+-- PANEL DE ACCESO RÁPIDO (TECLA U) + HUD BUFF PAUSE AISLADO
 -- =========================================================
-GUI.QuickPanel = Instance.new("Frame", Hub.ScreenGui)
-GUI.QuickPanel.Name = "QuickAccessPanel"
-GUI.QuickPanel.Size = UDim2.new(0, 220, 0, 210)
-GUI.QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -50)
-GUI.QuickPanel.BackgroundColor3 = Theme.Background
-GUI.QuickPanel.Visible = false
-GUI.QuickPanel.Active = true
-GUI.QuickPanel.Draggable = true
-Instance.new("UICorner", GUI.QuickPanel).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", GUI.QuickPanel).Color = Theme.Primary
+do
+    GUI.QuickPanel = Instance.new("Frame", Hub.ScreenGui)
+    GUI.QuickPanel.Name = "QuickAccessPanel"
+    GUI.QuickPanel.Size = UDim2.new(0, 220, 0, 260)
+    GUI.QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -75)
+    GUI.QuickPanel.BackgroundColor3 = Theme.Background
+    GUI.QuickPanel.Visible = false
+    GUI.QuickPanel.Active = true
+    GUI.QuickPanel.Draggable = true
+    Instance.new("UICorner", GUI.QuickPanel).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", GUI.QuickPanel).Color = Theme.Primary
 
-GUI.QTitle = Instance.new("TextLabel", GUI.QuickPanel)
-GUI.QTitle.Size = UDim2.new(1, -30, 0, 20)
-GUI.QTitle.Position = UDim2.new(0, 10, 0, 5)
-GUI.QTitle.Text = "ACCESO RÁPIDO (U)"
-GUI.QTitle.Font = Enum.Font.GothamBlack
-GUI.QTitle.TextSize = 12
-GUI.QTitle.TextColor3 = Theme.TextHighlight
-GUI.QTitle.BackgroundTransparency = 1
-GUI.QTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local QTitle = Instance.new("TextLabel", GUI.QuickPanel)
+    QTitle.Size = UDim2.new(1, -78, 0, 20)
+    QTitle.Position = UDim2.new(0, 10, 0, 5)
+    QTitle.Text = "ACCESO RÁPIDO (U)"
+    QTitle.Font = Enum.Font.GothamBlack
+    QTitle.TextSize = 12
+    QTitle.TextColor3 = Theme.TextHighlight
+    QTitle.BackgroundTransparency = 1
+    QTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-GUI.QClose = Instance.new("TextButton", GUI.QuickPanel)
-GUI.QClose.Size = UDim2.new(0, 20, 0, 20)
-GUI.QClose.Position = UDim2.new(1, -25, 0, 5)
-GUI.QClose.Text = "X"
-GUI.QClose.Font = Enum.Font.GothamBold
-GUI.QClose.TextColor3 = Theme.Danger
-GUI.QClose.BackgroundTransparency = 1
-GUI.QClose.MouseButton1Click:Connect(function() GUI.QuickPanel.Visible = false end)
+    local QToggleHudBtn = Instance.new("TextButton", GUI.QuickPanel)
+    QToggleHudBtn.Size = UDim2.new(0, 42, 0, 18)
+    QToggleHudBtn.Position = UDim2.new(1, -68, 0, 6)
+    QToggleHudBtn.BackgroundColor3 = Theme.Primary
+    QToggleHudBtn.Text = "HUD: ON"
+    QToggleHudBtn.TextColor3 = Theme.TextHighlight
+    QToggleHudBtn.Font = Enum.Font.GothamBold
+    QToggleHudBtn.TextSize = 9
+    Instance.new("UICorner", QToggleHudBtn).CornerRadius = UDim.new(0, 4)
 
-GUI.QPotionLbl = Instance.new("TextLabel", GUI.QuickPanel)
-GUI.QPotionLbl.Size = UDim2.new(1, -20, 0, 15)
-GUI.QPotionLbl.Position = UDim2.new(0, 10, 0, 30)
-GUI.QPotionLbl.Text = "Consumo Rápido de Pociones:"
-GUI.QPotionLbl.Font = Enum.Font.GothamBold
-GUI.QPotionLbl.TextSize = 11
-GUI.QPotionLbl.TextColor3 = Theme.Text
-GUI.QPotionLbl.BackgroundTransparency = 1
-GUI.QPotionLbl.TextXAlignment = Enum.TextXAlignment.Left
+    QToggleHudBtn.MouseButton1Click:Connect(function()
+        local hud = Hub.ScreenGui:FindFirstChild("PotionQuickHUD")
+        if hud then
+            hud.Visible = not hud.Visible
+            QToggleHudBtn.Text = hud.Visible and "HUD: ON" or "HUD: OFF"
+            QToggleHudBtn.BackgroundColor3 = hud.Visible and Theme.Primary or Theme.Secondary
+        end
+    end)
 
-GUI.QPotionTypeBtn = Instance.new("TextButton", GUI.QuickPanel)
-GUI.QPotionTypeBtn.Size = UDim2.new(0.3, 0, 0, 25)
-GUI.QPotionTypeBtn.Position = UDim2.new(0, 10, 0, 50)
-GUI.QPotionTypeBtn.BackgroundColor3 = Theme.PrimaryDark
-GUI.QPotionTypeBtn.Text = "ATAQUE"
-GUI.QPotionTypeBtn.TextColor3 = Theme.TextHighlight
-GUI.QPotionTypeBtn.Font = Enum.Font.GothamBold
-GUI.QPotionTypeBtn.TextSize = 10
-Instance.new("UICorner", GUI.QPotionTypeBtn).CornerRadius = UDim.new(0, 4)
+    local QClose = Instance.new("TextButton", GUI.QuickPanel)
+    QClose.Size = UDim2.new(0, 20, 0, 20)
+    QClose.Position = UDim2.new(1, -25, 0, 5)
+    QClose.Text = "X"
+    QClose.Font = Enum.Font.GothamBold
+    QClose.TextColor3 = Theme.Danger
+    QClose.BackgroundTransparency = 1
+    QClose.MouseButton1Click:Connect(function() GUI.QuickPanel.Visible = false end)
 
-GUI.qTypes = {"ATAQUE", "ORO", "SUERTE"}
-GUI.qIdx = 1
-GUI.QPotionTypeBtn.MouseButton1Click:Connect(function()
-    GUI.qIdx = (GUI.qIdx % 3) + 1
-    GUI.QPotionTypeBtn.Text = GUI.qTypes[GUI.qIdx]
-end)
+    -- 1. Consumo Rápido de Pociones
+    local QPotionLbl = Instance.new("TextLabel", GUI.QuickPanel)
+    QPotionLbl.Size = UDim2.new(1, -20, 0, 15)
+    QPotionLbl.Position = UDim2.new(0, 10, 0, 30)
+    QPotionLbl.Text = "Consumo Rápido de Pociones:"
+    QPotionLbl.Font = Enum.Font.GothamBold
+    QPotionLbl.TextSize = 11
+    QPotionLbl.TextColor3 = Theme.Text
+    QPotionLbl.BackgroundTransparency = 1
+    QPotionLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-local function QuickBtnPosHelper(btnObj, posX, text)
-    btnObj.Size = UDim2.new(0.18, 0, 0, 25)
-    btnObj.Position = UDim2.new(posX, 0, 0, 50)
-    btnObj.BackgroundColor3 = Theme.Secondary
-    btnObj.Text = text
-    btnObj.TextColor3 = Theme.TextHighlight
-    btnObj.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", btnObj).CornerRadius = UDim.new(0, 4)
-end
+    local QPotionTypeBtn = Instance.new("TextButton", GUI.QuickPanel)
+    QPotionTypeBtn.Size = UDim2.new(0.3, 0, 0, 25)
+    QPotionTypeBtn.Position = UDim2.new(0, 10, 0, 50)
+    QPotionTypeBtn.BackgroundColor3 = Theme.PrimaryDark
+    QPotionTypeBtn.Text = "ATAQUE"
+    QPotionTypeBtn.TextColor3 = Theme.TextHighlight
+    QPotionTypeBtn.Font = Enum.Font.GothamBold
+    QPotionTypeBtn.TextSize = 10
+    Instance.new("UICorner", QPotionTypeBtn).CornerRadius = UDim.new(0, 4)
 
-GUI.btnS = Instance.new("TextButton", GUI.QuickPanel)
-QuickBtnPosHelper(GUI.btnS, 0.35, "S")
-GUI.btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[GUI.qTypes[GUI.qIdx]][1]) end)
+    local qTypes = {"ATAQUE", "ORO", "SUERTE"}
+    local qIdx = 1
+    QPotionTypeBtn.MouseButton1Click:Connect(function()
+        qIdx = (qIdx % 3) + 1
+        QPotionTypeBtn.Text = qTypes[qIdx]
+    end)
 
-GUI.btnM = Instance.new("TextButton", GUI.QuickPanel)
-QuickBtnPosHelper(GUI.btnM, 0.56, "M")
-GUI.btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[GUI.qTypes[GUI.qIdx]][2]) end)
-
-GUI.btnL = Instance.new("TextButton", GUI.QuickPanel)
-QuickBtnPosHelper(GUI.btnL, 0.77, "L")
-GUI.btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[GUI.qTypes[GUI.qIdx]][3]) end)
-
-GUI.QModeLbl = Instance.new("TextLabel", GUI.QuickPanel)
-GUI.QModeLbl.Size = UDim2.new(1, -20, 0, 15)
-GUI.QModeLbl.Position = UDim2.new(0, 10, 0, 85)
-GUI.QModeLbl.Text = "Cambiar Modo de Combate:"
-GUI.QModeLbl.Font = Enum.Font.GothamBold
-GUI.QModeLbl.TextSize = 11
-GUI.QModeLbl.TextColor3 = Theme.Text
-GUI.QModeLbl.BackgroundTransparency = 1
-GUI.QModeLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-GUI.quickModes = {
-    {name="ATAQUE", col=Theme.Danger}, {name="ORO", col=Color3.fromRGB(200, 160, 0)},
-    {name="DROP", col=Color3.fromRGB(40, 140, 200)}, {name="SUERTE", col=Color3.fromRGB(40, 200, 80)},
-    {name="PODER", col=Theme.Primary}
-}
-
-for i, md in ipairs(GUI.quickModes) do
-    local mb = Instance.new("TextButton", GUI.QuickPanel)
-    mb.Size = UDim2.new(0.45, 0, 0, 25)
-    local col = ((i-1)%2) * 0.48
-    local row = math.floor((i-1)/2) * 30
-    mb.Position = UDim2.new(0.035 + col, 0, 0, 105 + row)
-    
-    if i == 5 then 
-        mb.Size = UDim2.new(0.93, 0, 0, 25)
-        mb.Position = UDim2.new(0.035, 0, 0, 105 + row) 
+    local function QuickBtnPosHelper(btnObj, posX, text)
+        btnObj.Size = UDim2.new(0.18, 0, 0, 25)
+        btnObj.Position = UDim2.new(posX, 0, 0, 50)
+        btnObj.BackgroundColor3 = Theme.Secondary
+        btnObj.Text = text
+        btnObj.TextColor3 = Theme.TextHighlight
+        btnObj.Font = Enum.Font.GothamBold
+        Instance.new("UICorner", btnObj).CornerRadius = UDim.new(0, 4)
     end
-    
-    mb.BackgroundColor3 = md.col
-    mb.Text = md.name
-    mb.TextColor3 = Theme.TextHighlight
-    mb.Font = Enum.Font.GothamBold
-    mb.TextSize = 11
-    Instance.new("UICorner", mb).CornerRadius = UDim.new(0, 6)
-    mb.MouseButton1Click:Connect(function() CambiarModoAutoEquip(md.name) end)
-end
 
-local quickKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.U then
-        GUI.QuickPanel.Visible = not GUI.QuickPanel.Visible
+    local btnS = Instance.new("TextButton", GUI.QuickPanel)
+    QuickBtnPosHelper(btnS, 0.35, "S")
+    btnS.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][1]) end)
+
+    local btnM = Instance.new("TextButton", GUI.QuickPanel)
+    QuickBtnPosHelper(btnM, 0.56, "M")
+    btnM.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][2]) end)
+
+    local btnL = Instance.new("TextButton", GUI.QuickPanel)
+    QuickBtnPosHelper(btnL, 0.77, "L")
+    btnL.MouseButton1Click:Connect(function() tryUse(PocionesData[qTypes[qIdx]][3]) end)
+
+    -- 2. Pausa / Reanudación de Pociones (Suerte / Ataque / Oro)
+    local QPauseLbl = Instance.new("TextLabel", GUI.QuickPanel)
+    QPauseLbl.Size = UDim2.new(1, -20, 0, 15)
+    QPauseLbl.Position = UDim2.new(0, 10, 0, 82)
+    QPauseLbl.Text = "Efecto Pociones (Dorado = Activo):"
+    QPauseLbl.Font = Enum.Font.GothamBold
+    QPauseLbl.TextSize = 11
+    QPauseLbl.TextColor3 = Theme.Text
+    QPauseLbl.BackgroundTransparency = 1
+    QPauseLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local BuffCategories = {
+        { key = "SUERTE", label = "SUERTE", ids = {20001, 20004, 20007} },
+        { key = "ATAQUE", label = "ATAQUE", ids = {20002, 20005, 20008} },
+        { key = "ORO",    label = "ORO",    ids = {20003, 20006, 20009} }
+    }
+
+    local ColorActivo = Color3.fromRGB(215, 165, 20) -- Dorado
+    local ColorPausa  = Theme.Secondary                -- Gris
+
+    local PlayerManager, AgentManager
+    pcall(function()
+        local scripts = ReplicatedStorage:WaitForChild("Scripts", 3)
+        if scripts then
+            PlayerManager = require(scripts.Client.Manager.PlayerManager)
+            AgentManager  = require(scripts.Share.Manager.AgentManager)
+        end
+    end)
+
+    local SetBuffPausedRem = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("SetBuffPaused")
+    local BuffStateCache = { SUERTE = false, ATAQUE = false, ORO = false }
+    local ToggleBusy = { SUERTE = false, ATAQUE = false, ORO = false }
+    local RegisteredButtons = { SUERTE = {}, ATAQUE = {}, ORO = {} }
+
+    local function GetRealCategoryActive(cat)
+        if PlayerManager and PlayerManager.localPlayerData then
+            local times = PlayerManager.localPlayerData.buffTimes or {}
+            local paused = PlayerManager.localPlayerData.buffPauseStates or {}
+            local anyHasTime = false
+            local anyRunning = false
+
+            for _, id in ipairs(cat.ids) do
+                local strId = tostring(id)
+                local rem = times[strId] or times[id] or 0
+                if rem > 0 then
+                    anyHasTime = true
+                    if not (paused[strId] == true or paused[id] == true) then
+                        anyRunning = true
+                    end
+                end
+            end
+
+            return anyHasTime and anyRunning or false
+        end
+        return BuffStateCache[cat.key]
     end
-end)
-table.insert(Hub.Connections, quickKeyConn)
+
+    local function RefreshBuffButtonsUI()
+        for _, cat in ipairs(BuffCategories) do
+            local isActive = GetRealCategoryActive(cat)
+            BuffStateCache[cat.key] = isActive
+            for _, btn in ipairs(RegisteredButtons[cat.key]) do
+                if btn and btn.Parent then
+                    btn.BackgroundColor3 = isActive and ColorActivo or ColorPausa
+                    btn.TextColor3 = isActive and Color3.fromRGB(20, 20, 25) or Theme.TextHighlight
+                end
+            end
+        end
+    end
+
+    local function TogglePotionCategory(cat)
+        if ToggleBusy[cat.key] or not SetBuffPausedRem then return end
+        ToggleBusy[cat.key] = true
+
+        local currentlyActive = GetRealCategoryActive(cat)
+        local targetPauseState = currentlyActive
+
+        BuffStateCache[cat.key] = not targetPauseState
+        for _, btn in ipairs(RegisteredButtons[cat.key]) do
+            if btn and btn.Parent then
+                btn.BackgroundColor3 = (not targetPauseState) and ColorActivo or ColorPausa
+                btn.TextColor3 = (not targetPauseState) and Color3.fromRGB(20, 20, 25) or Theme.TextHighlight
+            end
+        end
+
+        task.spawn(function()
+            local times = PlayerManager and PlayerManager.localPlayerData and PlayerManager.localPlayerData.buffTimes
+            for _, id in ipairs(cat.ids) do
+                local strId = tostring(id)
+                local rem = times and (times[strId] or times[id]) or 1
+                if rem > 0 then
+                    local ok, res = pcall(function()
+                        return SetBuffPausedRem:InvokeServer({ isPaused = targetPauseState, buffId = id })
+                    end)
+                    if ok and type(res) == "table" and res.success and PlayerManager and PlayerManager.localPlayerData then
+                        PlayerManager.localPlayerData.buffPauseStates = PlayerManager.localPlayerData.buffPauseStates or {}
+                        PlayerManager.localPlayerData.buffPauseStates[strId] = res.isPaused and true or nil
+                    end
+                    task.wait(0.15)
+                end
+            end
+            ToggleBusy[cat.key] = false
+            RefreshBuffButtonsUI()
+        end)
+    end
+
+    -- Botones dentro del Panel Acceso Rápido (U)
+    for idx, cat in ipairs(BuffCategories) do
+        local pBtn = Instance.new("TextButton", GUI.QuickPanel)
+        pBtn.Size = UDim2.new(0.29, 0, 0, 24)
+        pBtn.Position = UDim2.new(0.035 + ((idx - 1) * 0.32), 0, 0, 102)
+        pBtn.BackgroundColor3 = ColorPausa
+        pBtn.Text = cat.label
+        pBtn.TextColor3 = Theme.TextHighlight
+        pBtn.Font = Enum.Font.GothamBold
+        pBtn.TextSize = 10
+        Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 5)
+
+        table.insert(RegisteredButtons[cat.key], pBtn)
+        pBtn.MouseButton1Click:Connect(function() TogglePotionCategory(cat) end)
+    end
+
+    -- 3. Réplica Flotante Proporcional (Esquina Inferior Derecha)
+    local HudFrame = Instance.new("Frame", Hub.ScreenGui)
+    HudFrame.Name = "PotionQuickHUD"
+    HudFrame.AnchorPoint = Vector2.new(1, 1)
+    HudFrame.Size = UDim2.new(0.072, 0, 0.135, 0)
+    HudFrame.Position = UDim2.new(0.932, 0, 0.985, 0)
+    HudFrame.BackgroundColor3 = Theme.Background
+    HudFrame.BackgroundTransparency = 0.2
+    HudFrame.Active = true
+    HudFrame.Draggable = true
+    Instance.new("UICorner", HudFrame).CornerRadius = UDim.new(0, 6)
+    local hudStroke = Instance.new("UIStroke", HudFrame)
+    hudStroke.Color = Theme.Primary
+    hudStroke.Transparency = 0.35
+
+    local sizeConstraint = Instance.new("UISizeConstraint", HudFrame)
+    sizeConstraint.MinSize = Vector2.new(72, 82)
+    sizeConstraint.MaxSize = Vector2.new(130, 150)
+
+    local hudLayout = Instance.new("UIListLayout", HudFrame)
+    hudLayout.FillDirection = Enum.FillDirection.Vertical
+    hudLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    hudLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    hudLayout.Padding = UDim.new(0.05, 0)
+
+    for _, cat in ipairs(BuffCategories) do
+        local hBtn = Instance.new("TextButton", HudFrame)
+        hBtn.Size = UDim2.new(0.88, 0, 0.28, 0)
+        hBtn.BackgroundColor3 = ColorPausa
+        hBtn.Text = cat.label
+        hBtn.TextColor3 = Theme.TextHighlight
+        hBtn.Font = Enum.Font.GothamBlack
+        hBtn.TextScaled = true
+        Instance.new("UICorner", hBtn).CornerRadius = UDim.new(0, 4)
+
+        local txtPad = Instance.new("UIPadding", hBtn)
+        txtPad.PaddingLeft = UDim.new(0.08, 0)
+        txtPad.PaddingRight = UDim.new(0.08, 0)
+        txtPad.PaddingTop = UDim.new(0.1, 0)
+        txtPad.PaddingBottom = UDim.new(0.1, 0)
+
+        table.insert(RegisteredButtons[cat.key], hBtn)
+        hBtn.MouseButton1Click:Connect(function() TogglePotionCategory(cat) end)
+    end
+
+    if AgentManager and AgentManager.EventNames and AgentManager.EventNames.UpdateBuff then
+        pcall(function()
+            AgentManager.RegisterEvent(AgentManager.EventNames.UpdateBuff, function()
+                if HubRunning then RefreshBuffButtonsUI() end
+            end)
+        end)
+    end
+
+    task.spawn(function()
+        task.wait(0.4)
+        RefreshBuffButtonsUI()
+        while HubRunning do
+            task.wait(1.5)
+            RefreshBuffButtonsUI()
+        end
+    end)
+
+    -- 4. Cambiar Modo de Combate
+    local QModeLbl = Instance.new("TextLabel", GUI.QuickPanel)
+    QModeLbl.Size = UDim2.new(1, -20, 0, 15)
+    QModeLbl.Position = UDim2.new(0, 10, 0, 134)
+    QModeLbl.Text = "Cambiar Modo de Combate:"
+    QModeLbl.Font = Enum.Font.GothamBold
+    QModeLbl.TextSize = 11
+    QModeLbl.TextColor3 = Theme.Text
+    QModeLbl.BackgroundTransparency = 1
+    QModeLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local quickModes = {
+        {name="ATAQUE", col=Theme.Danger}, {name="ORO", col=Color3.fromRGB(200, 160, 0)},
+        {name="DROP", col=Color3.fromRGB(40, 140, 200)}, {name="SUERTE", col=Color3.fromRGB(40, 200, 80)},
+        {name="PODER", col=Theme.Primary}
+    }
+
+    for i, md in ipairs(quickModes) do
+        local mb = Instance.new("TextButton", GUI.QuickPanel)
+        mb.Size = UDim2.new(0.45, 0, 0, 25)
+        local col = ((i-1)%2) * 0.48
+        local row = math.floor((i-1)/2) * 30
+        mb.Position = UDim2.new(0.035 + col, 0, 0, 154 + row)
+        
+        if i == 5 then 
+            mb.Size = UDim2.new(0.93, 0, 0, 25)
+            mb.Position = UDim2.new(0.035, 0, 0, 154 + row) 
+        end
+        
+        mb.BackgroundColor3 = md.col
+        mb.Text = md.name
+        mb.TextColor3 = Theme.TextHighlight
+        mb.Font = Enum.Font.GothamBold
+        mb.TextSize = 11
+        Instance.new("UICorner", mb).CornerRadius = UDim.new(0, 6)
+        mb.MouseButton1Click:Connect(function() CambiarModoAutoEquip(md.name) end)
+    end
+
+    local quickKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.U then
+            GUI.QuickPanel.Visible = not GUI.QuickPanel.Visible
+            if GUI.QuickPanel.Visible then RefreshBuffButtonsUI() end
+        end
+    end)
+    table.insert(Hub.Connections, quickKeyConn)
+end
 
 -- =========================================================
 -- [9] PESTAÑA: CITY RAID (GRANJA Y HOPPING)
