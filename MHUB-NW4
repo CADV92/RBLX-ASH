@@ -161,6 +161,32 @@ local function SaveConfig()
 end
 
 -- ==============================================================================
+-- Local MapData
+-- ==============================================================================
+local MapData = {
+    [1] = { Bounds = { MinX = -267.0, MaxX = 217.0, MinY = -150.0, MaxY = 156.0, MinZ = -2319.0, MaxZ = -1354.0 } },
+    [2] = { Bounds = { MinX = 1502.0, MaxX = 2423.0, MinY = -150.0, MaxY = 152.0, MinZ = -2442.0, MaxZ = -1525.0 } },
+    [3] = { Bounds = { MinX = 3576.0, MaxX = 4386.0, MinY = -154.0, MaxY = 152.0, MinZ = -2363.0, MaxZ = -1687.0 } },
+    [4] = { Bounds = { MinX = 5599.0, MaxX = 6656.0, MinY = -152.0, MaxY = 176.0, MinZ = -4412.0, MaxZ = -3593.0 } },
+    [5] = { Bounds = { MinX = -449.0, MaxX = 464.0, MinY = -148.0, MaxY = 158.0, MinZ = -4565.0, MaxZ = -3566.0 } },
+    [6] = { Bounds = { MinX = 1727.0, MaxX = 2267.0, MinY = -149.0, MaxY = 176.0, MinZ = -4361.0, MaxZ = -3559.0 } },
+    [7] = { Bounds = { MinX = 3609.0, MaxX = 4464.0, MinY = -149.0, MaxY = 158.0, MinZ = -4349.0, MaxZ = -3422.0 } },
+    [8] = { Bounds = { MinX = 4643.0, MaxX = 5232.0, MinY = -555.0, MaxY = -209.0, MinZ = -7695.0, MaxZ = -7044.0 } },
+    [9] = { Bounds = { MinX = -278.0, MaxX = 290.0, MinY = -147.0, MaxY = 166.0, MinZ = -6415.0, MaxZ = -5640.0 } },
+    [10] = { Bounds = { MinX = 1708.0, MaxX = 2302.0, MinY = -152.0, MaxY = 157.0, MinZ = -6430.0, MaxZ = -5565.0 } },
+    [11] = { Bounds = { MinX = 3648.0, MaxX = 4390.0, MinY = -152.0, MaxY = 183.0, MinZ = -6459.0, MaxZ = -5653.0 } },
+    [12] = { Bounds = { MinX = 5637.0, MaxX = 6206.0, MinY = -146.0, MaxY = 157.0, MinZ = -8511.0, MaxZ = -7650.0 } },
+    [13] = { Bounds = { MinX = -270.0, MaxX = 450.0, MinY = -145.0, MaxY = 221.0, MinZ = -8337.0, MaxZ = -7610.0 } },
+    [14] = { Bounds = { MinX = 1774.0, MaxX = 2245.0, MinY = -145.0, MaxY = 201.0, MinZ = -8316.0, MaxZ = -7604.0 } },
+    [15] = { Bounds = { MinX = 3745.0, MaxX = 4242.0, MinY = -217.0, MaxY = 164.0, MinZ = -8842.0, MaxZ = -7692.0 } },
+    [16] = { Bounds = { MinX = 5661.0, MaxX = 6336.0, MinY = -166.0, MaxY = 164.0, MinZ = -10314.0, MaxZ = -9585.0 } },
+    [17] = { Bounds = { MinX = -233.0, MaxX = 261.0, MinY = -146.0, MaxY = 165.0, MinZ = -10333.0, MaxZ = -9757.0 } },
+    [18] = { Bounds = { MinX = 1657.0, MaxX = 2364.0, MinY = -148.0, MaxY = 194.0, MinZ = -10474.0, MaxZ = -9616.0 } },
+    [19] = { Bounds = { MinX = 3691.0, MaxX = 4317.0, MinY = -147.0, MaxY = 158.0, MinZ = -10496.0, MaxZ = -9738.0 } },
+    [20] = { Bounds = { MinX = 5621.0, MaxX = 6407.0, MinY = -145.0, MaxY = 163.0, MinZ = -12398.0, MaxZ = -11575.0 } },
+}
+
+-- ==============================================================================
 -- UTILS Y FUNCIONES DE JUEGO (Se mantienen iguales)
 -- ==============================================================================
 local Utils = {}
@@ -175,16 +201,24 @@ function Utils.FormatHealth(val) if not val then return "0" end if val >= 1e120 
 function Utils.ManualTeleportAndEnter(isSiege) local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return false end for _, v in pairs(Workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.Parent and v.Parent:IsA("BasePart") then local parentName = v.Parent.Parent and v.Parent.Parent.Name or "" local matches = isSiege and parentName:find("CityRaidEnter") or (parentName:find("RaidEnter") and not parentName:find("City")) if matches then if _G.PausarMetralleta then _G.PausarMetralleta() end root.AssemblyLinearVelocity = Vector3.zero root.AssemblyAngularVelocity = Vector3.zero root.CFrame = v.Parent.CFrame * CFrame.new(0, 3, 6) task.wait(0.15) if type(fireproximityprompt) == "function" then fireproximityprompt(v) else v:InputHoldBegin() task.wait(v.HoldDuration + 0.1) v:InputHoldEnd() end return true end end end return false end
 
 local LobbyPortalCache = nil
-function Utils.EstaEnLobby(root)
-    if not root then return false end
-    if LobbyPortalCache and LobbyPortalCache.Parent then if (LobbyPortalCache.Position - root.Position).Magnitude < 5000 then return true end end
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("ProximityPrompt") and v.Parent and v.Parent.Parent and v.Parent.Parent.Name:find("RaidEnter") and not v.Parent.Parent.Name:find("City") then
-            LobbyPortalCache = v.Parent
-            if (v.Parent.Position - root.Position).Magnitude < 5000 then return true end
+function Utils.GetCurrentMapID(root)
+    if not root then
+        local char = LocalPlayer.Character
+        root = char and char:FindFirstChild("HumanoidRootPart")
+    end
+    if not root then return nil end
+    local pos = root.Position
+    for mapID, data in pairs(MapData) do
+        local b = data.Bounds
+        if pos.X >= b.MinX and pos.X <= b.MaxX and pos.Y >= b.MinY and pos.Y <= b.MaxY and pos.Z >= b.MinZ and pos.Z <= b.MaxZ then
+            return mapID
         end
     end
-    return false
+    return nil
+end
+
+function Utils.EstaEnLobby(root)
+    return Utils.GetCurrentMapID(root) ~= nil
 end
 
 task.spawn(function()
@@ -948,7 +982,7 @@ TabAuto:CreateSliderWithToggle("Radio de Ataque", 50, 500, Config.AuraRadio,
 )
 
 local AutoRandomState = { Target = nil }
-local LimitesMobsBase = { MinHeight = -500, BuggedHeight = -287, BugTolerance = 25 }
+local LimitesMobsBase = { MinHeight = -600, BuggedHeight = -1000, BugTolerance = 25 }
 
 TabAuto:CreateSideToggle("AUTO RANDOM (Farm)", Config.AutoRandom, function(state) 
     Config.AutoRandom = state 
@@ -1432,45 +1466,6 @@ local MetCaza = {
 }
 local MetCFrames = {}
 
-local MapData = {
-    [1] = { Bounds = { MinX = -267.0, MaxX = 217.0, MinY = -150.0, MaxY = 156.0, MinZ = -2319.0, MaxZ = -1354.0 } },
-    [2] = { Bounds = { MinX = 1502.0, MaxX = 2423.0, MinY = -150.0, MaxY = 152.0, MinZ = -2442.0, MaxZ = -1525.0 } },
-    [3] = { Bounds = { MinX = 3576.0, MaxX = 4386.0, MinY = -154.0, MaxY = 152.0, MinZ = -2363.0, MaxZ = -1687.0 } },
-    [4] = { Bounds = { MinX = 5599.0, MaxX = 6656.0, MinY = -152.0, MaxY = 176.0, MinZ = -4412.0, MaxZ = -3593.0 } },
-    [5] = { Bounds = { MinX = -449.0, MaxX = 464.0, MinY = -148.0, MaxY = 158.0, MinZ = -4565.0, MaxZ = -3566.0 } },
-    [6] = { Bounds = { MinX = 1727.0, MaxX = 2267.0, MinY = -149.0, MaxY = 176.0, MinZ = -4361.0, MaxZ = -3559.0 } },
-    [7] = { Bounds = { MinX = 3609.0, MaxX = 4464.0, MinY = -149.0, MaxY = 158.0, MinZ = -4349.0, MaxZ = -3422.0 } },
-    [8] = { Bounds = { MinX = 4643.0, MaxX = 5232.0, MinY = -555.0, MaxY = -209.0, MinZ = -7695.0, MaxZ = -7044.0 } },
-    [9] = { Bounds = { MinX = -278.0, MaxX = 290.0, MinY = -147.0, MaxY = 166.0, MinZ = -6415.0, MaxZ = -5640.0 } },
-    [10] = { Bounds = { MinX = 1708.0, MaxX = 2302.0, MinY = -152.0, MaxY = 157.0, MinZ = -6430.0, MaxZ = -5565.0 } },
-    [11] = { Bounds = { MinX = 3648.0, MaxX = 4390.0, MinY = -152.0, MaxY = 183.0, MinZ = -6459.0, MaxZ = -5653.0 } },
-    [12] = { Bounds = { MinX = 5637.0, MaxX = 6206.0, MinY = -146.0, MaxY = 157.0, MinZ = -8511.0, MaxZ = -7650.0 } },
-    [13] = { Bounds = { MinX = -270.0, MaxX = 450.0, MinY = -145.0, MaxY = 221.0, MinZ = -8337.0, MaxZ = -7610.0 } },
-    [14] = { Bounds = { MinX = 1774.0, MaxX = 2245.0, MinY = -145.0, MaxY = 201.0, MinZ = -8316.0, MaxZ = -7604.0 } },
-    [15] = { Bounds = { MinX = 3745.0, MaxX = 4242.0, MinY = -217.0, MaxY = 164.0, MinZ = -8842.0, MaxZ = -7692.0 } },
-    [16] = { Bounds = { MinX = 5661.0, MaxX = 6336.0, MinY = -166.0, MaxY = 164.0, MinZ = -10314.0, MaxZ = -9585.0 } },
-    [17] = { Bounds = { MinX = -233.0, MaxX = 261.0, MinY = -146.0, MaxY = 165.0, MinZ = -10333.0, MaxZ = -9757.0 } },
-    [18] = { Bounds = { MinX = 1657.0, MaxX = 2364.0, MinY = -148.0, MaxY = 194.0, MinZ = -10474.0, MaxZ = -9616.0 } },
-    [19] = { Bounds = { MinX = 3691.0, MaxX = 4317.0, MinY = -147.0, MaxY = 158.0, MinZ = -10496.0, MaxZ = -9738.0 } },
-    [20] = { Bounds = { MinX = 5621.0, MaxX = 6407.0, MinY = -145.0, MaxY = 163.0, MinZ = -12398.0, MaxZ = -11575.0 } },
-}
-
-local function GetCurrentMapID()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
-    local pos = root.Position
-    
-    for mapID, data in pairs(MapData) do
-        local b = data.Bounds
-        if pos.X >= b.MinX and pos.X <= b.MaxX and pos.Y >= b.MinY and pos.Y <= b.MaxY and pos.Z >= b.MinZ and pos.Z <= b.MaxZ then
-            return mapID
-        end
-    end
-    return nil 
-end
-
 local FocusHighlight = Instance.new("Highlight")
 FocusHighlight.Name = "MetralletaFocus"
 FocusHighlight.FillColor = Theme.Danger
@@ -1649,7 +1644,7 @@ task.spawn(function()
         if not MetState.Activo then continue end
 
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local currentMapID = GetCurrentMapID()
+        local currentMapID = Utils.GetCurrentMapID(myRoot)
 
         local function IsTargetValid(target)
             if not target or Utils.EstaMuerto(target) then return false end
@@ -1658,15 +1653,14 @@ task.spawn(function()
             if not tRoot then return false end
             local pos = tRoot.Position
             
-            if pos.Y < -50 or pos.Y > 5000 then return false end
-            
             if currentMapID and MapData[currentMapID] then
                 local b = MapData[currentMapID].Bounds
                 if pos.X < b.MinX or pos.X > b.MaxX or pos.Y < b.MinY or pos.Y > b.MaxY or pos.Z < b.MinZ or pos.Z > b.MaxZ then
                     return false
                 end
-            elseif myRoot then
-                if (pos - myRoot.Position).Magnitude > 2500 then return false end
+            else
+                if pos.Y < -50 or pos.Y > 5000 then return false end
+                if myRoot and (pos - myRoot.Position).Magnitude > 2500 then return false end
             end
             return true
         end
@@ -1742,9 +1736,9 @@ task.spawn(function()
                                 local b = MapData[currentMapID].Bounds
                                 isInsideBounds = pos.X >= b.MinX and pos.X <= b.MaxX and pos.Y >= b.MinY and pos.Y <= b.MaxY and pos.Z >= b.MinZ and pos.Z <= b.MaxZ
                             else
-                                isInsideBounds = (pos - myRoot.Position).Magnitude <= 1500
+                                isInsideBounds = ((pos - myRoot.Position).Magnitude <= 1500) and (pos.Y >= -50 and pos.Y <= 5000)
                             end
-                            if isInsideBounds and pos.Y >= -50 and pos.Y <= 5000 then bossInst = data.inst; break end
+                            if isInsideBounds then bossInst = data.inst; break end
                         end 
                     end
                     MetState.TargetKillInst = bossInst; MetCaza.WasBossAlive = (MetState.TargetKillInst ~= nil)
@@ -2831,13 +2825,14 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
 
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     
-    local enLobby = false
-    if root then enLobby = Utils.EstaEnLobby(root) end
+    local mapaActual = root and Utils.GetCurrentMapID(root) or nil
+    local enLobby = (mapaActual ~= nil)
 
     -- ==========================================
-    -- [CORRECCIÓN COOLDOWN] Detección de Lobby y Reset Seguro
+    -- [CORRECCIÓN COOLDOWN] Detección de Lobby por Umbrales y Reset Seguro
     -- ==========================================
     if enLobby then
+        _G.LastSelectedMap = mapaActual
         if RaidState.IsInInstance and (now - RaidState.EntryTime > 5) then
             local tiempoTranscurrido = now - RaidState.EntryTime
             local cdRestante = 20 - tiempoTranscurrido
@@ -2963,15 +2958,14 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                 local checkStart = tick()
                 local tpSuccess = false
                 
-                while (tick() - checkStart) < 3.0 do 
+                while (tick() - checkStart) < 3.5 do 
                     task.wait(0.2)
                     if not HubRunning then return end
                     local currentChar = LocalPlayer.Character
-                    if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                        if (currentChar.HumanoidRootPart.Position - startPos).Magnitude > 3000 then 
-                            tpSuccess = true
-                            break 
-                        end
+                    local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+                    if currentRoot and Utils.GetCurrentMapID(currentRoot) == nil then 
+                        tpSuccess = true
+                        break 
                     end
                 end
 
@@ -3152,21 +3146,64 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
+                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                local quitRem = remotes and remotes:FindFirstChild("QuitRaidsMap")
+                local tpRem = remotes and remotes:FindFirstChild("LocalPlayerTeleport")
+                local startTpRem = remotes and remotes:FindFirstChild("StartLocalPlayerTeleport")
+                local tpSuccessRem = remotes and remotes:FindFirstChild("LocalPlayerTeleportSuccess")
+                local rewardRem = remotes and remotes:FindFirstChild("GainRaidsRewards")
+
                 local intentos = 0
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
-                    if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                    if RaidState.EntryTime ~= currentSession then return end
+                    if Utils.EstaEnLobby() then break end
                     
                     intentos = intentos + 1
-                    local success = pcall(function() 
-                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
-                    end)
-                    if success then break end
-                    task.wait(1.5)
+                    LblRaidStatus.Text = string.format("🚀 Extrayendo a M%d (Intento %d/5)...", safeMapIdx, intentos)
+
+                    -- Desanclar personaje antes de pedir TP al servidor
+                    local char = LocalPlayer.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.Anchored = false
+                        root.AssemblyLinearVelocity = Vector3.zero
+                    end
+
+                    -- 1. Asegurar cobro de recompensa
+                    if rewardRem then
+                        pcall(function() rewardRem:InvokeServer({1}) end)
+                    end
+
+                    -- 2. Enviar petición de salida de Raid
+                    if quitRem then
+                        pcall(function() 
+                            quitRem:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
+                        end)
+                    end
+
+                    -- 3. A partir del intento 2, forzar el flujo directo de Teleport al mapa base
+                    if intentos >= 2 then
+                        if tpRem then
+                            pcall(function() tpRem:FireServer({ mapId = mapTarget }) end)
+                        end
+                        if startTpRem then
+                            pcall(function() startTpRem:FireServer({ { hostId = LocalPlayer.UserId, mapId = mapTarget } }) end)
+                        end
+                        task.wait(0.4)
+                        if tpSuccessRem then
+                            pcall(function() tpSuccessRem:InvokeServer({ slotIndex = 1, mapId = mapTarget }) end)
+                        end
+                    end
+
+                    task.wait(1.2)
                 end
                 
-                -- Permitimos que el juego nos haga TP al Lobby
-                task.wait(4.0)
-                if RaidState.EntryTime ~= currentSession then return end -- ABORTAR HILO SI CAMBIÓ SESIÓN
+                local waitExit = tick()
+                while (tick() - waitExit) < 3.0 do
+                    if RaidState.EntryTime ~= currentSession or Utils.EstaEnLobby() then break end
+                    task.wait(0.2)
+                end
+                if RaidState.EntryTime ~= currentSession then return end
                 
                 -- Limpieza física antibug
                 local char = LocalPlayer.Character
@@ -3180,14 +3217,22 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if hum then hum.PlatformStand = false end
                 end
                 
-                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
+                -- Verificación geométrica real contra MapData:
                 if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
-                    RaidState.IsInInstance = false
-                    RaidState.BossDeathTime = nil
-                    RaidState.ForceExit = false
-                    RaidState.IsProcessing = false
-                    RaidState.ExitTriggered = false
-                    LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
+                    if Utils.EstaEnLobby() then
+                        -- SÍ salimos (estamos dentro de las coordenadas de un mapa base)
+                        RaidState.IsInInstance = false
+                        RaidState.BossDeathTime = nil
+                        RaidState.ForceExit = false
+                        RaidState.IsProcessing = false
+                        RaidState.ExitTriggered = false
+                        LblRaidStatus.Text = "🏠 Extraído al Mapa " .. (Utils.GetCurrentMapID() or safeMapIdx)
+                    else
+                        -- NO salimos todavía: rearmamos el gatillo para que vuelva a intentar sacarnos
+                        RaidState.IsProcessing = false
+                        RaidState.ExitTriggered = false
+                        LblRaidStatus.Text = "⚠️ Aún en Raid, reintentando salida..."
+                    end
                 end
             end)
         end
