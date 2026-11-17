@@ -3146,15 +3146,55 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
             LblRaidStatus.Text = "🚀 Forzando extracción a M" .. safeMapIdx
             
             task.spawn(function()
+                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                local quitRem = remotes and remotes:FindFirstChild("QuitRaidsMap")
+                local tpRem = remotes and remotes:FindFirstChild("LocalPlayerTeleport")
+                local startTpRem = remotes and remotes:FindFirstChild("StartLocalPlayerTeleport")
+                local tpSuccessRem = remotes and remotes:FindFirstChild("LocalPlayerTeleportSuccess")
+                local rewardRem = remotes and remotes:FindFirstChild("GainRaidsRewards")
+
                 local intentos = 0
                 while RaidState.IsProcessing and HubRunning and intentos < 5 do
                     if RaidState.EntryTime ~= currentSession then return end
                     if Utils.EstaEnLobby() then break end
                     
                     intentos = intentos + 1
-                    pcall(function() 
-                        ReplicatedStorage.Remotes.QuitRaidsMap:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
-                    end)
+                    LblRaidStatus.Text = string.format("🚀 Extrayendo a M%d (Intento %d/5)...", safeMapIdx, intentos)
+
+                    -- Desanclar personaje antes de pedir TP al servidor
+                    local char = LocalPlayer.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.Anchored = false
+                        root.AssemblyLinearVelocity = Vector3.zero
+                    end
+
+                    -- 1. Asegurar cobro de recompensa
+                    if rewardRem then
+                        pcall(function() rewardRem:InvokeServer({1}) end)
+                    end
+
+                    -- 2. Enviar petición de salida de Raid
+                    if quitRem then
+                        pcall(function() 
+                            quitRem:InvokeServer({ currentSlotIndex = 1, toMapId = mapTarget }) 
+                        end)
+                    end
+
+                    -- 3. A partir del intento 2, forzar el flujo directo de Teleport al mapa base
+                    if intentos >= 2 then
+                        if tpRem then
+                            pcall(function() tpRem:FireServer({ mapId = mapTarget }) end)
+                        end
+                        if startTpRem then
+                            pcall(function() startTpRem:FireServer({ { hostId = LocalPlayer.UserId, mapId = mapTarget } }) end)
+                        end
+                        task.wait(0.4)
+                        if tpSuccessRem then
+                            pcall(function() tpSuccessRem:InvokeServer({ slotIndex = 1, mapId = mapTarget }) end)
+                        end
+                    end
+
                     task.wait(1.2)
                 end
                 
@@ -3177,14 +3217,22 @@ local raidEngineConn = RunService.Heartbeat:Connect(function()
                     if hum then hum.PlatformStand = false end
                 end
                 
-                -- Si a pesar del tiempo el "Lobby Detector" NO nos procesó, forzamos manualmente (Failsafe)
+                -- Verificación geométrica real contra MapData:
                 if RaidState.EntryTime == currentSession and RaidState.IsProcessing then
-                    RaidState.IsInInstance = false
-                    RaidState.BossDeathTime = nil
-                    RaidState.ForceExit = false
-                    RaidState.IsProcessing = false
-                    RaidState.ExitTriggered = false
-                    LblRaidStatus.Text = "🏠 Extraído (Failsafe)."
+                    if Utils.EstaEnLobby() then
+                        -- SÍ salimos (estamos dentro de las coordenadas de un mapa base)
+                        RaidState.IsInInstance = false
+                        RaidState.BossDeathTime = nil
+                        RaidState.ForceExit = false
+                        RaidState.IsProcessing = false
+                        RaidState.ExitTriggered = false
+                        LblRaidStatus.Text = "🏠 Extraído al Mapa " .. (Utils.GetCurrentMapID() or safeMapIdx)
+                    else
+                        -- NO salimos todavía: rearmamos el gatillo para que vuelva a intentar sacarnos
+                        RaidState.IsProcessing = false
+                        RaidState.ExitTriggered = false
+                        LblRaidStatus.Text = "⚠️ Aún en Raid, reintentando salida..."
+                    end
                 end
             end)
         end
