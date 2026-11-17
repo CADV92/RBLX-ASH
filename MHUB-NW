@@ -184,6 +184,8 @@ local MapData = {
     [18] = { Bounds = { MinX = 1657.0, MaxX = 2364.0, MinY = -148.0, MaxY = 194.0, MinZ = -10474.0, MaxZ = -9616.0 } },
     [19] = { Bounds = { MinX = 3691.0, MaxX = 4317.0, MinY = -147.0, MaxY = 158.0, MinZ = -10496.0, MaxZ = -9738.0 } },
     [20] = { Bounds = { MinX = 5621.0, MaxX = 6407.0, MinY = -145.0, MaxY = 163.0, MinZ = -12398.0, MaxZ = -11575.0 } },
+    [21] = { Bounds = { MinX = 50.0,   MaxX = 750.0,  MinY = 420.0,  MaxY = 530.0, MinZ = -12900.0, MaxZ = -12450.0 } },
+    [22] = { Bounds = { MinX = 1600.0, MaxX = 2400.0, MinY = -100.0, MaxY = 150.0, MinZ = -12200.0, MaxZ = -11800.0 } },
 }
 
 -- ==============================================================================
@@ -1167,7 +1169,7 @@ GUI.MapGrid = Instance.new("UIGridLayout", GUI.MapContainer)
 GUI.MapGrid.CellSize = UDim2.new(0.47, 0, 0, 26)
 GUI.MapGrid.CellPadding = UDim2.new(0.04, 0, 0, 4)
 
-for i = 1, 21 do
+for i = 1, 22 do
     local btn = Instance.new("TextButton", GUI.MapContainer)
     btn.BackgroundColor3 = Theme.Secondary
     btn.Text = string.format("M %02d", i) 
@@ -1461,7 +1463,7 @@ local MetCaza = {
         "Giant Arachnid Buryura", "Giant Monarch", "Igris", "Kargalgan", 
         "Legia", "Goblin King", "Monarch of Plague", "Silas", "Beru", "Broly",
         "The Leader Of The Polar Bears", "Yogumunt", "baran", "Dominion",
-        "Absolute", "Broly", "Goku[Super4]" 
+        "Absolute", "Broly", "Goku[Super4]", "Gojo", "Sukuna"
     }
 }
 local MetCFrames = {}
@@ -2546,7 +2548,7 @@ TabAutoRaid:CreateTextBox("VIP LIST (Separa con ESPACIOS, ej: N-18-S A-16-C)", v
 end)
 
 -- Generador de Tablas para Grid
-local mapOpts = {} for i=1, 21 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
+local mapOpts = {} for i=1, 22 do table.insert(mapOpts, {Label = tostring(i), Key = tostring(i)}) end
 local normOpts = {} for _, v in ipairs({"D", "B", "S", "SS", "G", "N", "M+", "M++", "XM", "ULT"}) do table.insert(normOpts, {Label = v}) end
 local ascOpts = {} for _, v in ipairs({"E", "D", "C", "B", "A", "S", "SS", "G", "N", "M"}) do table.insert(ascOpts, {Label = v}) end
 
@@ -2560,6 +2562,7 @@ local HardRaidsList = {
     "N-18-S", "N-18-G", "N-18-M+", "N-18-M++", "N-19-B", "N-19-S", "N-19-G", "N-19-N", "N-19-M+", "N-19-M++",
     "N-20-B", "N-20-S", "N-20-G", "N-20-N", "N-20-M+", "N-20-M++",
     "N-21-D", "N-21-B", "N-21-S", "N-21-G", "N-21-N", "N-21-M+", "N-21-M++",
+    "N-22-D", "N-22-B", "N-22-S", "N-22-G", "N-22-N", "N-22-M+", "N-22-M++",
     "A-11-C", "A-11-S", "A-11-G", "A-11-N", "A-11-M", "A-12-C", "A-12-S", "A-12-G", "A-12-N", "A-12-M",
     "A-13-C", "A-13-S", "A-13-G", "A-13-N", "A-13-M", "A-14-C", "A-14-S", "A-14-G", "A-14-N", "A-14-M",
     "A-15-C", "A-15-S", "A-15-G", "A-15-N", "A-15-M", "A-16-C", "A-16-S", "A-16-G", "A-16-N", "A-16-M",
@@ -2574,7 +2577,7 @@ TabAutoRaid:CreateGridToggles("IGNORAR (Blacklist):", blackOpts, Config.RaidSett
 
 -- Runas UI
 TabAutoRaid:CreateLabel("Uso de Runas")
-local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
+local AvailableRuneMaps = {0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22}
 
 local function CreateRuneCycler(prefix, rankKey)
     local Frame = Instance.new("Frame", TabAutoRaid.Page)
@@ -2755,7 +2758,7 @@ local BossPorMapa = {
     [1] = "Goblin King", [2] = "Giant Arachnid Buryura", [3] = "Igris", [4] = "The Leader Of The Polar Bears",
     [5] = "Arch Lich", [6] = "Kargalgan", [7] = "baran", [8] = "Beru", [9] = "Giant Monarch", 
     [10] = "Monarch of Plague", [11] = "Frostborne", [12] = "Legia", [13] = "Silas", [14] = "Yogumunt", 
-    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]" 
+    [15] = "Antares", [16] = "Ashborn", [17] = "Dominion", [18] = "Absolute", [19] = "Broly", [20] = "Goku[Super4]", [21] = "Gojo", [22] = "Sukuna" 
 }
 local BossPorMapaASC = { 
     [1] = "baran", [2] = "baran", [3] = "Giant Monarch", [4] = "Giant Monarch", 
