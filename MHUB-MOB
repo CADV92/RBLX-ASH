@@ -1132,7 +1132,7 @@ GUI.MapPanel = Instance.new("Frame", Hub.ScreenGui)
 GUI.MapPanel.Name = "MapTeleportPanel"
 GUI.MapPanel.Size = UDim2.new(0, 160, 0, 365)
 GUI.MapPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-GUI.MapPanel.Position = UDim2.new(0.5, 270, 0.5, -167)
+GUI.MapPanel.Position = UDim2.new(0.85, 0, 0.5, 0)
 GUI.MapPanel.BackgroundColor3 = Theme.Background
 GUI.MapPanel.Active = true
 GUI.MapPanel.Draggable = true
@@ -4115,8 +4115,9 @@ task.spawn(function()
     end
 
     local ToggleBtn = Instance.new("TextButton", MobileGui)
-    ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-    ToggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
+    ToggleBtn.Size = UDim2.new(0, 44, 0, 44)
+    ToggleBtn.AnchorPoint = Vector2.new(0, 1)
+    ToggleBtn.Position = UDim2.new(0.115, 0, 0.965, 0)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40) -- Gris oscuro (independiente del Theme)
     ToggleBtn.Text = "👁" 
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -4176,16 +4177,16 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- BARRA FLOTANTE TÁCTIL (DEBAJO DE DPS: M, U, METRALLETA)
+-- BARRA FLOTANTE TÁCTIL (DEBAJO DE DPS: M, U, MONITOR, MET)
 -- =========================================================
 do
     local TouchBar = Instance.new("Frame", Hub.ScreenGui)
     TouchBar.Name = "TouchQuickBar"
     TouchBar.AnchorPoint = Vector2.new(1, 0)
-    TouchBar.Position = UDim2.new(0.985, 0, 0.225, 0)
-    TouchBar.Size = UDim2.new(0.16, 0, 0.085, 0)
+    TouchBar.Position = UDim2.new(0.985, 0, 0.22, 0)
+    TouchBar.Size = UDim2.new(0.22, 0, 0.135, 0)
     TouchBar.BackgroundColor3 = Theme.Background
-    TouchBar.BackgroundTransparency = 0.25
+    TouchBar.BackgroundTransparency = 0.2
     TouchBar.Active = true
     Instance.new("UICorner", TouchBar).CornerRadius = UDim.new(0, 6)
     
@@ -4193,13 +4194,14 @@ do
     tbStroke.Color = Theme.Primary
     tbStroke.Transparency = 0.3
 
+    -- Tamaño mínimo y máximo más ancho y alto para botones cómodos al tacto
     local tbConstraint = Instance.new("UISizeConstraint", TouchBar)
-    tbConstraint.MinSize = Vector2.new(115, 48)
-    tbConstraint.MaxSize = Vector2.new(175, 72)
+    tbConstraint.MinSize = Vector2.new(165, 82)
+    tbConstraint.MaxSize = Vector2.new(235, 115)
 
     local tbGrid = Instance.new("UIGridLayout", TouchBar)
-    tbGrid.CellSize = UDim2.new(0.46, 0, 0.43, 0)
-    tbGrid.CellPadding = UDim2.new(0.04, 0, 0.08, 0)
+    tbGrid.CellSize = UDim2.new(0.465, 0, 0.29, 0)
+    tbGrid.CellPadding = UDim2.new(0.035, 0, 0.04, 0)
     tbGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
     tbGrid.VerticalAlignment = Enum.VerticalAlignment.Center
 
@@ -4212,12 +4214,14 @@ do
         b.TextScaled = true
         Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
         local pad = Instance.new("UIPadding", b)
-        pad.PaddingLeft = UDim.new(0.08, 0)
-        pad.PaddingRight = UDim.new(0.08, 0)
+        pad.PaddingLeft = UDim.new(0.06, 0)
+        pad.PaddingRight = UDim.new(0.06, 0)
+        pad.PaddingTop = UDim.new(0.08, 0)
+        pad.PaddingBottom = UDim.new(0.08, 0)
         return b
     end
 
-    -- 1. Botón Mapas (Atajo M)
+    -- 1. Mapas (Atajo M)
     local btnMapas = MakeBarBtn("MAPAS (M)", Theme.PrimaryDark)
     btnMapas.MouseButton1Click:Connect(function()
         if GUI.MapPanel then
@@ -4225,7 +4229,7 @@ do
         end
     end)
 
-    -- 2. Botón Acceso Rápido (Atajo U)
+    -- 2. Acceso Rápido (Atajo U)
     local btnQuick = MakeBarBtn("RÁPIDO (U)", Theme.PrimaryDark)
     btnQuick.MouseButton1Click:Connect(function()
         if GUI.QuickPanel then
@@ -4233,13 +4237,29 @@ do
         end
     end)
 
-    -- 3. Botón Metralleta ON/OFF (Atajo K)
+    -- 3. Monitor de Combate (Atajo L)
+    local btnMonitor = MakeBarBtn("MONITOR (L)", Theme.PrimaryDark)
+    btnMonitor.MouseButton1Click:Connect(function()
+        if GUI.MonitorFrame then
+            GUI.MonitorFrame.Visible = not GUI.MonitorFrame.Visible
+        end
+    end)
+
+    -- 4. Monitor de Raids (Atajo P)
+    local btnRaids = MakeBarBtn("RAIDS (P)", Theme.PrimaryDark)
+    btnRaids.MouseButton1Click:Connect(function()
+        if GUI.RaidPanel then
+            GUI.RaidPanel.Visible = not GUI.RaidPanel.Visible
+        end
+    end)
+
+    -- 5. Metralleta ON/OFF (Atajo K)
     local btnMet = MakeBarBtn("MET: OFF", Theme.Secondary)
     btnMet.MouseButton1Click:Connect(function()
         ToggleMetralleta()
     end)
 
-    -- 4. Botón Cambio de Modo Metralleta (SOLO / SEC / BOSS)
+    -- 6. Cambio de Modo Metralleta (SOLO / SEC / BOSS)
     local modosLista = {"SOLO", "SEC", "BOSS"}
     local btnMetModo = MakeBarBtn("MODO: " .. (Config.MetralletaModo or "SOLO"), Theme.Primary)
     btnMetModo.MouseButton1Click:Connect(function()
