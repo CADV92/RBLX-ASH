@@ -1131,7 +1131,8 @@ end)
 GUI.MapPanel = Instance.new("Frame", Hub.ScreenGui)
 GUI.MapPanel.Name = "MapTeleportPanel"
 GUI.MapPanel.Size = UDim2.new(0, 160, 0, 365)
-GUI.MapPanel.Position = UDim2.new(0.5, 270, 0.5, -167)
+GUI.MapPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+GUI.MapPanel.Position = UDim2.new(0.85, 0, 0.5, 0)
 GUI.MapPanel.BackgroundColor3 = Theme.Background
 GUI.MapPanel.Active = true
 GUI.MapPanel.Draggable = true
@@ -1229,7 +1230,8 @@ local RanksMapASC = { [1]="E", [2]="D", [3]="C", [4]="B", [5]="A", [6]="S", [7]=
 GUI.RaidPanel = Instance.new("Frame", Hub.ScreenGui)
 GUI.RaidPanel.Name = "RaidMonitorPanel"
 GUI.RaidPanel.Size = UDim2.new(0, 260, 0, 440)
-GUI.RaidPanel.Position = UDim2.new(0.5, 440, 0.5, -220)
+GUI.RaidPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+GUI.RaidPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 GUI.RaidPanel.BackgroundColor3 = Theme.Background
 GUI.RaidPanel.Active = true
 GUI.RaidPanel.Draggable = true
@@ -2025,11 +2027,39 @@ end, "IR A VISITA", Theme.Primary, function()
 end)
 
 -- =========================================================
--- [6] PESTAÑA: FAST REROLL
+-- [6] PESTAÑA: FAST REROLL (OPTIMIZADO PARA TÁCTIL)
 -- =========================================================
 local TabReroll = Hub:CreateTab("Fast Reroll")
 TabReroll:CreateLabel("Selecciona un menú para Auto-Roll")
 
+local function MakeTouchDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    return UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- ---------------------------------------------------------
+-- 1. HERO QUIRKS
+-- ---------------------------------------------------------
 TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     local uiParent = TargetGui
     if uiParent:FindFirstChild("AutoRollQuirkUI") then 
@@ -2051,7 +2081,9 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollQuirkUI"; ScreenGui.ResetOnSpawn = false
     local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 260, 0, 290); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-    MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180) 
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.Active = true
 
     local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Theme.Secondary; MainStroke.Thickness = 1.5
     local Title = Instance.new("TextLabel", MainFrame); Title.Size = UDim2.new(1, -30, 0, 25); Title.Position = UDim2.new(0, 10, 0, 5); Title.Text = "AUTO-ROLL QUIRKS"; Title.Font = Enum.Font.GothamBlack; Title.TextSize = 13; Title.TextColor3 = Theme.TextHighlight; Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -2087,7 +2119,7 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     LoadQuirks("Hab 1")
 
     local SubTitle = Instance.new("TextLabel", MainFrame); SubTitle.Size = UDim2.new(0.9, 0, 0, 15); SubTitle.Position = UDim2.new(0.05, 0, 0, 70); SubTitle.Text = "1. Quirks a buscar:"; SubTitle.Font = Enum.Font.GothamMedium; SubTitle.TextSize = 10; SubTitle.TextColor3 = Theme.Text; SubTitle.BackgroundTransparency = 1; SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 125); UidSubTitle.Text = "2. Hero UUID (Click en Capturar):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 9; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 125); UidSubTitle.Text = "2. Hero UUID (Toca 'Capturar' y luego al héroe):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 9; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
     local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.65, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 145); UidBox.PlaceholderText = "Esperando UUID..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 9; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
     local CaptureBtn = Instance.new("TextButton", MainFrame); CaptureBtn.Size = UDim2.new(0.23, 0, 0, 25); CaptureBtn.Position = UDim2.new(0.72, 0, 0, 145); CaptureBtn.Text = "Capturar"; CaptureBtn.Font = Enum.Font.GothamMedium; CaptureBtn.TextSize = 10; CaptureBtn.BackgroundColor3 = Theme.Secondary; CaptureBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", CaptureBtn).CornerRadius = UDim.new(0, 4)
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
@@ -2095,18 +2127,7 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     local ResultLabel = Instance.new("TextLabel", MainFrame); ResultLabel.Size = UDim2.new(0.9, 0, 0, 20); ResultLabel.Position = UDim2.new(0.05, 0, 0, 205); ResultLabel.Text = "Tiradas: 0 | Obtenido: N/A"; ResultLabel.Font = Enum.Font.Gotham; ResultLabel.TextSize = 11; ResultLabel.TextColor3 = Theme.TextHighlight; ResultLabel.BackgroundTransparency = 1; ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ToggleBtn = Instance.new("TextButton", MainFrame); ToggleBtn.Size = UDim2.new(0.9, 0, 0, 35); ToggleBtn.Position = UDim2.new(0.05, 0, 0, 240); ToggleBtn.Text = "INICIAR REROLL"; ToggleBtn.Font = Enum.Font.GothamBlack; ToggleBtn.TextSize = 13; ToggleBtn.BackgroundColor3 = Theme.Primary; ToggleBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
-    local dragging, dragInput, dragStart, startPos
-    local dragUISConn
-    MainFrame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = input.Position; startPos = MainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
-    MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
-    
-    dragUISConn = UserInputService.InputChanged:Connect(function(input) 
-        if input == dragInput and dragging then 
-            local delta = input.Position - dragStart; 
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
-        end 
-    end)
-
+    local dragUISConn = MakeTouchDraggable(MainFrame)
     local isSniffing = false; local clickConnection = nil
     
     CloseBtn.MouseButton1Click:Connect(function() 
@@ -2118,7 +2139,7 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
 
     CaptureBtn.MouseButton1Click:Connect(function()
         if isSniffing then isSniffing = false; if clickConnection then clickConnection:Disconnect() end; CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary; UidBox.Text = ""; UidBox.PlaceholderText = "Búsqueda cancelada."; return end
-        isSniffing = true; CaptureBtn.Text = "Cancelar"; CaptureBtn.BackgroundColor3 = Theme.Danger; UidBox.Text = "HAZ CLIC AL HÉROE"; UidBox.BackgroundColor3 = Theme.PrimaryDark
+        isSniffing = true; CaptureBtn.Text = "Cancelar"; CaptureBtn.BackgroundColor3 = Theme.Danger; UidBox.Text = "TOCA AL HÉROE"; UidBox.BackgroundColor3 = Theme.PrimaryDark
         
         local uuidBoxes = {}
         local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -2131,14 +2152,21 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
             end)
         end
 
-        clickConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+        clickConnection = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                task.wait(0.05); local mousePos = UserInputService:GetMouseLocation(); local foundUUID = nil
+                local tapPos = input.Position
+                task.wait(0.05)
+                local foundUUID = nil
                 for _, boxData in ipairs(uuidBoxes) do
                     local gui = boxData.gui
-                    if gui and gui.Parent then local posX, posY, sizeX, sizeY = gui.AbsolutePosition.X, gui.AbsolutePosition.Y, gui.AbsoluteSize.X, gui.AbsoluteSize.Y; if mousePos.X >= posX and mousePos.X <= (posX + sizeX) and mousePos.Y >= posY and mousePos.Y <= (posY + sizeY) then foundUUID = boxData.id; break end end
+                    if gui and gui.Parent then
+                        local posX, posY, sizeX, sizeY = gui.AbsolutePosition.X, gui.AbsolutePosition.Y, gui.AbsoluteSize.X, gui.AbsoluteSize.Y
+                        if tapPos.X >= posX and tapPos.X <= (posX + sizeX) and tapPos.Y >= posY and tapPos.Y <= (posY + sizeY) then
+                            foundUUID = boxData.id; break
+                        end
+                    end
                 end
-                if foundUUID then targetGuid = foundUUID; UidBox.Text = foundUUID; UidBox.BackgroundColor3 = Theme.Success; 
+                if foundUUID then targetGuid = foundUUID; UidBox.Text = foundUUID; UidBox.BackgroundColor3 = Theme.Success
                 else UidBox.Text = "Fuera del héroe"; UidBox.BackgroundColor3 = Theme.Danger; task.delay(2, function() UidBox.Text = ""; UidBox.BackgroundColor3 = Theme.PanelLight end) end
                 isSniffing = false; CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary; clickConnection:Disconnect()
             end
@@ -2182,7 +2210,7 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
         if not _G.AutoRollQuirkActivo then
             local tieneSeleccion = false; for _, isActive in pairs(ActiveStopIds) do if isActive then tieneSeleccion = true break end end
             if not tieneSeleccion then StatusLabel.Text = "Selecciona al menos un Quirk"; StatusLabel.TextColor3 = Theme.Danger; return end
-            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Click en 'Capturar'."; StatusLabel.TextColor3 = Theme.Danger; return end
+            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Toca 'Capturar'."; StatusLabel.TextColor3 = Theme.Danger; return end
         end
         _G.AutoRollQuirkActivo = not _G.AutoRollQuirkActivo
         if _G.AutoRollQuirkActivo then ToggleBtn.Text = "DETENER REROLL"; ToggleBtn.BackgroundColor3 = Theme.Danger; ResultLabel.TextColor3 = Theme.TextHighlight; StartRolling()
@@ -2190,6 +2218,9 @@ TabReroll:CreateButton("HERO QUIRKS (Abrir/Cerrar)", Theme.Secondary, function()
     end)
 end)
 
+-- ---------------------------------------------------------
+-- 2. GEAR SKILLS (CON BOTÓN CAPTURAR TÁCTIL)
+-- ---------------------------------------------------------
 TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     local uiParent = TargetGui
     if uiParent:FindFirstChild("AutoRollUI") then 
@@ -2219,12 +2250,13 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     _G.AutoRollActivo = false; local tiradasCount = 0
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollUI"; ScreenGui.ResetOnSpawn = false
-    -- Ajuste de altura del MainFrame a 300 para acomodar las dos filas de botones
-    local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 240, 0, 300); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-    MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180)
+    local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 260, 0, 300); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.Active = true
 
     local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Theme.Secondary; MainStroke.Thickness = 1.5
-    local Title = Instance.new("TextLabel", MainFrame); Title.Size = UDim2.new(1, -30, 0, 25); Title.Position = UDim2.new(0, 10, 0, 5); Title.Text = "AUTO-ROLL RULETA"; Title.Font = Enum.Font.GothamBlack; Title.TextSize = 12; Title.TextColor3 = Theme.TextHighlight; Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left
+    local Title = Instance.new("TextLabel", MainFrame); Title.Size = UDim2.new(1, -30, 0, 25); Title.Position = UDim2.new(0, 10, 0, 5); Title.Text = "AUTO-ROLL GEAR"; Title.Font = Enum.Font.GothamBlack; Title.TextSize = 12; Title.TextColor3 = Theme.TextHighlight; Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left
     local CloseBtn = Instance.new("TextButton", MainFrame); CloseBtn.Size = UDim2.new(0, 25, 0, 25); CloseBtn.Position = UDim2.new(1, -25, 0, 5); CloseBtn.Text = "X"; CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextColor3 = Theme.Danger; CloseBtn.BackgroundTransparency = 1
 
     local CatFrame = Instance.new("Frame", MainFrame); CatFrame.Size = UDim2.new(0.9, 0, 0, 20); CatFrame.Position = UDim2.new(0.05, 0, 0, 35); CatFrame.BackgroundTransparency = 1; local catLayout = Instance.new("UIGridLayout", CatFrame); catLayout.CellSize = UDim2.new(0.31, 0, 1, 0); catLayout.CellPadding = UDim2.new(0.03, 0, 0, 0)
@@ -2240,7 +2272,6 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
 
     local SubTitle = Instance.new("TextLabel", MainFrame); SubTitle.Size = UDim2.new(0.9, 0, 0, 15); SubTitle.Position = UDim2.new(0.05, 0, 0, 65); SubTitle.Text = "1. Grados a buscar:"; SubTitle.Font = Enum.Font.GothamMedium; SubTitle.TextSize = 10; SubTitle.TextColor3 = Theme.Text; SubTitle.BackgroundTransparency = 1; SubTitle.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Ajuste del SelectorFrame para 6 botones en 2 filas
     local SelectorFrame = Instance.new("Frame", MainFrame); SelectorFrame.Size = UDim2.new(0.9, 0, 0, 50); SelectorFrame.Position = UDim2.new(0.05, 0, 0, 85); SelectorFrame.BackgroundTransparency = 1; 
     local layout = Instance.new("UIGridLayout", SelectorFrame); layout.CellSize = UDim2.new(0.31, 0, 0.45, 0); layout.CellPadding = UDim2.new(0.03, 0, 0.1, 0)
     for _, gradeText in ipairs({"N", "M", "M+", "GM", "MM", "M++"}) do
@@ -2250,33 +2281,22 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
         btn.MouseButton1Click:Connect(function() ActiveStopTexts[gradeText] = not ActiveStopTexts[gradeText]; UpdateBtnVisual() end)
     end
 
-    -- Ajuste de posiciones Y del resto de la interfaz (desplazadas hacia abajo)
-    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 145); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
-    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 165); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
+    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 145); UidSubTitle.Text = "2. Ítem UUID (Toca 'Capturar' y luego al ítem):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 9; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.65, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 165); UidBox.PlaceholderText = "Esperando UUID..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 9; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
+    local CaptureBtn = Instance.new("TextButton", MainFrame); CaptureBtn.Size = UDim2.new(0.23, 0, 0, 25); CaptureBtn.Position = UDim2.new(0.72, 0, 0, 165); CaptureBtn.Text = "Capturar"; CaptureBtn.Font = Enum.Font.GothamMedium; CaptureBtn.TextSize = 10; CaptureBtn.BackgroundColor3 = Theme.Secondary; CaptureBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", CaptureBtn).CornerRadius = UDim.new(0, 4)
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
     
     local StatusLabel = Instance.new("TextLabel", MainFrame); StatusLabel.Size = UDim2.new(0.9, 0, 0, 20); StatusLabel.Position = UDim2.new(0.05, 0, 0, 200); StatusLabel.Text = "Estado: Esperando configuración"; StatusLabel.Font = Enum.Font.GothamMedium; StatusLabel.TextSize = 11; StatusLabel.TextColor3 = Theme.Text; StatusLabel.BackgroundTransparency = 1; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ResultLabel = Instance.new("TextLabel", MainFrame); ResultLabel.Size = UDim2.new(0.9, 0, 0, 20); ResultLabel.Position = UDim2.new(0.05, 0, 0, 225); ResultLabel.Text = "Tiradas: 0 | Obtenido: N/A"; ResultLabel.Font = Enum.Font.Gotham; ResultLabel.TextSize = 11; ResultLabel.TextColor3 = Theme.TextHighlight; ResultLabel.BackgroundTransparency = 1; ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ToggleBtn = Instance.new("TextButton", MainFrame); ToggleBtn.Size = UDim2.new(0.9, 0, 0, 30); ToggleBtn.Position = UDim2.new(0.05, 0, 0, 255); ToggleBtn.Text = "INICIAR"; ToggleBtn.Font = Enum.Font.GothamBlack; ToggleBtn.TextSize = 12; ToggleBtn.BackgroundColor3 = Theme.Primary; ToggleBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
-    local dragging, dragInput, dragStart, startPos
-    local dragUISConn
-    MainFrame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = input.Position; startPos = MainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
-    MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
-    
-    dragUISConn = UserInputService.InputChanged:Connect(function(input) 
-        if input == dragInput and dragging then 
-            local delta = input.Position - dragStart; 
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
-        end 
-    end)
-    
-    local keyConn
+    local dragUISConn = MakeTouchDraggable(MainFrame)
+    local isSniffing = false; local clickConnection = nil
 
     CloseBtn.MouseButton1Click:Connect(function() 
         _G.AutoRollActivo = false
         if dragUISConn then dragUISConn:Disconnect() end
-        if keyConn then keyConn:Disconnect() end
+        if clickConnection then clickConnection:Disconnect() end
         ScreenGui:Destroy() 
     end)
 
@@ -2288,13 +2308,47 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
         return nil
     end
 
-    keyConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end 
-        if input.KeyCode == Enum.KeyCode.G then
-            local pos = UserInputService:GetMouseLocation(); local guisAtPosition = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y); local uidEncontrado = nil
-            for _, gui in ipairs(guisAtPosition) do uidEncontrado = BuscarUUIDEnInstancia(gui); if uidEncontrado then break end end
-            if uidEncontrado then targetGuid = uidEncontrado; UidBox.Text = uidEncontrado; UidBox.BackgroundColor3 = Theme.Success; task.delay(0.5, function() UidBox.BackgroundColor3 = Theme.PanelLight end) end
+    CaptureBtn.MouseButton1Click:Connect(function()
+        if isSniffing then
+            isSniffing = false
+            if clickConnection then clickConnection:Disconnect() end
+            CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary
+            UidBox.Text = ""; UidBox.PlaceholderText = "Búsqueda cancelada."
+            return
         end
+        isSniffing = true
+        CaptureBtn.Text = "Cancelar"; CaptureBtn.BackgroundColor3 = Theme.Danger
+        UidBox.Text = "TOCA EL ÍTEM"; UidBox.BackgroundColor3 = Theme.PrimaryDark
+
+        clickConnection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local tapPos = input.Position
+                task.wait(0.05)
+                local guisAtPosition = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(tapPos.X, tapPos.Y)
+                local uidEncontrado = nil
+                for _, gui in ipairs(guisAtPosition) do
+                    uidEncontrado = BuscarUUIDEnInstancia(gui)
+                    if not uidEncontrado and gui.Parent then
+                        uidEncontrado = BuscarUUIDEnInstancia(gui.Parent)
+                    end
+                    if uidEncontrado then break end
+                end
+
+                if uidEncontrado then
+                    targetGuid = uidEncontrado
+                    UidBox.Text = uidEncontrado
+                    UidBox.BackgroundColor3 = Theme.Success
+                    task.delay(0.8, function() if UidBox then UidBox.BackgroundColor3 = Theme.PanelLight end end)
+                else
+                    UidBox.Text = "No detectado"
+                    UidBox.BackgroundColor3 = Theme.Danger
+                    task.delay(1.5, function() if UidBox then UidBox.Text = ""; UidBox.BackgroundColor3 = Theme.PanelLight end end)
+                end
+                isSniffing = false
+                CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary
+                clickConnection:Disconnect()
+            end
+        end)
     end)
 
     local function CheckForTargetGrades(response, targetsArray)
@@ -2332,7 +2386,7 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
         if not _G.AutoRollActivo then
             local tieneSeleccion = false; for _, isActive in pairs(ActiveStopTexts) do if isActive then tieneSeleccion = true break end end
             if not tieneSeleccion then StatusLabel.Text = "Selecciona al menos un grado"; StatusLabel.TextColor3 = Theme.Danger; return end
-            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Apunta y presiona 'G'"; StatusLabel.TextColor3 = Theme.Danger; return end
+            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Toca 'Capturar'."; StatusLabel.TextColor3 = Theme.Danger; return end
         end
         _G.AutoRollActivo = not _G.AutoRollActivo
         if _G.AutoRollActivo then ToggleBtn.Text = "DETENER"; ToggleBtn.BackgroundColor3 = Theme.Danger; ResultLabel.TextColor3 = Theme.TextHighlight; StartRolling()
@@ -2340,6 +2394,9 @@ TabReroll:CreateButton("GEAR SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     end)
 end)
 
+-- ---------------------------------------------------------
+-- 3. WEAPON SKILLS (CON BOTÓN CAPTURAR TÁCTIL)
+-- ---------------------------------------------------------
 TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function()
     local uiParent = TargetGui
     if uiParent:FindFirstChild("AutoRollUI_Quirks") then 
@@ -2361,10 +2418,12 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
 
     local ScreenGui = Instance.new("ScreenGui", uiParent); ScreenGui.Name = "AutoRollUI_Quirks"; ScreenGui.ResetOnSpawn = false
     local MainFrame = Instance.new("Frame", ScreenGui); MainFrame.Size = UDim2.new(0, 260, 0, 275); MainFrame.BackgroundColor3 = Theme.Background; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-    MainFrame.Position = UDim2.new(0.5, -540, 0.5, -180)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.Active = true
 
     local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Theme.Secondary; MainStroke.Thickness = 1.5
-    local Title = Instance.new("TextLabel", MainFrame); Title.Size = UDim2.new(1, -30, 0, 25); Title.Position = UDim2.new(0, 10, 0, 5); Title.Text = "AUTO-ROLL HABILIDADES"; Title.Font = Enum.Font.GothamBlack; Title.TextSize = 12; Title.TextColor3 = Theme.TextHighlight; Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left
+    local Title = Instance.new("TextLabel", MainFrame); Title.Size = UDim2.new(1, -30, 0, 25); Title.Position = UDim2.new(0, 10, 0, 5); Title.Text = "AUTO-ROLL ARMAS"; Title.Font = Enum.Font.GothamBlack; Title.TextSize = 12; Title.TextColor3 = Theme.TextHighlight; Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left
     local CloseBtn = Instance.new("TextButton", MainFrame); CloseBtn.Size = UDim2.new(0, 25, 0, 25); CloseBtn.Position = UDim2.new(1, -25, 0, 5); CloseBtn.Text = "X"; CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextColor3 = Theme.Danger; CloseBtn.BackgroundTransparency = 1
 
     local CatFrame = Instance.new("Frame", MainFrame); CatFrame.Size = UDim2.new(0.9, 0, 0, 20); CatFrame.Position = UDim2.new(0.05, 0, 0, 35); CatFrame.BackgroundTransparency = 1; local catLayout = Instance.new("UIGridLayout", CatFrame); catLayout.CellSize = UDim2.new(0.31, 0, 1, 0); catLayout.CellPadding = UDim2.new(0.03, 0, 0, 0)
@@ -2387,31 +2446,22 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
         btn.MouseButton1Click:Connect(function() ActiveStopTexts[quirkText] = not ActiveStopTexts[quirkText]; UpdateBtnVisual() end)
     end
 
-    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 120); UidSubTitle.Text = "2. Ítem UUID (Apunta y presiona G):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 10; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
-    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.9, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 140); UidBox.PlaceholderText = "Apuntando ítem y presiona 'G'..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 10; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
+    local UidSubTitle = Instance.new("TextLabel", MainFrame); UidSubTitle.Size = UDim2.new(0.9, 0, 0, 15); UidSubTitle.Position = UDim2.new(0.05, 0, 0, 120); UidSubTitle.Text = "2. Arma UUID (Toca 'Capturar' y luego al arma):"; UidSubTitle.Font = Enum.Font.GothamMedium; UidSubTitle.TextSize = 9; UidSubTitle.TextColor3 = Theme.Text; UidSubTitle.BackgroundTransparency = 1; UidSubTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local UidBox = Instance.new("TextBox", MainFrame); UidBox.Size = UDim2.new(0.65, 0, 0, 25); UidBox.Position = UDim2.new(0.05, 0, 0, 140); UidBox.PlaceholderText = "Esperando UUID..."; UidBox.Text = ""; UidBox.Font = Enum.Font.Gotham; UidBox.TextSize = 9; UidBox.BackgroundColor3 = Theme.PanelLight; UidBox.TextColor3 = Theme.TextHighlight; UidBox.ClearTextOnFocus = false; Instance.new("UICorner", UidBox).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", UidBox).Color = Theme.Secondary
+    local CaptureBtn = Instance.new("TextButton", MainFrame); CaptureBtn.Size = UDim2.new(0.23, 0, 0, 25); CaptureBtn.Position = UDim2.new(0.72, 0, 0, 140); CaptureBtn.Text = "Capturar"; CaptureBtn.Font = Enum.Font.GothamMedium; CaptureBtn.TextSize = 10; CaptureBtn.BackgroundColor3 = Theme.Secondary; CaptureBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", CaptureBtn).CornerRadius = UDim.new(0, 4)
     UidBox.FocusLost:Connect(function() targetGuid = UidBox.Text end)
+    
     local StatusLabel = Instance.new("TextLabel", MainFrame); StatusLabel.Size = UDim2.new(0.9, 0, 0, 20); StatusLabel.Position = UDim2.new(0.05, 0, 0, 175); StatusLabel.Text = "Estado: Esperando configuración"; StatusLabel.Font = Enum.Font.GothamMedium; StatusLabel.TextSize = 11; StatusLabel.TextColor3 = Theme.Text; StatusLabel.BackgroundTransparency = 1; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ResultLabel = Instance.new("TextLabel", MainFrame); ResultLabel.Size = UDim2.new(0.9, 0, 0, 20); ResultLabel.Position = UDim2.new(0.05, 0, 0, 200); ResultLabel.Text = "Tiradas: 0 | Obtenido: N/A"; ResultLabel.Font = Enum.Font.Gotham; ResultLabel.TextSize = 11; ResultLabel.TextColor3 = Theme.TextHighlight; ResultLabel.BackgroundTransparency = 1; ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ToggleBtn = Instance.new("TextButton", MainFrame); ToggleBtn.Size = UDim2.new(0.9, 0, 0, 30); ToggleBtn.Position = UDim2.new(0.05, 0, 0, 230); ToggleBtn.Text = "INICIAR"; ToggleBtn.Font = Enum.Font.GothamBlack; ToggleBtn.TextSize = 12; ToggleBtn.BackgroundColor3 = Theme.Primary; ToggleBtn.TextColor3 = Theme.TextHighlight; Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
-    local dragging, dragInput, dragStart, startPos
-    local dragUISConn
-    MainFrame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = input.Position; startPos = MainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
-    MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
-    
-    dragUISConn = UserInputService.InputChanged:Connect(function(input) 
-        if input == dragInput and dragging then 
-            local delta = input.Position - dragStart; 
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
-        end 
-    end)
-    
-    local keyConn
+    local dragUISConn = MakeTouchDraggable(MainFrame)
+    local isSniffing = false; local clickConnection = nil
 
     CloseBtn.MouseButton1Click:Connect(function() 
         _G.AutoRollQuirksActivo = false
         if dragUISConn then dragUISConn:Disconnect() end
-        if keyConn then keyConn:Disconnect() end
+        if clickConnection then clickConnection:Disconnect() end
         ScreenGui:Destroy() 
     end)
 
@@ -2423,13 +2473,47 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
         return nil
     end
 
-    keyConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.G then
-            local pos = UserInputService:GetMouseLocation(); local guisAtPosition = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y); local uidEncontrado = nil
-            for _, gui in ipairs(guisAtPosition) do uidEncontrado = BuscarUUIDEnInstancia(gui); if uidEncontrado then break end end
-            if uidEncontrado then targetGuid = uidEncontrado; UidBox.Text = uidEncontrado; UidBox.BackgroundColor3 = Theme.Success; task.delay(0.5, function() UidBox.BackgroundColor3 = Theme.PanelLight end) end
+    CaptureBtn.MouseButton1Click:Connect(function()
+        if isSniffing then
+            isSniffing = false
+            if clickConnection then clickConnection:Disconnect() end
+            CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary
+            UidBox.Text = ""; UidBox.PlaceholderText = "Búsqueda cancelada."
+            return
         end
+        isSniffing = true
+        CaptureBtn.Text = "Cancelar"; CaptureBtn.BackgroundColor3 = Theme.Danger
+        UidBox.Text = "TOCA EL ARMA"; UidBox.BackgroundColor3 = Theme.PrimaryDark
+
+        clickConnection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local tapPos = input.Position
+                task.wait(0.05)
+                local guisAtPosition = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(tapPos.X, tapPos.Y)
+                local uidEncontrado = nil
+                for _, gui in ipairs(guisAtPosition) do
+                    uidEncontrado = BuscarUUIDEnInstancia(gui)
+                    if not uidEncontrado and gui.Parent then
+                        uidEncontrado = BuscarUUIDEnInstancia(gui.Parent)
+                    end
+                    if uidEncontrado then break end
+                end
+
+                if uidEncontrado then
+                    targetGuid = uidEncontrado
+                    UidBox.Text = uidEncontrado
+                    UidBox.BackgroundColor3 = Theme.Success
+                    task.delay(0.8, function() if UidBox then UidBox.BackgroundColor3 = Theme.PanelLight end end)
+                else
+                    UidBox.Text = "No detectado"
+                    UidBox.BackgroundColor3 = Theme.Danger
+                    task.delay(1.5, function() if UidBox then UidBox.Text = ""; UidBox.BackgroundColor3 = Theme.PanelLight end end)
+                end
+                isSniffing = false
+                CaptureBtn.Text = "Capturar"; CaptureBtn.BackgroundColor3 = Theme.Secondary
+                clickConnection:Disconnect()
+            end
+        end)
     end)
 
     local function CheckForTargetQuirks(response, targetsArray)
@@ -2470,7 +2554,7 @@ TabReroll:CreateButton("WEAPON SKILLS (Abrir/Cerrar)", Theme.Secondary, function
         if not _G.AutoRollQuirksActivo then
             local tieneSeleccion = false; for _, isActive in pairs(ActiveStopTexts) do if isActive then tieneSeleccion = true break end end
             if not tieneSeleccion then StatusLabel.Text = "Selecciona al menos una habilidad"; StatusLabel.TextColor3 = Theme.Danger; return end
-            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Apunta y presiona 'G'"; StatusLabel.TextColor3 = Theme.Danger; return end
+            if targetGuid == "" or not string.match(targetGuid, uuidPattern) then StatusLabel.Text = "UUID inválido. Toca 'Capturar'."; StatusLabel.TextColor3 = Theme.Danger; return end
         end
         _G.AutoRollQuirksActivo = not _G.AutoRollQuirksActivo
         if _G.AutoRollQuirksActivo then ToggleBtn.Text = "DETENER"; ToggleBtn.BackgroundColor3 = Theme.Danger; ResultLabel.TextColor3 = Theme.TextHighlight; StartRolling()
@@ -3330,6 +3414,7 @@ do
     GUI.QuickPanel = Instance.new("Frame", Hub.ScreenGui)
     GUI.QuickPanel.Name = "QuickAccessPanel"
     GUI.QuickPanel.Size = UDim2.new(0, 220, 0, 260)
+    GUI.QuickPanel.AnchorPoint = Vector2.new(0.5, 0.5)
     GUI.QuickPanel.Position = UDim2.new(0.5, -340, 0.5, -75)
     GUI.QuickPanel.BackgroundColor3 = Theme.Background
     GUI.QuickPanel.Visible = false
@@ -4030,8 +4115,9 @@ task.spawn(function()
     end
 
     local ToggleBtn = Instance.new("TextButton", MobileGui)
-    ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-    ToggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
+    ToggleBtn.Size = UDim2.new(0, 44, 0, 44)
+    ToggleBtn.AnchorPoint = Vector2.new(0, 1)
+    ToggleBtn.Position = UDim2.new(0.115, 0, 0.965, 0)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40) -- Gris oscuro (independiente del Theme)
     ToggleBtn.Text = "👁" 
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -4089,3 +4175,138 @@ task.spawn(function()
         end
     end)
 end)
+
+-- =========================================================
+-- BARRA FLOTANTE TÁCTIL (DEBAJO DE DPS: M, U, MONITOR, MET)
+-- =========================================================
+do
+    local TouchBar = Instance.new("Frame", Hub.ScreenGui)
+    TouchBar.Name = "TouchQuickBar"
+    TouchBar.AnchorPoint = Vector2.new(1, 0)
+    TouchBar.Position = UDim2.new(0.985, 0, 0.22, 0)
+    TouchBar.Size = UDim2.new(0.22, 0, 0.135, 0)
+    TouchBar.BackgroundColor3 = Theme.Background
+    TouchBar.BackgroundTransparency = 0.2
+    TouchBar.Active = true
+    Instance.new("UICorner", TouchBar).CornerRadius = UDim.new(0, 6)
+    
+    local tbStroke = Instance.new("UIStroke", TouchBar)
+    tbStroke.Color = Theme.Primary
+    tbStroke.Transparency = 0.3
+
+    -- Tamaño mínimo y máximo más ancho y alto para botones cómodos al tacto
+    local tbConstraint = Instance.new("UISizeConstraint", TouchBar)
+    tbConstraint.MinSize = Vector2.new(165, 82)
+    tbConstraint.MaxSize = Vector2.new(235, 115)
+
+    local tbGrid = Instance.new("UIGridLayout", TouchBar)
+    tbGrid.CellSize = UDim2.new(0.465, 0, 0.29, 0)
+    tbGrid.CellPadding = UDim2.new(0.035, 0, 0.04, 0)
+    tbGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tbGrid.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local function MakeBarBtn(txt, bgColor)
+        local b = Instance.new("TextButton", TouchBar)
+        b.BackgroundColor3 = bgColor or Theme.Secondary
+        b.Text = txt
+        b.TextColor3 = Theme.TextHighlight
+        b.Font = Enum.Font.GothamBlack
+        b.TextScaled = true
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+        local pad = Instance.new("UIPadding", b)
+        pad.PaddingLeft = UDim.new(0.06, 0)
+        pad.PaddingRight = UDim.new(0.06, 0)
+        pad.PaddingTop = UDim.new(0.08, 0)
+        pad.PaddingBottom = UDim.new(0.08, 0)
+        return b
+    end
+
+    -- 1. Mapas (Atajo M)
+    local btnMapas = MakeBarBtn("MAPAS (M)", Theme.PrimaryDark)
+    btnMapas.MouseButton1Click:Connect(function()
+        if GUI.MapPanel then
+            GUI.MapPanel.Visible = not GUI.MapPanel.Visible
+        end
+    end)
+
+    -- 2. Acceso Rápido (Atajo U)
+    local btnQuick = MakeBarBtn("RÁPIDO (U)", Theme.PrimaryDark)
+    btnQuick.MouseButton1Click:Connect(function()
+        if GUI.QuickPanel then
+            GUI.QuickPanel.Visible = not GUI.QuickPanel.Visible
+        end
+    end)
+
+    -- 3. Monitor de Combate (Atajo L)
+    local btnMonitor = MakeBarBtn("MONITOR (L)", Theme.PrimaryDark)
+    btnMonitor.MouseButton1Click:Connect(function()
+        if GUI.MonitorFrame then
+            GUI.MonitorFrame.Visible = not GUI.MonitorFrame.Visible
+        end
+    end)
+
+    -- 4. Monitor de Raids (Atajo P)
+    local btnRaids = MakeBarBtn("RAIDS (P)", Theme.PrimaryDark)
+    btnRaids.MouseButton1Click:Connect(function()
+        if GUI.RaidPanel then
+            GUI.RaidPanel.Visible = not GUI.RaidPanel.Visible
+        end
+    end)
+
+    -- 5. Metralleta ON/OFF (Atajo K)
+    local btnMet = MakeBarBtn("MET: OFF", Theme.Secondary)
+    btnMet.MouseButton1Click:Connect(function()
+        ToggleMetralleta()
+    end)
+
+    -- 6. Cambio de Modo Metralleta (SOLO / SEC / BOSS)
+    local modosLista = {"SOLO", "SEC", "BOSS"}
+    local btnMetModo = MakeBarBtn("MODO: " .. (Config.MetralletaModo or "SOLO"), Theme.Primary)
+    btnMetModo.MouseButton1Click:Connect(function()
+        local idx = table.find(modosLista, Config.MetralletaModo) or 1
+        local nextModo = modosLista[(idx % #modosLista) + 1]
+        Config.MetralletaModo = nextModo
+        MetCaza.SoloName = ""
+        MetCaza.SecName = ""
+        btnMetModo.Text = "MODO: " .. nextModo
+        pcall(function()
+            StarterGui:SetCore("SendNotification", { Title = "Metralleta", Text = "Modo: " .. nextModo, Duration = 1.5 })
+        end)
+    end)
+
+    -- Sincronización en tiempo real
+    local syncConn = RunService.Heartbeat:Connect(function()
+        if not HubRunning then return end
+        btnMet.Text = MetState.Activo and "MET: ON" or "MET: OFF"
+        btnMet.BackgroundColor3 = MetState.Activo and Theme.Danger or Theme.Secondary
+        if btnMetModo.Text ~= ("MODO: " .. Config.MetralletaModo) then
+            btnMetModo.Text = "MODO: " .. Config.MetralletaModo
+        end
+    end)
+    table.insert(Hub.Connections, syncConn)
+
+    -- Arrastre táctil
+    local dragging, dragInput, dragStart, startPos
+    TouchBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = TouchBar.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    TouchBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    local dragConn = UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            TouchBar.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    table.insert(Hub.Connections, dragConn)
+end
