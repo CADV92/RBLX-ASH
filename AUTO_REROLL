@@ -1,6 +1,6 @@
 -- =========================================================
 -- SCRIPT STANDALONE: BATCH AUTO-REROLL (GOLD PREMIUM EDITION)
--- FIX: MULTI-CAPTURA PRECISA POR Z-INDEX
+-- SOPORTE COMPLETO: PC + MÓVIL / PANTALLA TÁCTIL
 -- =========================================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,6 +54,8 @@ _G.BatchHeroActivo = false
 _G.BatchGearActivo = false
 _G.BatchWeaponActivo = false
 
+local ActiveConnections = {}
+
 -- ================= INTERFAZ BASE (CONTENEDOR) =================
 local Base = {}
 Base.Screen = Instance.new("ScreenGui", TargetGui)
@@ -66,6 +68,7 @@ Base.Main.Size = UDim2.new(0, 320, 0, 500)
 Base.Main.Position = UDim2.new(0.5, -160, 0.5, -250)
 Base.Main.BackgroundColor3 = Theme.Background
 Base.Main.BorderSizePixel = 0
+Base.Main.Active = true
 Instance.new("UICorner", Base.Main).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", Base.Main).Color = Theme.PrimaryDark
 Base.Main.UIStroke.Thickness = 1.5
@@ -81,17 +84,43 @@ Base.CloseBtn.Text = "X"; Base.CloseBtn.Font = Enum.Font.GothamBold; Base.CloseB
 Base.CloseBtn.BackgroundTransparency = 1
 Base.CloseBtn.MouseButton1Click:Connect(function() 
     _G.BatchHeroActivo = false; _G.BatchGearActivo = false; _G.BatchWeaponActivo = false
+    for _, conn in ipairs(ActiveConnections) do
+        if conn then conn:Disconnect() end
+    end
     Base.Screen:Destroy() 
 end)
 
+-- ================= ARRASTRE COMPATIBLE CON PC Y TÁCTIL =================
 local drag = { dragging = false, dInp = nil, dStart = nil, sPos = nil }
 Base.Main.InputBegan:Connect(function(i) 
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then drag.dragging = true; drag.dStart = i.Position; drag.sPos = Base.Main.Position; i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then drag.dragging = false end end) end 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+        drag.dragging = true
+        drag.dStart = i.Position
+        drag.sPos = Base.Main.Position
+        if i.UserInputType == Enum.UserInputType.Touch then
+            drag.dInp = i
+        end
+        i.Changed:Connect(function() 
+            if i.UserInputState == Enum.UserInputState.End then 
+                drag.dragging = false 
+            end 
+        end) 
+    end 
 end)
-Base.Main.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then drag.dInp = i end end)
-UserInputService.InputChanged:Connect(function(i) 
-    if i == drag.dInp and drag.dragging then local d = i.Position - drag.dStart; Base.Main.Position = UDim2.new(drag.sPos.X.Scale, drag.sPos.X.Offset+d.X, drag.sPos.Y.Scale, drag.sPos.Y.Offset+d.Y) end 
+
+Base.Main.InputChanged:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then 
+        drag.dInp = i 
+    end 
 end)
+
+local dragMoveConn = UserInputService.InputChanged:Connect(function(i) 
+    if i == drag.dInp and drag.dragging then 
+        local d = i.Position - drag.dStart
+        Base.Main.Position = UDim2.new(drag.sPos.X.Scale, drag.sPos.X.Offset + d.X, drag.sPos.Y.Scale, drag.sPos.Y.Offset + d.Y) 
+    end 
+end)
+table.insert(ActiveConnections, dragMoveConn)
 
 Base.TabBar = Instance.new("Frame", Base.Main)
 Base.TabBar.Size = UDim2.new(1, 0, 0, 30); Base.TabBar.Position = UDim2.new(0, 0, 0, 38)
@@ -135,7 +164,7 @@ local function AddTab(name, isFirst)
 end
 
 -- =========================================================
--- FUNCIÓN COMPARTIDA (NÚCLEO DE LA MULTI-CAPTURA DE ALTA PRECISIÓN)
+-- FUNCIÓN COMPARTIDA (NÚCLEO DE MULTI-CAPTURA PC + TÁCTIL)
 -- =========================================================
 local function BuildCommonUI(tabFrame, stateTbl, typeName, startY)
     local U = {}
@@ -153,20 +182,23 @@ local function BuildCommonUI(tabFrame, stateTbl, typeName, startY)
     U.Clr.MouseButton1Click:Connect(function() U.Box.Text = ""; U.AddLog("🗑️ Lista limpiada.", Theme.Text) end)
     U.Dup.MouseButton1Click:Connect(function() local s,u={},{} for v in string.gmatch(U.Box.Text,uuidPattern) do if not s[v] then s[v]=true table.insert(u,v) end end U.Box.Text = table.concat(u,"\n") U.AddLog(tostring(#u).." IDs únicos.", Theme.Success) end)
     
-    -- SISTEMA DE CAPTURA MEJORADO (No se cierra tras un clic, respeta Z-Index superior)
+    -- SISTEMA DE CAPTURA COMPATIBLE CON CLIC Y TOQUE EN PANTALLA
     U.Cap.MouseButton1Click:Connect(function()
         if stateTbl.IsSniffing then 
-            stateTbl.IsSniffing = false; if stateTbl.ClickConn then stateTbl.ClickConn:Disconnect() end
-            U.Cap.Text = "Capturar"; U.Cap.BackgroundColor3 = Theme.Secondary; return 
+            stateTbl.IsSniffing = false
+            if stateTbl.ClickConn then stateTbl.ClickConn:Disconnect(); stateTbl.ClickConn = nil end
+            U.Cap.Text = "Capturar"; U.Cap.BackgroundColor3 = Theme.Secondary
+            return 
         end
         
         stateTbl.IsSniffing = true; U.Cap.Text = "Cancelar"; U.Cap.BackgroundColor3 = Theme.Danger
-        U.AddLog("Modo Captura: ACTIVO (Puedes hacer clics múltiples)", Theme.Warning)
+        U.AddLog("Modo Captura: ACTIVO (Toca o haz clic en ítems)", Theme.Warning)
         
         stateTbl.ClickConn = UserInputService.InputBegan:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                task.wait(0.05); local mp = UserInputService:GetMouseLocation()
-                local guis = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(mp.X, mp.Y)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                local pos = inp.Position
+                task.wait(0.05)
+                local guis = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
                 local fu = nil
                 
                 for _, g in ipairs(guis) do
@@ -186,6 +218,7 @@ local function BuildCommonUI(tabFrame, stateTbl, typeName, startY)
                 end
             end
         end)
+        table.insert(ActiveConnections, stateTbl.ClickConn)
     end)
     return U
 end
@@ -316,7 +349,6 @@ end
 GUI.CBtns["R"].BackgroundColor3 = Theme.Primary
 GUI.CBtns["R"].TextColor3 = Theme.BlackText
 
--- Cuadrícula de 4x2 para los 8 grados (SS, G, N, M / M+, GM, MM, M++)
 GUI.GFrame = Instance.new("Frame", GearFrame)
 GUI.GFrame.Size = UDim2.new(0.9, 0, 0, 50)
 GUI.GFrame.Position = UDim2.new(0.05, 0, 0, 30)
@@ -376,7 +408,6 @@ GUI.C.Tog.MouseButton1Click:Connect(function()
                     local args = { { drawId = dId, stopGradeIds = dyn, guid = uid } }
                     local s, r = pcall(function() return Remote:InvokeServer(unpack(args)) end)
                     
-                    -- Se evalúa 's' (éxito de red) igual que en el script funcional, sin exigir que 'r' no sea nil
                     if s then 
                         tries = tries + 1
                         local found = CheckVals(r, dyn)
